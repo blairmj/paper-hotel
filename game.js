@@ -24,13 +24,7 @@ const tag=()=> room.n+'호 '+room.place;
 function btn(text,fn,host=body,primary=false){const el=document.createElement('button');el.type='button';el.className='action'+(primary?' primary':'');el.textContent=text;el.onclick=fn;host.append(el);return el}
 function row(){const el=document.createElement('div');el.className='row';body.append(el);return el}
 function cells(s,cols=3,lit=false){return '<span class="cells '+(cols===2?'two':'')+'">'+[...s].map(n=>'<span class="'+(lit&&Number(n)%2?'lit':'')+'">'+n+'</span>').join('')+'</span>'}
-function dial(a,b){
- let marks='',hands='';for(let h=1;h<=12;h++){let t=h*Math.PI/6;marks+='<text x="'+(45+34*Math.sin(t))+'" y="'+(47-34*Math.cos(t))+'" text-anchor="middle" fill="#443034" font-size="9">'+h+'</text>'}
- for(const [v,len] of [[a,21],[b,27]])hands+='<path d="M45 45 l'+len*Math.sin(v*Math.PI/6)+' '+(-len*Math.cos(v*Math.PI/6))+'" stroke="#682f32" stroke-width="3" stroke-linecap="round"/>';
- return '<svg class="mini-clock" viewBox="0 0 90 90" role="img" aria-label="바늘 '+a+'와 '+b+'"><circle cx="45" cy="45" r="42" stroke="#906d45" fill="#f9e8bc"/>'+marks+hands+'<circle cx="45" cy="45" r="3" fill="#654138"/></svg>';
-}
 function clueExtra(id){
- if(id==='record')return '<div class="diagram">'+dial(3,6)+'18 '+dial(3,12)+'36</div>';
  if(id==='type')return '<div class="slip sample">ㅅ ㅏ ㅁ　/　ㅍ ㅏ ㄹ　/　ㅇ ㅣ</div>';
  if(id==='shelf')return '<div class="diagram">'+cells(archiveCard(0),2)+' → '+cells(archiveCard(1),2)+'</div>';
  if(id==='sort')return '<div class="diagram">'+cells(archiveCard(2),2)+'</div>';
@@ -44,11 +38,7 @@ function sync(){const st=progress();$('clueCount').textContent=st.found.length+'
 function findClue(id){
  const clue=room.clues.find(c=>c[0]===id);if(!clue)return;
  const st=progress();if(!st.found.includes(id)){st.found.push(id);save();sync()}
- modal(tag()+'  /  단서 수첩에 기록',clue[1],'<p>'+clue[2]+'</p>'+clueExtra(id));if(id==='test')testBench();else btn('방으로 돌아가기',closeSheet,row(),true);
-}
-function testBench(){
- const log=document.createElement('div');body.append(log);const refresh=()=>{log.innerHTML=progress().tests.map(t=>'<div class="slip"><b>시험 기록 · '+t.pair+'</b><p>두 규칙의 예상값 '+t.a+' / '+t.b+'　·　실제 출력 <strong>'+t.result+'</strong></p></div>').join('')};refresh();
- const r=row();for(const [pair,big,product] of [['3와 9',27,27],['6과 9',27,54]])btn(pair+' 시험판',()=>{modal(tag(),'시험할 바늘 선택', '<p><strong>'+pair+'</strong>에서 두 규칙이 예측하는 값을 먼저 적어 보세요.</p><form id="testForm"><p><label>㉠ 큰 수의 세 배 <input required type="number" min="0" max="200" name="a" style="width:78px"></label></p><p><label>㉡ 두 바늘 수의 곱 <input required type="number" min="0" max="200" name="b" style="width:78px"></label></p><button class="action primary">시험하기</button><p role="status" class="feedback"></p></form>');$('testForm').onsubmit=e=>{e.preventDefault();const f=new FormData(e.target);if(+f.get('a')!==big||+f.get('b')!==product){e.target.querySelector('.feedback').textContent='두 규칙대로 계산한 예상값을 확인해 보세요.';return}const st=progress();if(!st.tests.some(t=>t.pair===pair))st.tests.push({pair,a:big,b:product,result:product});save();modal(tag(),'종이띠에 찍힌 결과','<div class="slip sample">'+pair+' → '+product+'</div><p>'+(product===big?'두 예상값이 같아요. 다른 시험판으로 두 가설을 구별해 보세요.':'두 예상값 중 두 바늘의 수를 곱한 결과와 일치해요.')+'</p>');btn('시험대로 돌아가기',()=>findClue('test'),row());btn('방으로 돌아가기',closeSheet,row(),true)}},r);
+ modal(tag()+'  /  단서 수첩에 기록',clue[1],'<p>'+clue[2]+'</p>'+clueExtra(id));btn('방으로 돌아가기',closeSheet,row(),true);
 }
 function mazeSvg(){
  const xy=n=>[23+n%5*51,23+Math.floor(n/5)*51];let paths='';
@@ -95,9 +85,9 @@ function animateDoor(t) {
 function puzzle(){
  if(progress().solved)return;
  const st=progress();
- const remaining=room.clues.filter(c=>!st.found.includes(c[0]));if(remaining.length || (room.n===203&&!st.tests.some(t=>t.result===54))){
- const lines=remaining.length?remaining.map(c=>'<li>'+c[1]+'</li>').join(''):'<li>박자 시험기에서 두 가설을 구별할 시험</li>';modal(tag(),room.station,'<p>장치를 살펴보니 아직 맞춰 볼 단서가 남아 있다.</p><ul>'+lines+'</ul>');btn('단서 찾아보기',closeSheet,row(),true);return}
- const questions={203:'멈춰 있는 연습 시계의 두 바늘은 12와 6을 가리킨다. 시험을 통과한 규칙으로 다이얼을 맞춰 보자.',204:'활자 서랍의 세 줄을 견본처럼 찍으면 어떤 세 자리 수가 될까?',205:'지도 조각을 맞췄다. ▲에서 ●까지 이어지는 길에서 읽은 글자가 가리키는 서랍을 열자.',206:'테두리를 따라 이동하는 숫자들. 네 번째 카드 여섯 칸을 맨 위부터 한 줄씩 왼쪽에서 오른쪽으로 입력하자.',207:'견본 글자를 작은 것부터 인쇄한다. 문에 들어갈 여섯 글자는?',208:'운동회 사진과 우승 깃발을 보고 장비함의 네 다이얼을 맞춰 보자.',209:'새 입력표가 떴다. 출력 예시와 같은 규칙으로 모니터의 픽셀을 켜자.',210:'별판과 투사지의 초승달을 맞췄다. 하나가 남는 구역의 스위치를 모두 켜자.'};
+ const remaining=room.clues.filter(c=>!st.found.includes(c[0]));if(remaining.length){
+ const lines=remaining.map(c=>'<li>'+c[1]+'</li>').join('');modal(tag(),room.station,'<p>장치를 살펴보니 아직 맞춰 볼 단서가 남아 있다.</p><ul>'+lines+'</ul>');btn('단서 찾아보기',closeSheet,row(),true);return}
+ const questions={204:'활자 서랍의 세 줄을 견본처럼 찍으면 어떤 세 자리 수가 될까?',205:'지도 조각을 맞췄다. ▲에서 ●까지 이어지는 길에서 읽은 글자가 가리키는 서랍을 열자.',206:'테두리를 따라 이동하는 숫자들. 네 번째 카드 여섯 칸을 맨 위부터 한 줄씩 왼쪽에서 오른쪽으로 입력하자.',207:'견본 글자를 작은 것부터 인쇄한다. 문에 들어갈 여섯 글자는?',208:'운동회 사진과 우승 깃발을 보고 장비함의 네 다이얼을 맞춰 보자.',209:'새 입력표가 떴다. 출력 예시와 같은 규칙으로 모니터의 픽셀을 켜자.',210:'별판과 투사지의 초승달을 맞췄다. 하나가 남는 구역의 스위치를 모두 켜자.'};
  modal(tag()+'  /  잠금 장치',room.station,'<p>'+questions[room.n]+'</p>');
  let get;const n=room.n;
  if(n===205){body.insertAdjacentHTML('beforeend',mazeSvg());const host=row();for(const v of ['위칸','중간칸','아래칸'])btn(v,()=>check(v),host)}
@@ -118,6 +108,7 @@ function help(){if(opening)return;modal('학교 탈출','놀이 방법','<p>교�
 function interact(id){if(opening)return;if(id==='station')puzzle();else findClue(id)}
 function mark(p,x,y,z,id){const anchor=group(p,x,y,z);const el=document.createElement('button');el.type='button';el.className='mark';const name=id==='station'?room.station:room.clues.find(c=>c[0]===id)[1];const icon=document.createElement('i');icon.setAttribute('aria-hidden','true');el.append(icon,document.createTextNode(name));el.onclick=()=>interact(id);$('marks').append(el);markers.push({anchor,id,el,pos:new THREE.Vector3()})}
 function enter(n){
+ if(n===203){book.room=n;save();location.assign('music.html');return}
  opening=null;document.body.classList.remove('opening');$('exitNotice').hidden=true;
  discardRoom(scene,root);markers=[];$('marks').replaceChildren();room=SCHOOL_ROOMS.find(r=>r.n===n)||SCHOOL_ROOMS[0];
  book.room=room.n;save();yaw=0;pitch=-.055;facingTarget=moving=null;keys.clear();
@@ -160,7 +151,10 @@ canvas.onlostpointercapture=canvas.onpointerup=canvas.onpointercancel=()=>{drag=
 window.addEventListener('keydown',e=>{if(opening||dlg.open||!room||e.altKey||e.ctrlKey||e.metaKey)return;const k=e.key.toLowerCase();if(['w','a','s','d','arrowright','arrowleft','arrowup','arrowdown'].includes(k)){e.preventDefault();facingTarget=null;moving=null;keys.add(k)}});
 window.addEventListener('keyup',e=>keys.delete(e.key.toLowerCase()));window.addEventListener('blur',()=>{keys.clear();drag=null});
 $('directory').onclick=directory;$('journal').onclick=journal;$('help').onclick=help;$('turnL').onclick=()=>turn(-1);$('turnR').onclick=()=>turn(1);$('step').onclick=step;
-try{
+const requestedRoom=Number(new URLSearchParams(location.search).get('room'));
+const firstRoom=SCHOOL_ROOMS.some(r=>r.n===requestedRoom)?requestedRoom:book.room;
+if(firstRoom===203){location.replace('music.html')}
+else try{
  renderer=new THREE.WebGLRenderer({canvas,antialias:true,powerPreference:'high-performance'});renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;renderer.shadowMap.autoUpdate=false;
- scene=new THREE.Scene();scene.background=new THREE.Color(0x46313c);camera=new THREE.PerspectiveCamera(64,1,.055,40);resize();window.addEventListener('resize',resize);enter(book.room);requestAnimationFrame(tick);
+ scene=new THREE.Scene();scene.background=new THREE.Color(0x46313c);camera=new THREE.PerspectiveCamera(64,1,.055,40);resize();window.addEventListener('resize',resize);enter(firstRoom);if(requestedRoom===firstRoom)history.replaceState(null,'',location.pathname);requestAnimationFrame(tick);
 }catch(err){$('fatal').hidden=false;$('fatal').innerHTML='<b>3D 교실을 열 수 없어요.</b><p>WebGL을 지원하는 브라우저에서 하드웨어 가속을 켠 뒤 다시 열어 주세요.</p>';console.error(err)}
