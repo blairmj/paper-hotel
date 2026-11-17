@@ -32,3 +32,17 @@ dialog p{font-size:15px;line-height:1.5;margin:6px 0 12px;word-break:keep-all}.c
 .spot::before{content:'';width:12px;height:12px;background:#fff;border:3px solid #50666b;box-shadow:0 0 0 2px #fff,0 1px 6px #142d3966}
 @media(max-width:600px){.zoom-tools button{height:44px;width:40px}}
 @media(max-width:350px){.room-foot{justify-content:flex-start}}
+.zoom-tools,.detail-zoom{align-items:center}
+.zoom-tools output,.detail-zoom output{min-width:3.2em;text-align:center;color:#344049;font:500 12px/1 system-ui;font-variant-numeric:tabular-nums}
+.zoom-tools button,.detail-zoom button{width:44px;height:44px}
+.detail-zoom{display:flex;justify-content:center;margin:14px auto 0;width:fit-content;border:1px solid #c8cdd0;border-radius:5px}
+.detail-zoom button{background:none;border:0;font:21px/1 Arial;padding:0}
+.detail-stage{overflow:auto;width:100%;max-height:48dvh;overscroll-behavior:contain}
+.detail-art{width:100%;min-width:225px}
+.detail-art.clock-area{width:max-content;min-width:0;margin:0 auto}
+.spot{width:44px;height:44px}
+.design-preview .spot::before,.design-preview .spot span{display:none}
+.design-preview .spot:focus-visible{outline-offset:0}
+.design-preview .spot{border-radius:3px}
+.design-preview .clue-sheet{background:linear-gradient(135deg,#fafaf2,#eeeee3);border:1px solid #d8d8cb;box-shadow:inset -4px -3px 7px #d8d9ca}
+@media(max-width:450px){.room-foot{justify-content:flex-start}.movement button{min-width:41px}#escape{bottom:72px}}

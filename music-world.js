@@ -1,5 +1,42 @@
 'use strict';
 
+// Floor boundaries in metres. The two ensembles leave a middle aisle and
+// a clear strip along the teaching wall.
+const roomLimits = {left:-6.15, right:5.8, front:-6.45, back:2.55};
+const seatBanks = [[-3.96,-1.10,-4.96,-1.96],[1.10,3.96,-4.96,-1.96]];
+function onOpenFloor(x,z) {
+  return x>=roomLimits.left && x<=roomLimits.right && z>=roomLimits.front && z<=roomLimits.back &&
+    !seatBanks.some(([l,r,f,b])=>x>l && x<r && z>f && z<b);
+}
+function clearSegment(a,b) {
+  const steps=Math.max(1,Math.ceil(Math.hypot(b.x-a.x,b.z-a.z)/.11));
+  for(let i=1;i<=steps;i++){
+    const t=i/steps;
+    if(!onOpenFloor(a.x+(b.x-a.x)*t,a.z+(b.z-a.z)*t)) return false;
+  }
+  return true;
+}
+function floorRoute(start,goal) {
+  if(clearSegment(start,goal)) return [goal];
+  const nodes=[start,goal];
+  for(const [l,r,f,b] of seatBanks) for(const x of [l-.09,r+.09]) for(const z of [f-.09,b+.09]) nodes.push({x,z});
+  const cost=nodes.map(()=>Infinity), prev=nodes.map(()=>-1), visited=new Set();cost[0]=0;
+  for(let i=0;i<nodes.length;i++){
+    let current=-1;
+    for(let k=0;k<nodes.length;k++) if(!visited.has(k) && cost[k]<Infinity && (current<0||cost[k]<cost[current])) current=k;
+    if(current<0) return [];
+    if(current===1) break;
+    visited.add(current);
+    for(let k=1;k<nodes.length;k++){
+      if(visited.has(k)||!clearSegment(nodes[current],nodes[k])) continue;
+      const next=cost[current]+Math.hypot(nodes[k].x-nodes[current].x,nodes[k].z-nodes[current].z);
+      if(next<cost[k]){cost[k]=next;prev[k]=current}
+    }
+  }
+  const path=[];for(let k=1;k>0;k=prev[k]) path.unshift(nodes[k]);
+  return prev[1]<0?[]:path;
+}
+
 async function createMusicWorld({onInspect,onReadyToMove}){
   const canvas=document.getElementById('roomView'),scene=new THREE.Scene();
   scene.background=new THREE.Color(0xe6ebef);
@@ -13,17 +50,18 @@ async function createMusicWorld({onInspect,onReadyToMove}){
   }
   if(renderer)model=await buildPaintedRoom(scene);
   const eye=camera.position;
-  const keys=new Set(),point=new THREE.Vector3();
+  const keys=new Set(),point=new THREE.Vector3(),corner=new THREE.Vector3();
   const targets=paintedRoom.targets.map(o=>{
     const button=document.createElement('button'),label=document.createElement('span');
     label.textContent=o.name;button.append(label);button.type='button';button.className='spot';
     button.dataset.object=o.id;button.setAttribute('aria-label',o.name);
-    button.onclick=()=>{if(!journey)onInspect(o.id)};
+    button.onclick=()=>{if(!journey?.door && onReadyToMove()) inspectTarget(o.id)};
     document.getElementById('spots').append(button);
-    return {...o,point:new THREE.Vector3(...o.xyz),button};
+    const surface=o.id==='clock'?paintedRoom.clock:o.id==='lock'?paintedRoom.lock:{width:.79,height:.50};
+    return {...o,point:new THREE.Vector3(...o.xyz),surface,button};
   });
   const stopPoints=paintedRoom.stops;
-  let width=1,height=1,yaw=0,pitch=0,openness=0,zoom=1,journey,drag,raf=0,previousTime=0;
+  let width=1,height=1,yaw=0,pitch=0,openness=0,zoom=1,journey,trail,drag,raf=0,previousTime=0;
   const clamp=THREE.MathUtils.clamp, wrap=angle=>Math.atan2(Math.sin(angle),Math.cos(angle));
   const minZoom=.8,maxZoom=3,zoomStep=1.25;
   const zoomIn=document.getElementById('zoomIn'),zoomOut=document.getElementById('zoomOut');
@@ -31,6 +69,7 @@ async function createMusicWorld({onInspect,onReadyToMove}){
     zoom=clamp(value,minZoom,maxZoom);
     camera.zoom=zoom;
     camera.updateProjectionMatrix();
+    document.getElementById('zoomValue').textContent=Number(zoom.toFixed(2))+'×';
     zoomOut.disabled=zoom<=minZoom;
     zoomIn.disabled=zoom>=maxZoom;
     queue();
@@ -47,30 +86,84 @@ async function createMusicWorld({onInspect,onReadyToMove}){
   function draw(){
     camera.rotation.set(pitch,-yaw,0,'YXZ');camera.updateMatrixWorld();
     if(renderer)renderer.render(scene,camera);
-    else photos.draw(height/(2*Math.tan(camera.fov*Math.PI/360))*zoom,yaw,pitch,openness);
+    else photos.draw(height/(2*Math.tan(camera.fov*Math.PI/360))*zoom,yaw,pitch,openness,eye);
     for(const target of targets){
-      const v=point.copy(target.point).project(camera),px=width*(1+v.x)/2,py=height*(1-v.y)/2;
+      point.copy(target.point);
+      if(!renderer) {
+        point.y-=paintedRoom.start[1];
+        point.multiplyScalar(8.14 / Math.abs(point.z));
+        point.y+=paintedRoom.start[1];
+      }
+      const v=point.project(camera),px=width*(1+v.x)/2,py=height*(1-v.y)/2;
       const b=target.button;
       b.hidden=v.z<0||v.z>=1||px<20||px>width-20||py<55||py>height-56||!!journey||openness===1;
       target.px=px;target.py=py;
       if(b.hidden)continue;
-      b.style.left=px+'px';b.style.top=(py+18)+'px';b.classList.toggle('label-left',px>width-95);
+      let halfWidth=0,halfHeight=0;
+      for(const dx of [-.5,.5])for(const dy of [-.5,.5]){
+        corner.copy(target.point);
+        corner.x+=dx*target.surface.width;corner.y+=dy*target.surface.height;
+        if(!renderer){
+          corner.y-=paintedRoom.start[1];corner.multiplyScalar(8.14/Math.abs(corner.z));corner.y+=paintedRoom.start[1];
+        }
+        corner.project(camera);
+        halfWidth=Math.max(halfWidth,Math.abs(width*(1+corner.x)/2-px));
+        halfHeight=Math.max(halfHeight,Math.abs(height*(1-corner.y)/2-py));
+      }
+      b.style.width=Math.max(44,2*halfWidth)+'px';b.style.height=Math.max(44,2*halfHeight)+'px';
+      b.style.left=px+'px';b.style.top=py+'px';b.classList.toggle('label-left',px>width-95);
     }
   }
   function queue(){if(!raf)raf=requestAnimationFrame(frame)}
   function move(front,side){
-    if(!renderer){
-      setZoom(zoom*Math.exp(front*.15));yaw=wrap(yaw+side*.20);return;
+    const dx=Math.sin(yaw)*front+Math.cos(yaw)*side, dz=-Math.cos(yaw)*front+Math.sin(yaw)*side;
+    if(onOpenFloor(eye.x+dx,eye.z)) eye.x+=dx;
+    if(onOpenFloor(eye.x,eye.z+dz)) eye.z+=dz;
+  }
+  function walkTo(goal, face=null, done=null) {
+    if(!onOpenFloor(goal.x,goal.z)) return;
+    const path=floorRoute(eye,goal);
+    if(!path.length) return;
+    journey=null;keys.clear();
+    if (matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      eye.x=goal.x;eye.z=goal.z;
+      if(face){yaw=heading(face);pitch=tilt(face)}
+      queue();done?.();return;
     }
-    const dx=Math.sin(yaw)*front+Math.cos(yaw)*side,dz=-Math.cos(yaw)*front+Math.sin(yaw)*side;
-    function walkable(x,z){
-      // The two groups of chairs leave a continuous aisle to the teaching wall.
-      if(x< -1.55||x>1.55||z< -2.30||z>1.30)return false;
-      if(z<-.40&&(x< -.90||x>.90))return false;
-      return true;
+    trail={path,face,done};previousTime=performance.now();queue();
+  }
+  function advanceTrail(dt){
+    const next=trail.path[0],dx=next.x-eye.x,dz=next.z-eye.z,dist=Math.hypot(dx,dz);
+    const step=Math.min(dt*4.8,dist);
+    if(dist>0){eye.x+=dx*step/dist;eye.z+=dz*step/dist}
+    if(trail.face){
+      yaw=wrap(yaw+wrap(heading(trail.face)-yaw)*Math.min(1,dt*9));
+      pitch+=(tilt(trail.face)-pitch)*Math.min(1,dt*9);
     }
-    if(walkable(eye.x+dx,eye.z))eye.x+=dx;
-    if(walkable(eye.x,eye.z+dz))eye.z+=dz;
+    if(dist-step>.001)return;
+    trail.path.shift();
+    if(trail.path.length)return;
+    const {face,done}=trail;trail=null;
+    if(face){yaw=heading(face);pitch=tilt(face)}
+    done?.();
+  }
+  function inspectTarget(id){
+    const object=targets.find(t=>t.id===id), [x,,z]=object.xyz;
+    const approachX=id==='paper'?x+.65:x;
+    walkTo({x:clamp(approachX,-5.3,5.3),z:clamp(z+2.35,-6.2,-5.16)},object.xyz,()=>onInspect(id));
+  }
+  const raycaster=new THREE.Raycaster(),mousePoint=new THREE.Vector2();
+  function walkToPixel(x,y){
+    mousePoint.set(2*x/width-1,1-2*y/height);
+    raycaster.setFromCamera(mousePoint,camera);
+    const ray=raycaster.ray;
+    if(ray.direction.y>=-.025)return;
+    const t=-eye.y/ray.direction.y;
+    const nx=eye.x+ray.direction.x*t,nz=eye.z+ray.direction.z*t;
+    // Ignore wall and ceiling clicks. Allow a slight inset at the floor skirting.
+    if(nx< -7||nx>6.6||nz< -8.15||nz>4.35)return;
+    const goal={x:clamp(nx,roomLimits.left,roomLimits.right),z:clamp(nz,roomLimits.front,roomLimits.back)};
+    walkTo(goal);
   }
   function frame(time){
     raf=0;const dt=Math.min(.06,(time-previousTime)/1000);previousTime=time;
@@ -85,14 +178,17 @@ async function createMusicWorld({onInspect,onReadyToMove}){
         model?.setDoor(openness);
       }
       if(t===1){journey=null;j.done?.()}
+    }else if(trail && onReadyToMove()){
+      advanceTrail(dt);
     }else if(keys.size&&onReadyToMove()){
       yaw=wrap(yaw+(+keys.has('arrowright')-+keys.has('arrowleft'))*1.4*dt);
       pitch=clamp(pitch+(+keys.has('arrowup')-+keys.has('arrowdown'))*dt,-1.1,1.1);
       move((+keys.has('w')-+keys.has('s'))*dt*2.2,(+keys.has('d')-+keys.has('a'))*dt*2.2);
     }
-    draw();if(journey||keys.size)queue();
+    draw();if(journey||trail||keys.size)queue();
   }
   function look(target,door=false,done){
+    trail=null;
     const reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
     journey={from:yaw,p:pitch,to:heading(target),targetPitch:tilt(target),door,done,startZoom:zoom,start:performance.now(),duration:reduced?1:door?1200:280};
     queue();
@@ -104,10 +200,10 @@ async function createMusicWorld({onInspect,onReadyToMove}){
       .filter(stop=>stop.angle>.07).sort((a,b)=>a.angle-b.angle);
     if(ordered.length)look(ordered[0].target);
   }
-  const clearKeys=()=>{keys.clear();drag=null};
+  const clearKeys=()=>{keys.clear();drag=null;trail=null};
   canvas.onpointerdown=e=>{
     if(e.button!==0||!onReadyToMove()||journey?.door)return;
-    journey=null;drag={x:e.clientX,y:e.clientY,distance:0};canvas.setPointerCapture(e.pointerId);canvas.focus();
+    journey=null;trail=null;drag={x:e.clientX,y:e.clientY,distance:0};canvas.setPointerCapture(e.pointerId);canvas.focus();
   };
   canvas.onpointermove=e=>{
     if(!drag)return;
@@ -119,13 +215,14 @@ async function createMusicWorld({onInspect,onReadyToMove}){
     const tapped=drag&&drag.distance<7;drag=null;
     if(!tapped||!onReadyToMove())return;
     const rect=canvas.getBoundingClientRect();
-    for(const t of targets)if(!t.button.hidden&&Math.hypot(e.clientX-rect.left-t.px,e.clientY-rect.top-t.py)<26){onInspect(t.id);return}
+    for(const t of targets)if(!t.button.hidden&&Math.hypot(e.clientX-rect.left-t.px,e.clientY-rect.top-t.py)<26){inspectTarget(t.id);return}
+    walkToPixel(e.clientX-rect.left,e.clientY-rect.top);
   };
   canvas.onpointercancel=canvas.onlostpointercapture=()=>{drag=null};
   document.addEventListener('keydown',e=>{
     if(!onReadyToMove()||journey?.door||e.metaKey||e.ctrlKey||e.altKey)return;
     const k=e.key.toLowerCase();
-    if(['w','s','a','d','arrowleft','arrowright','arrowup','arrowdown'].includes(k)){e.preventDefault();journey=null;keys.add(k);queue()}
+    if(['w','s','a','d','arrowleft','arrowright','arrowup','arrowdown'].includes(k)){e.preventDefault();journey=null;trail=null;keys.add(k);queue()}
   });
   document.addEventListener('keyup',e=>keys.delete(e.key.toLowerCase()));
   window.addEventListener('blur',clearKeys);
@@ -133,14 +230,14 @@ async function createMusicWorld({onInspect,onReadyToMove}){
   zoomIn.onclick=()=>{if(canZoom())setZoom(zoom*zoomStep)};
   zoomOut.onclick=()=>{if(canZoom())setZoom(zoom/zoomStep)};
   document.getElementById('musicGame').addEventListener('wheel',e=>{
-    if(!canZoom()||e.ctrlKey||e.metaKey||!(e.target===canvas||e.target.closest('.spot')))return;
+    if(!canZoom()||e.ctrlKey||e.metaKey||!(e.target===canvas||e.target.closest('.spot,.zoom-tools')))return;
     e.preventDefault();
     const pixels=e.deltaY*(e.deltaMode===1?16:e.deltaMode===2?height:1);
     setZoom(zoom*Math.exp(-clamp(pixels,-240,240)*.0024));
   },{passive:false});
   document.getElementById('left').onclick=()=>turn(-1);
   document.getElementById('right').onclick=()=>turn(1);
-  document.getElementById('walk').onclick=()=>{if(onReadyToMove()&&!journey?.door){move(.36,0);queue()}};
+  document.getElementById('walk').onclick=()=>{if(onReadyToMove()&&!journey?.door){trail=null;move(.36,0);queue()}};
   new ResizeObserver(resize).observe(canvas);resize();
   return {
     clearKeys,setDigits(digits){(model||photos).setDigits(digits);queue()},

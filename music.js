@@ -1,7 +1,7 @@
 'use strict';
 const byId=id=>document.getElementById(id);
 const dialog=byId('inspect'),content=byId('panelBody'),closeButton=byId('dismiss');
-const saveKey='paperhotel.explore.v1';
+const saveKey=musicDesignPreview?'paperhotel.musicroom.preview.v1':'paperhotel.explore.v1';
 const examples=[
   {a:9,b:6,value:54,shape:'┐'},{a:12,b:3,value:36,shape:'└'},
   {a:3,b:6,value:18,shape:'┌'},{a:9,b:12,value:108,shape:'┘'}
@@ -25,11 +25,34 @@ function storeVisit(restart=false){
     solved:!!((!restart&&old.solved)||visit.solved),escaped:!!((!restart&&old.escaped)||visit.solved)};
   try{localStorage.setItem(saveKey,JSON.stringify(book))}catch{}
 }
+let detailScale=1;
+const detailStops=[.8,1,1.25,1.6,2,2.5,3];
+function resizeDetail(value){
+  detailScale=Math.max(.8,Math.min(3,value));
+  const item=content.querySelector('.detail-art');
+  if(item)item.style.zoom=detailScale;
+  byId('detailValue').textContent=Number(detailScale.toFixed(2))+'×';
+  byId('detailIn').disabled=detailScale>=3;byId('detailOut').disabled=detailScale<=.8;
+}
+byId('detailIn').onclick=()=>resizeDetail(detailStops.find(n=>n>detailScale+.001)??3);
+byId('detailOut').onclick=()=>resizeDetail(detailStops.slice().reverse().find(n=>n<detailScale-.001)??.8);
+dialog.addEventListener('wheel',e=>{
+  if(byId('detailZoom').hidden || e.ctrlKey || !e.target.closest('.detail-stage'))return;
+  e.preventDefault();resizeDetail(detailScale*Math.exp(-Math.sign(e.deltaY)*.16));
+},{passive:false});
 function modal(title,html){
   if(opening)return;
   world?.clearKeys();
   byId('panelTitle').textContent=title;
   content.innerHTML=html;
+  const artwork=content.querySelector('.clue-sheet,.clock-area,.switches');
+  byId('detailZoom').hidden=!artwork;
+  if(artwork){
+    const stage=document.createElement('div');
+    stage.className='detail-stage';
+    artwork.before(stage);stage.append(artwork);artwork.classList.add('detail-art');
+    resizeDetail(dialog.open?detailScale:1);
+  }
   if(!dialog.open)dialog.showModal();
   dialog.scrollTop=0;
 }
@@ -72,7 +95,7 @@ function clockDrawing(pair){
 function clockPanel(){
   const pair=overlay?examples[example]:null;
   modal('멈춘 벽시계','<div class="clock-area">'+clockDrawing(pair)+'</div>'+
-    (pair?'<p class="readout">'+pair.a+'　?　'+pair.b+'　=　'+pair.value+'</p><div class="tabs" id="recordTabs" aria-label="악보의 예시"></div>':''));
+    (pair?'<div class="tabs" id="recordTabs" aria-label="악보의 예시"></div>':''));
   if(pair){
     examples.forEach((e,i)=>{
       const t=action(byId('recordTabs'),'',()=>{example=i;clockPanel();byId('recordTabs').children[i].focus()});
@@ -83,7 +106,7 @@ function clockPanel(){
   if(visit.paper){
     action(a,pair?'악보 걷기':'악보 겹치기',()=>{overlay=!overlay;if(overlay){visit.overlaid=true;storeVisit()}clockPanel()},true);
   }
-  if(pair)content.insertAdjacentHTML('beforeend','<details class="hint"><summary>힌트</summary><p>9와 6으로 54를 만드는 계산은 무엇일까요?</p></details>');
+
 
 }
 function solve(){
@@ -98,11 +121,11 @@ function solve(){
 }
 function showExit(){
   document.querySelector('.movement').hidden=true;
-  byId('zoomTools').hidden=true;
+  byId('zoomTools').hidden=false;
   byId('escape').hidden=false;
 }
 function inspectLock(){
-  modal('문의 두 자리 암호','<p class="question">멈춘 시곗바늘의 암호는?</p><div class="switches" id="wheels"></div><p class="readout" id="lockReadout" role="status"></p>');
+  modal('문 다이얼','<div class="switches" id="wheels"></div><p class="readout" id="lockReadout" role="status"></p>');
   let digitsChanged=false;
   const outputs=[];
   function rotate(i,amount){
