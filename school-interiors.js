@@ -4,6 +4,16 @@ const SchoolInterior = (() => {
   const WIDTH = 19 / Math.sqrt(2);
   const DEPTH = 13.54 / Math.sqrt(2);
   const DOOR = {x: 4.20, width: 1.64, height: 2.48};
+  const PIANO_X = -3.89;
+  const SCORE = {width: .91, height: .444, tilt: -Math.PI / 18, restY: 1.095, restZ: .670};
+  const SCORE_CENTER = [
+    PIANO_X + .02,
+    SCORE.restY - .006 + Math.cos(SCORE.tilt) * SCORE.height / 2,
+    SCORE.restZ + Math.sin(SCORE.tilt) * SCORE.height / 2
+  ];
+  const REHEARSAL_SEATS = [{x: -4.81, z: 3.24}, {x: -3.82, z: 3.40}];
+  const STAND_DISTANCE = .72;
+  const STAND_OFFSET = .10;
 
   function definition(kind) {
     const music = kind === 'music';
@@ -15,7 +25,7 @@ const SchoolInterior = (() => {
       id, name, xyz, surface: {width, height}, approach: {x, z}
     });
     const clues = music ? [
-      target('paper', '피아노 악보', [-3.87, 1.19, .64], .93, .53, -3.07, 2.35),
+      target('paper', '피아노 악보', SCORE_CENTER, SCORE.width, SCORE.height, -3.07, 2.35),
       target('clock', '벽시계', [-.17, 2.25, .14], .71, .71, -.17, 2.05)
     ] : [
       target('stamps', '작업대 도장함', [-3.38, 1.01, .80], .90, .48, -3.65, 2.15),
@@ -30,7 +40,8 @@ const SchoolInterior = (() => {
       targets: [target('lock', music ? '문 다이얼' : '문 인쇄판', lock.center, lock.width, lock.height, lock.center[0], 1.85), ...clues],
       obstacles: music ? [
         [-1.82, 1.82, 4.06, 6.48], [-5.19, -2.55, .05, 1.42],
-        [3.07, 3.73, 3.27, 3.97], [4.45, 5.75, 2.16, 2.67]
+        [3.07, 3.73, 3.27, 3.97], [4.45, 5.75, 2.16, 2.67],
+        ...REHEARSAL_SEATS.map(({x, z}) => [x - .40, x + .40, z - STAND_DISTANCE - .32, z + .36])
       ] : [
         [-3.91, -.59, 3.45, 6.15], [.59, 3.91, 3.45, 6.15],
         [-5.65, -1.85, .05, 1.35], [-1.68, 1.28, .05, 1.02], [1.20, 2.60, .05, 1],
@@ -312,7 +323,7 @@ const SchoolInterior = (() => {
   }
 
   function musicPiano(scene, artwork) {
-    const x = -3.89;
+    const x = PIANO_X;
     const wood = faces(artwork.sample('walnut'), 1.12, .79);
     const edge = standard('#a46941', .57);
     const shadowedWood = standard('#775037', .75);
@@ -322,8 +333,6 @@ const SchoolInterior = (() => {
     box(scene,2.58,.211,.29,x,.81,.60,wood);
     box(scene,2.53,.051,.31,x,.704,.60,shadowedWood);
     box(scene,2.59,.040,.287,x,.913,.615,wood);
-    const keyEdge = artwork.patch([318,486,230,10]);
-    patchPlane(scene,2.25,.067,x,.895,.761,keyEdge);
     const ivory = standard('#e9deca', .44);
     const ebony = standard('#2f2724', .48);
     for (let i=0; i<52; i++) {
@@ -337,8 +346,16 @@ const SchoolInterior = (() => {
     }
     const brass = standard('#c19445', .32, .45);
     for (const dx of [-.08,0,.08]) rounded(scene,.046,.029,.102,x+dx,.067,.566,brass,.007);
-    box(scene,1.02,.023,.12,x,1.01,.554,shadowedWood);
-    patchPlane(scene,.93,.53,x+.02,1.19,.642,musicScoreMap(),true);
+
+    // The music rack is fixed to the piano's upper panel, clear of the keys.
+    const [scoreX, scoreY, scoreZ] = SCORE_CENTER;
+    const rack = box(scene,1.00,.417,.028,scoreX,
+      scoreY + .019 * Math.sin(SCORE.tilt), scoreZ - .019 * Math.cos(SCORE.tilt),wood);
+    rack.rotation.x = SCORE.tilt;
+    box(scene,.87,.10,.10,scoreX,1.21,.584,shadowedWood);
+    box(scene,1.00,.036,.17,scoreX,SCORE.restY-.018,.612,wood);
+    rounded(scene,1.00,.029,.028,scoreX,SCORE.restY+.005,.689,edge,.007);
+    patchPlane(scene,SCORE.width,SCORE.height,...SCORE_CENTER,musicScoreMap(),true).rotation.x = SCORE.tilt;
 
     const benchWood = faces(artwork.sample('walnut'), .91, .78);
     box(scene,1.36,.106,.38,x,.477,1.00,benchWood);
@@ -362,6 +379,68 @@ const SchoolInterior = (() => {
     const clock = artwork.patch([780,309,78,79], (g,w,h) => g.ellipse(w/2,h/2,w/2-1,h/2-1,0,0,Math.PI*2));
     cylinder(scene,.345,.345,.047,-.17,2.25,.104,brass).rotation.x = Math.PI/2;
     patchPlane(scene,.71,.71,-.17,2.25,.131,clock,true);
+  }
+
+  function rehearsalFurniture(scene, artwork) {
+    const fabric = standard('#80716c', .91);
+    const chairFrame = standard('#585856', .49, .23);
+    const standFrame = standard('#2e2d2c', .51, .20);
+    const foot = standard('#292827', .87);
+    const cloth = artwork.patch('chair', (path, w, h) => path.roundRect(0, 0, w, h, 10));
+
+    const trayShape = new THREE.Shape();
+    trayShape.moveTo(-.244, -.143);
+    trayShape.lineTo(.244, -.143);
+    trayShape.lineTo(.244, .127);
+    trayShape.quadraticCurveTo(.244, .143, .228, .143);
+    trayShape.lineTo(-.228, .143);
+    trayShape.quadraticCurveTo(-.244, .143, -.244, .127);
+    trayShape.closePath();
+    for (const y of [-.075, 0, .075]) {
+      for (const x of [-.17, -.102, -.034, .034, .102, .17]) {
+        const hole = new THREE.Path();
+        hole.absarc(x, y, .013, 0, Math.PI * 2, true);
+        trayShape.holes.push(hole);
+      }
+    }
+    const trayGeometry = new THREE.ExtrudeGeometry(trayShape, {
+      depth: .007, bevelEnabled: false, curveSegments: 10
+    });
+
+    for (const {x, z} of REHEARSAL_SEATS) {
+      const chair = new THREE.Group();
+      chair.position.set(x, 0, z);
+      scene.add(chair);
+      rounded(chair,.51,.076,.445,0,.465,0,fabric,.023);
+      flat(chair,.462,.394,0,.505,0,artwork.sample('chair'));
+      const back = new THREE.Group();
+      back.position.set(0,.737,.176);
+      back.rotation.x = .12;
+      chair.add(back);
+      rounded(back,.49,.322,.068,0,0,0,fabric,.024);
+      for (const faceZ of [-.035,.035]) patchPlane(back,.436,.270,0,0,faceZ,cloth,true);
+      for (const dx of [-.195,.195]) {
+        for (const dz of [-.16,.16]) {
+          rod(chair,[dx,.439,dz],[dx*1.18,.023,dz*1.34],.015,chairFrame);
+          cylinder(chair,.017,.019,.022,dx*1.18,.012,dz*1.34,foot,16);
+        }
+        rod(chair,[dx,.441,.159],[dx,.717,.202],.016,chairFrame);
+      }
+
+      const standX = x + STAND_OFFSET, standZ = z - STAND_DISTANCE;
+      rod(scene,[standX,.058,standZ],[standX,1.095,standZ],.013,standFrame);
+      cylinder(scene,.024,.024,.034,standX,.307,standZ,standFrame,20);
+      for (const [dx,dz] of [[-.221,.14],[.221,.14],[0,-.248]]) {
+        rod(scene,[standX,.234,standZ],[standX+dx,.028,standZ+dz],.012,standFrame);
+        cylinder(scene,.014,.017,.021,standX+dx,.014,standZ+dz,foot,16);
+      }
+      const tray = new THREE.Group();
+      tray.position.set(standX,1.163,standZ);
+      tray.rotation.x = -.32;
+      scene.add(tray);
+      tray.add(new THREE.Mesh(trayGeometry, standFrame));
+      rounded(tray,.493,.026,.067,0,-.140,.025,standFrame,.008);
+    }
   }
 
   function musicWorkstation(scene, artwork) {
@@ -640,6 +719,10 @@ const SchoolInterior = (() => {
       shadow(1.61,.91,5.10,2.43,.010,.85);
       shadow(1.09,.90,3.40,3.61,.010,.76);
       for (const x of [-1.35,1.35]) shadow(.58,1.15,x,4.86,.014,.83);
+      for (const {x,z} of REHEARSAL_SEATS) {
+        shadow(.88,.80,x,z,.008,.79);
+        shadow(.67,.61,x+STAND_OFFSET,z-STAND_DISTANCE,.008,.58);
+      }
     } else {
       shadow(2.94,.99,-.19,.52,.006,.66);
       shadow(1.63,.94,5.65,.49,.006,.64);
@@ -711,6 +794,7 @@ const SchoolInterior = (() => {
     if (music) {
       musicPiano(scene,artwork);
       musicWorkstation(scene,artwork);
+      rehearsalFurniture(scene,artwork);
     } else {
       artWorkshop(scene,artwork);
     }
