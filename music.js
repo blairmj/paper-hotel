@@ -1,7 +1,7 @@
 'use strict';
 const byId=id=>document.getElementById(id);
 const dialog=byId('inspect'),content=byId('panelBody'),closeButton=byId('dismiss');
-const saveKey=musicDesignPreview?'paperhotel.musicroom.preview.v1':'paperhotel.explore.v1';
+const saveKey=musicDesignPreview?'paperhotel.musicroom.preview.v2':'paperhotel.explore.v1';
 const examples=[
   {a:9,b:6,value:54,shape:'┐'},{a:12,b:3,value:36,shape:'└'},
   {a:3,b:6,value:18,shape:'┌'},{a:9,b:12,value:108,shape:'┘'}
@@ -25,34 +25,11 @@ function storeVisit(restart=false){
     solved:!!((!restart&&old.solved)||visit.solved),escaped:!!((!restart&&old.escaped)||visit.solved)};
   try{localStorage.setItem(saveKey,JSON.stringify(book))}catch{}
 }
-let detailScale=1;
-const detailStops=[.8,1,1.25,1.6,2,2.5,3];
-function resizeDetail(value){
-  detailScale=Math.max(.8,Math.min(3,value));
-  const item=content.querySelector('.detail-art');
-  if(item)item.style.zoom=detailScale;
-  byId('detailValue').textContent=Number(detailScale.toFixed(2))+'×';
-  byId('detailIn').disabled=detailScale>=3;byId('detailOut').disabled=detailScale<=.8;
-}
-byId('detailIn').onclick=()=>resizeDetail(detailStops.find(n=>n>detailScale+.001)??3);
-byId('detailOut').onclick=()=>resizeDetail(detailStops.slice().reverse().find(n=>n<detailScale-.001)??.8);
-dialog.addEventListener('wheel',e=>{
-  if(byId('detailZoom').hidden || e.ctrlKey || !e.target.closest('.detail-stage'))return;
-  e.preventDefault();resizeDetail(detailScale*Math.exp(-Math.sign(e.deltaY)*.16));
-},{passive:false});
 function modal(title,html){
   if(opening)return;
   world?.clearKeys();
   byId('panelTitle').textContent=title;
   content.innerHTML=html;
-  const artwork=content.querySelector('.clue-sheet,.clock-area,.switches');
-  byId('detailZoom').hidden=!artwork;
-  if(artwork){
-    const stage=document.createElement('div');
-    stage.className='detail-stage';
-    artwork.before(stage);stage.append(artwork);artwork.classList.add('detail-art');
-    resizeDetail(dialog.open?detailScale:1);
-  }
   if(!dialog.open)dialog.showModal();
   dialog.scrollTop=0;
 }
@@ -77,8 +54,17 @@ function sheet(){
     examples.map(e=>'<div class="sample" aria-label="'+e.shape+' 모양은 '+e.value+'">'+corner(e)+'<span>= '+e.value+'</span></div>').join('')+'</div></div>';
 }
 function inspectPaper(){
-  if(!visit.paper){visit.paper=true;storeVisit();byId('bag').hidden=false}
-  modal('피아노의 투명 악보',sheet());
+  modal(visit.paper?'내 악보':'피아노의 투명 악보',sheet());
+  if(!visit.paper){
+    action(row(),'악보 얻기',()=>{
+      visit.paper=true;
+      storeVisit();
+      byId('bag').hidden=false;
+      world.setPaperCollected(true);
+      closePanel();
+      byId('bag').focus({preventScroll:true});
+    },true);
+  }
 }
 function clockDrawing(pair){
   let s='<svg class="clock-face" viewBox="0 0 200 200" role="img" aria-label="'+(pair?'악보 선의 두 끝이 가리키는 수: '+pair.a+', '+pair.b:'시곗바늘은 12와 6을 가리킵니다.')+'"><circle cx="100" cy="100" r="95" fill="#3b4750"/><circle cx="100" cy="100" r="88" fill="#fbfcfc"/>';
@@ -105,9 +91,13 @@ function clockPanel(){
   const a=row();
   if(visit.paper){
     action(a,pair?'악보 걷기':'악보 겹치기',()=>{overlay=!overlay;if(overlay){visit.overlaid=true;storeVisit()}clockPanel()},true);
+  } else {
+    const missing=action(a,'악보 겹치기',()=>{});
+    missing.disabled=true;
+    const note=document.createElement('small');
+    note.textContent='피아노에서 악보를 얻으면 사용할 수 있어요.';
+    a.append(note);
   }
-
-
 }
 function solve(){
   if(opening||visit.solved)return;
@@ -167,7 +157,7 @@ byId('replay').onclick=()=>{
   byId('escape').hidden=true;byId('spots').inert=false;byId('bag').hidden=true;
   document.querySelector('.movement').hidden=false;
   byId('zoomTools').hidden=false;
-  world.reset();storeVisit(true);
+  world.setPaperCollected(false);world.reset();storeVisit(true);
 };
 function failed(){
   modal('음악실을 열지 못했어요.','');
@@ -179,7 +169,7 @@ createMusicWorld({
   onError:failed
 }).then(w=>{
   if(!w)return;
-  world=w;byId('bag').hidden=!visit.paper;world.reset(visit.solved,visit.digits);storeVisit();
+  world=w;byId('bag').hidden=!visit.paper;world.setPaperCollected(visit.paper);world.reset(visit.solved,visit.digits);storeVisit();
   const next=SCHOOL_ROOMS.slice(1).find(r=>!readBook().visits[r.n]?.escaped);
   if(next){byId('nextRoom').href='index.html?room='+next.n;byId('nextRoom').textContent=next.place+'로 이동'}
   else{byId('nextRoom').textContent='학교 안내도';byId('nextRoom').onclick=e=>{e.preventDefault();directory()}}
