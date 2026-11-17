@@ -46,4 +46,43 @@ function setupReviewNavigation(number){
   }
   jump.append(summary,links);location.append(jump);
   document.addEventListener('click',event=>{if(!jump.contains(event.target))jump.open=false});
+  const paths={bag:'M12 5Q7 2 3 4V20Q7 18 12 21Q17 18 21 20V4Q17 2 12 5V21',map:'M3 5L9 3L15 5L21 3V19L15 21L9 19L3 21ZM9 3V19M15 5V21'};
+  for(const [id,path]of Object.entries(paths)){
+    const button=document.getElementById(id),label=button.textContent;
+    button.setAttribute('aria-label',label);button.title=label;button.classList.add('menu-icon');
+    button.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="'+path+'"/></svg>';
+  }
+}
+
+function setupSchoolTimer(number,{isSolved,onExpire}){
+  const duration=120000,key='paperhotel.explore.v1',saved=readSchoolBook().visits[number]?.escapeTimer;
+  let deadline=Number.isFinite(saved?.deadline)?saved.deadline:Date.now()+duration;
+  let expired=false,stopped=isSolved(),remaining=stopped?(saved?.remaining??duration):duration;
+  const badge=document.createElement('span');badge.className='room-timer';badge.setAttribute('aria-label','남은 시간');
+  badge.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 6V12L16 14"/></svg><span id="roomTime"></span>';
+  document.querySelector('.room-head > nav').append(badge);
+  const text=badge.querySelector('#roomTime');
+  function save(){
+    const book=readSchoolBook();book.visits[number]={...book.visits[number],escapeTimer:{deadline,remaining,expired,stopped}};
+    try{localStorage.setItem(key,JSON.stringify(book))}catch{}
+  }
+  function render(){
+    const seconds=Math.max(0,Math.ceil(remaining/1000));text.textContent=Math.floor(seconds/60)+':'+String(seconds%60).padStart(2,'0');
+    badge.dataset.expired=String(expired);badge.classList.toggle('running-low',!stopped&&seconds<=20);
+  }
+  function check(){
+    if(stopped)return false;
+    remaining=Math.max(0,deadline-Date.now());render();
+    if(remaining===0&&!expired){expired=true;save();render();onExpire()}
+    return expired;
+  }
+  let tick=setInterval(check,200);
+  document.addEventListener('visibilitychange',check);window.addEventListener('pagehide',()=>clearInterval(tick));
+  window.addEventListener('pageshow',()=>{clearInterval(tick);tick=setInterval(check,200);check()});
+  save();render();queueMicrotask(check);
+  return {
+    get expired(){return expired||(!stopped&&Date.now()>=deadline)},check,
+    stop(){if(check())return false;remaining=Math.max(0,deadline-Date.now());stopped=true;save();render();return true},
+    reset(){deadline=Date.now()+duration;remaining=duration;expired=false;stopped=false;save();render()}
+  };
 }

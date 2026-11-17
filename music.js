@@ -24,7 +24,7 @@ if(saved){
     visit.digits=saved.digits.slice();
   }
 }
-let world,opening=false,overlay=false,example=0;
+let world,countdown,opening=false,overlay=false,example=0;
 function storeVisit(restart=false){
   const book=readBook(),old=book.visits[203]||{};
   if(!restart && old.clockPuzzle?.paper){
@@ -114,8 +114,9 @@ function clockPanel(){
   }
 }
 function solve(){
-  if(opening||visit.solved)return;
+  if(opening||visit.solved||countdown?.check())return;
   visit.solved=true;storeVisit();closePanel();opening=true;
+  countdown?.stop();
   byId('spots').inert=true;
   document.querySelector('.room-head').inert=true;
   world.facingDoor(()=>{
@@ -165,23 +166,33 @@ dialog.addEventListener('click',e=>{
   if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)closePanel();
 });
 byId('bag').onclick=inspectPaper;byId('map').onclick=directory;
-byId('replay').onclick=()=>{
+function restart(){
+  closePanel();
   visit=newVisit();overlay=false;example=0;opening=false;
   byId('escape').hidden=true;byId('spots').inert=false;byId('bag').hidden=true;
   document.querySelector('.movement').hidden=false;
   world.reset();storeVisit(true);
-};
-function failed(){
+  countdown?.reset();
+}
+byId('replay').onclick=restart;
+function timeExpired(){
+  world?.clearKeys();modal('시간이 끝났어요.','','timeout');
+  action(row(),'다시 도전',restart,true);
+}
+function failed(error){
+  if(error)console.error(error);
   modal('음악실을 열지 못했어요.','');
   action(row(),'다시 열기',()=>location.reload(),true);
 }
 createMusicWorld({
+  room:SchoolInterior.definition('music'),buildRoom:SchoolInterior.build,
   onInspect:id=>{if(!opening){if(id==='paper')inspectPaper();if(id==='clock'){overlay=false;clockPanel()}if(id==='lock'&&!visit.solved)inspectLock()}},
-  onReadyToMove:()=>!dialog.open&&!opening,
+  onReadyToMove:()=>!dialog.open&&!opening&&!countdown?.expired,
   onError:failed
 }).then(w=>{
   if(!w)return;
   world=w;byId('bag').hidden=!visit.paper;world.reset(visit.solved,visit.digits);storeVisit();
+  countdown=setupSchoolTimer(203,{isSolved:()=>visit.solved,onExpire:timeExpired});
   const next=nextReviewRoom(203);
   if(next){byId('nextRoom').href=next.href;byId('nextRoom').textContent=next.place+'로 이동'}
   else{byId('nextRoom').href='music.html';byId('nextRoom').textContent='학교 안내도';byId('nextRoom').onclick=e=>{e.preventDefault();directory()}}

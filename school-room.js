@@ -4,7 +4,7 @@ const room=schoolRoomDefinition(document.body.dataset.room);
 const byId=id=>document.getElementById(id),dialog=byId('inspect'),content=byId('panelBody');
 const prior=readSchoolBook().visits[room.n],saved=prior?.reviewPuzzle;
 function newRun(){return {puzzle:room.kind,found:[],flipped:[false,false,false],digits:[0,0,0,0],letters:[],pixels:Array(9).fill(0),solved:false}}
-let run=newRun(),world,opening=false;
+let run=newRun(),world,countdown,opening=false;
 if(saved?.puzzle===room.kind){
   run.found=Array.isArray(saved.found)?saved.found.filter(id=>room.clues.some(c=>c.id===id)):[];
   run.flipped=[0,1,2].map(i=>saved.flipped?.[i]===true);
@@ -49,8 +49,9 @@ function showExit(){
   byId('nextRoom').textContent=next?next.place+'로 이동':'음악실로 돌아가기';
 }
 function solve(){
-  if(run.solved||opening)return;
+  if(run.solved||opening||countdown?.check())return;
   run.solved=true;save();close();opening=true;
+  countdown?.stop();
   byId('spots').inert=true;document.querySelector('.room-head').inert=true;
   world.facingDoor(()=>{
     opening=false;byId('spots').inert=false;document.querySelector('.room-head').inert=false;
@@ -146,20 +147,27 @@ dialog.addEventListener('click',event=>{
   const r=dialog.getBoundingClientRect();
   if(event.clientX<r.left||event.clientX>r.right||event.clientY<r.top||event.clientY>r.bottom)close();
 });
-byId('replay').onclick=()=>{
+function restart(){
+  close();
   run=newRun();opening=false;save();byId('bag').hidden=true;byId('escape').hidden=true;
   document.querySelector('.movement').hidden=false;world.reset(false,stationValues());
-};
+  countdown?.reset();
+}
+byId('replay').onclick=restart;
 document.querySelector('.school').innerHTML='<span>'+room.n+'</span>'+room.place;
 setupReviewNavigation(room.n);
 createMusicWorld({
   room,buildRoom:buildSchoolRoom,
-  onReadyToMove:()=>!dialog.open&&!opening,
+  onReadyToMove:()=>!dialog.open&&!opening&&!countdown?.expired,
   onInspect:id=>{if(!opening){if(id==='lock')inspectLock();else inspectClue(id)}}
 }).then(created=>{
   world=created;world.reset(run.solved,stationValues());byId('bag').hidden=!run.found.length;save();
+  countdown=setupSchoolTimer(room.n,{isSolved:()=>run.solved,onExpire:()=>{
+    world.clearKeys();modal('시간이 끝났어요.','','timeout');action(actions(),'다시 도전',restart,true);
+  }});
   if(run.solved)showExit();
-}).catch(()=>{
+}).catch(error=>{
+  console.error(error);
   modal('교실을 열지 못했어요.','');
   action(actions(),'다시 열기',()=>location.reload(),true);
 });

@@ -1,9 +1,8 @@
 'use strict';
 
 async function createMusicWorld({onInspect,onReadyToMove,room=paintedRoom,buildRoom=buildPaintedRoom}){
-  // Floor boundaries in metres. The two ensembles leave a middle aisle and
-  // a clear strip along the teaching wall.
-  const roomLimits = {left:-9.06, right:9.06, front:-7.54, back:4.94};
+  // Each interior supplies the same metre-based limits as its geometry.
+  const roomLimits = room.bounds ?? {left:-9.06, right:9.06, front:-7.54, back:4.94};
   const seatBanks = room.obstacles ?? [[-3.96,-1.10,-4.96,-1.96],[1.10,3.96,-4.96,-1.96]];
   function onOpenFloor(x,z) {
     return x>=roomLimits.left && x<=roomLimits.right && z>=roomLimits.front && z<=roomLimits.back &&
@@ -45,9 +44,15 @@ async function createMusicWorld({onInspect,onReadyToMove,room=paintedRoom,buildR
   let renderer,model,photos;
   try {
     renderer=new THREE.WebGLRenderer({canvas,antialias:true,alpha:false,powerPreference:'low-power'});
+    renderer.outputColorSpace=THREE.SRGBColorSpace;
+    renderer.shadowMap.enabled=!!room.interior;
+    renderer.shadowMap.type=THREE.PCFSoftShadowMap;
   }catch{renderer=null}
   model=await buildRoom(scene,room);
-  if(!renderer)photos=paintedPhotoView(canvas,scene);
+  if(!renderer){
+    if(room.interior)throw new Error('WebGL is required for this interior');
+    photos=paintedPhotoView(canvas,scene);
+  }
   const eye=camera.position;
   const keys=new Set(),point=new THREE.Vector3(),corner=new THREE.Vector3();
   const targets=room.targets.map(o=>{
@@ -82,11 +87,16 @@ async function createMusicWorld({onInspect,onReadyToMove,room=paintedRoom,buildR
     model.updateViews?.(eye);
     if(renderer)renderer.render(scene,camera);
     else photos.draw(height/(2*Math.tan(camera.fov*Math.PI/360)),yaw,pitch,eye);
+    canvas.dataset.position=[eye.x,eye.y,eye.z].map(n=>n.toFixed(3)).join(',');
+    canvas.dataset.heading=yaw.toFixed(3);
+    canvas.dataset.door=openness.toFixed(3);
     for(const target of targets){
       point.copy(target.point);
       const v=point.project(camera),px=width*(1+v.x)/2,py=height*(1-v.y)/2;
       const b=target.button;
-      b.hidden=v.z<0||v.z>=1||px<20||px>width-20||py<55||py>height-56||!!journey||(openness===1&&target.id==='lock');
+      const viewNormal=new THREE.Vector3(Math.sin(target.rotationY||0),0,Math.cos(target.rotationY||0));
+      const behindSurface=viewNormal.dot(new THREE.Vector3().subVectors(eye,target.point))<.025;
+      b.hidden=behindSurface||v.z<0||v.z>=1||px<20||px>width-20||py<55||py>height-56||!!journey||(openness===1&&target.id==='lock');
       target.px=px;target.py=py;
       if(b.hidden)continue;
       let halfWidth=0,halfHeight=0;
@@ -149,7 +159,7 @@ async function createMusicWorld({onInspect,onReadyToMove,room=paintedRoom,buildR
   const raycaster=new THREE.Raycaster(),mousePoint=new THREE.Vector2(),destination=new THREE.Vector3();
   const roomBox=new THREE.Box3(
     new THREE.Vector3(-room.wall.width/2,0,room.wall.z),
-    new THREE.Vector3(room.wall.width/2,room.wall.height,5.4)
+    new THREE.Vector3(room.wall.width/2,room.wall.height,room.wall.back??5.4)
   );
   function walkToPixel(x,y){
     mousePoint.set(2*x/width-1,1-2*y/height);
@@ -259,6 +269,7 @@ async function createMusicWorld({onInspect,onReadyToMove,room=paintedRoom,buildR
       const initial=open?room.door:(width/height<.85?room.portraitView:room.firstView);
       yaw=heading(initial);pitch=tilt(initial);
       model?.setDoor(openness);model.setDigits(digits);
+      canvas.dataset.ready='true';
       queue();
     }
   };

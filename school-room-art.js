@@ -4,6 +4,7 @@ const COMPUTER_INPUTS = {recordA:'111010010',recordB:'131232030',target:'5253335
 const BALL_NAMES = {'🏀':'농구공','🎾':'테니스공','🏐':'배구공','🏈':'미식축구공'};
 
 function schoolRoomDefinition(kind){
+  if(kind==='art')return SchoolInterior.definition(kind);
   const entry=REVIEW_ROOMS.find(room=>room.kind===kind);
   const lock={center:[2.65,1.30,-8.10],width:1,height:.55};
   const front=(id,name,xyz,width,height)=>({
@@ -119,6 +120,7 @@ function schoolLockArt(room,values){
 }
 
 async function buildSchoolRoom(scene,room){
+  if(room.interior)return SchoolInterior.build(scene,room);
   const load=async url=>{const image=new Image();image.src=url;await image.decode();return image};
   const [front,back,left,right,door,corridor]=await Promise.all([
     ...['front','back','left','right'].map(wall=>load('rooms/'+room.kind+'/'+wall+'.webp')),

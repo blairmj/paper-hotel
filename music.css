@@ -90,6 +90,12 @@ dialog p{font-size:16px;line-height:1.5;margin:6px 0 12px;word-break:keep-all}
 .actions button:disabled{color:#55625e;background:#edf1ed;border-color:#c5cec8;cursor:default}
 .actions small{font-size:12px;color:#52615a}
 #bag{border-left:4px solid #2a7060}
+.room-head .menu-icon{display:grid;place-items:center;width:40px;height:40px;padding:8px}
+.menu-icon svg{width:23px;height:23px}
+.room-timer{display:flex;align-items:center;justify-content:center;gap:8px;min-width:104px;height:40px;padding:7px 11px;border:1px solid #bdc6cc;border-radius:4px;background:#fafbfcf2;color:#27323b;font:650 22px/1 Consolas,monospace;font-variant-numeric:tabular-nums;white-space:nowrap}
+.room-timer svg{width:22px;height:22px}
+.room-timer.running-low{color:#9c352b}
+@media(max-width:450px){.school span{display:none}.room-head{gap:6px}.room-head .menu-icon{width:34px;height:36px;padding:6px}.room-timer{min-width:88px;height:36px;font-size:20px;gap:5px;padding:6px 8px}.room-timer svg{width:19px;height:19px}.room-location{gap:5px!important}.review-jump summary{padding:7px!important}}
 .clock-score{margin-top:14px}
 .clock-score summary{cursor:pointer;color:#235e55;font-weight:600;min-height:44px;padding:10px 0}
 .clock-score[open] .clue-sheet{margin-top:5px}
