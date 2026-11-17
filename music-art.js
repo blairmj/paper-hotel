@@ -123,8 +123,12 @@ function tracingPaper() {
   g.font='600 13px Georgia,serif';g.fillStyle='#374c4a';
   MUSIC_SCORE.forEach(({a,b,value},i)=>{
     const x=70+(i%2)*82,y=57+Math.floor(i/2)*48;
-    const [ax,ay]=clockPoint(a,13),[bx,by]=clockPoint(b,13);
-    g.beginPath();g.moveTo(x+ax,y+ay);g.lineTo(x,y);g.lineTo(x+bx,y+by);g.stroke();
+    const [ax,ay]=clockPoint(a,13),[bx,by]=clockPoint(b,13*.74);
+    g.lineCap='round';g.lineWidth=1.8;
+    g.beginPath();g.moveTo(x,y);g.lineTo(x+ax,y+ay);g.stroke();
+    g.lineWidth=2.8;
+    g.beginPath();g.moveTo(x,y);g.lineTo(x+bx,y+by);g.stroke();
+    g.beginPath();g.arc(x,y,2,0,2*Math.PI);g.fill();
     g.fillText('= '+value,x+19,y+4);
   });
   g.fillStyle='#397e71';g.beginPath();g.moveTo(23,14);g.lineTo(59,12);g.lineTo(61,53);g.lineTo(46,45);g.lineTo(28,54);g.closePath();g.fill();

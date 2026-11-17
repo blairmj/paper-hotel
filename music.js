@@ -52,17 +52,17 @@ function action(host,text,fn,primary=false){
 }
 function row(){const div=document.createElement('div');div.className='actions';content.append(div);return div}
 function hand(a,b,center,radius,stroke,width){
-  const [ax,ay]=clockPoint(a,radius,center),[bx,by]=clockPoint(b,radius,center);
-  return '<path d="M'+ax+' '+ay+'L'+center+' '+center+'L'+bx+' '+by+'" fill="none" stroke="'+stroke+'" stroke-width="'+width+'" stroke-linecap="round" stroke-linejoin="round"/>';
+  const [ax,ay]=clockPoint(a,radius,center),[bx,by]=clockPoint(b,radius*.74,center);
+  return '<g fill="none" stroke="'+stroke+'" stroke-linecap="round">'+
+    '<path d="M'+center+' '+center+'L'+ax+' '+ay+'" stroke-width="'+width*.65+'"/>'+
+    '<path d="M'+center+' '+center+'L'+bx+' '+by+'" stroke-width="'+width+'"/></g>';
 }
-function corner(pair,color='#3a657e'){
-  const start=clockPoint(pair.a,9,30),end=clockPoint(pair.b,9,30);
-  const arc='M'+start.join(' ')+'A9 9 0 0 '+Number(pair.clockwise)+' '+end.join(' ');
-  return '<svg viewBox="3 3 54 54" aria-hidden="true"><path d="'+arc+'" fill="none" stroke="'+color+'" opacity=".5" stroke-width="1.5"/>'+hand(pair.a,pair.b,30,20,color,3.1)+'<circle cx="30" cy="30" r="2.6" fill="'+color+'"/></svg>';
+function scoreHands(pair,color='#3a657e'){
+  return '<svg viewBox="3 3 54 54" aria-hidden="true">'+hand(pair.a,pair.b,30,21,color,3.2)+'<circle cx="30" cy="30" r="3" fill="'+color+'"/></svg>';
 }
 function sheet(){
   return '<div class="clue-sheet" role="list" aria-label="투명 악보 기록"><div class="samples">'+
-    MUSIC_SCORE.map(e=>'<div class="sample" role="listitem" aria-label="'+e.a+'시와 '+e.b+'시 방향, '+e.degrees+'도, 기록 '+e.value+'"><span class="notation">'+corner(e)+'<small>'+e.degrees+'°</small></span><span>= '+e.value+'</span></div>').join('')+'</div></div>';
+    MUSIC_SCORE.map(e=>'<div class="sample" role="listitem" aria-label="'+e.a+'시와 '+e.b+'시 방향의 두 바늘, 기록 '+e.value+'"><span class="notation">'+scoreHands(e)+'</span><span>= '+e.value+'</span></div>').join('')+'</div></div>';
 }
 function inspectPaper(){
   modal(visit.paper?'내 악보':'피아노의 투명 악보',sheet(),'paper');
@@ -98,7 +98,7 @@ function clockPanel(){
   if(pair){
     MUSIC_SCORE.forEach((e,i)=>{
       const t=action(byId('recordTabs'),'',()=>{example=i;clockPanel();byId('recordTabs').children[i].focus()});
-      t.innerHTML=corner(e,'currentColor')+e.value;t.setAttribute('aria-label',e.value+' 기록 겹치기');t.setAttribute('aria-pressed',String(i===example));
+      t.innerHTML=scoreHands(e,'currentColor')+e.value;t.setAttribute('aria-label',e.value+' 기록 겹치기');t.setAttribute('aria-pressed',String(i===example));
     });
   }
   const a=row();

@@ -235,7 +235,12 @@ async function createMusicWorld({onInspect,onReadyToMove}){
   }
   movementButton('left',()=>turn(-1));
   movementButton('right',()=>turn(1));
-  movementButton('walk',()=>{if(onReadyToMove()&&!journey?.door){trail=null;move(.36,0);queue()}});
+  function step(distance){
+    if(!onReadyToMove()||journey?.door)return;
+    trail=null;move(distance,0);queue();
+  }
+  movementButton('walk',()=>step(.36));
+  movementButton('stepBack',()=>step(-.36));
   new ResizeObserver(resize).observe(canvas);resize();
   return {
     clearKeys, lookAtPiano(){inspectTarget('paper')},

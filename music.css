@@ -18,6 +18,7 @@ dialog{
   --panel-padding:clamp(14px,2vw,28px);
   width:min(clamp(460px,48vw,640px),calc(100vw - 32px));
   max-width:calc(100vw - 32px);
+  max-height:calc(100vh - 32px);
   max-height:calc(100dvh - 32px);
   overflow:hidden;
   padding:0;
@@ -50,7 +51,14 @@ dialog p{font-size:16px;line-height:1.5;margin:6px 0 12px;word-break:keep-all}
 .clue-sheet{padding:clamp(10px,1.2vw,18px);border:1px solid #d6dde0;background:repeating-linear-gradient(transparent 0 21px,#e4e9ed 21px 22px),#fafcfd}
 .samples{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:clamp(8px,1.2vw,18px)}
 .sample{display:flex;align-items:center;justify-content:center;gap:clamp(6px,1vw,14px);min-width:0;white-space:nowrap;color:#273a4a;font:clamp(26px,2.4vw,36px) Georgia,serif}
-.clock-face{display:block;width:min(100%,clamp(200px,32dvh,320px));height:auto;aspect-ratio:1;margin:4px auto 16px}
+.clock-face{
+  display:block;
+  width:min(100%,clamp(200px,32vh,320px));
+  width:min(100%,clamp(200px,32dvh,320px));
+  height:auto;
+  aspect-ratio:1;
+  margin:4px auto 16px;
+}
 .readout{text-align:center;color:#394d5c;font-variant-numeric:tabular-nums}.readout:empty{display:none}
 .tabs{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
 .tabs button{display:flex;align-items:center;justify-content:center;gap:4px;min-width:0;min-height:48px;padding:4px;font-size:clamp(14px,1.4vw,18px)}
@@ -87,7 +95,6 @@ dialog p{font-size:16px;line-height:1.5;margin:6px 0 12px;word-break:keep-all}
 .clock-score[open] .clue-sheet{margin-top:5px}
 .notation{display:grid;justify-items:center;line-height:1}
 .notation svg{display:block;width:clamp(40px,4vw,64px);height:auto;aspect-ratio:1}
-.notation small{font:14px/1.2 system-ui,sans-serif;color:#4c6069}
 .spot::before{display:none}
 .spot span,.spot[data-object=lock] span{opacity:0}
 .spot:hover span,.spot:focus-visible span{display:block;opacity:1}

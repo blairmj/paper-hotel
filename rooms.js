@@ -1,8 +1,5 @@
 const MUSIC_CLOCK = Object.freeze({hour:4, minuteMark:12});
-const MUSIC_SCORE = [[9,6],[12,3],[2,4],[7,11]].map(([a,b])=>{
-  const steps=(b-a+12)%12;
-  return {a,b,value:a*b,degrees:30*Math.min(steps,12-steps),clockwise:steps<=6};
-});
+const MUSIC_SCORE = [[9,6],[12,3],[2,4],[7,11]].map(([a,b])=>({a,b,value:a*b}));
 const SCHOOL_ROOMS = [
  {n:203,place:'음악실',name:'멈춘 벽시계',wall:0x995766,trim:0x743d50,floor:0x936457,wood:0x915447,clues:[['paper','피아노 위 투명 악보','악보에는 꺾은선과 숫자가 적혀 있다.'],['clock','멈춘 벽시계','악보의 중심점을 시곗바늘이 만나는 곳에 겹친다.']],station:'문 옆 다이얼',answer:String(MUSIC_CLOCK.hour*MUSIC_CLOCK.minuteMark),hint:'선의 두 끝이 가리키는 수와 악보의 기록을 비교하세요.'},
  {n:204,place:'학교신문 편집실',name:'뒤섞인 활자',wall:0x99915c,trim:0x656849,floor:0xa28162,wood:0x825a44,clues:[['type','활자 서랍','빠진 활자를 위에서 아래로 읽는다. 첫째 줄 ㅅ·ㅏ·ㅁ, 둘째 줄 ㅍ·ㅏ·ㄹ, 셋째 줄 ㅇ·ㅣ.'],['proof','학급 신문 인쇄 견본','ㅇ·ㅣ·ㄹ → 일 → 1 / ㅇ·ㅗ → 오 → 5. 한 줄의 활자가 수의 이름 하나가 된다.']],station:'조판 다이얼',answer:'382',hint:'견본처럼 한 줄씩 소리 내어 읽고, 세 줄을 위에서부터 숫자로 바꿔 보세요.'},
