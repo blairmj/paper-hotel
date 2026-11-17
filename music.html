@@ -3,32 +3,31 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-  <meta name="theme-color" content="#253f37">
+  <meta name="theme-color" content="#f4f6f7">
   <title>멈춘 벽시계 · 음악실 | 학교 탈출</title>
   <link rel="icon" href="data:,">
-  <link rel="preload" as="image" href="rooms/music-panorama.webp">
-  <link rel="stylesheet" href="music.css">
+  <link rel="stylesheet" href="music.css?v=room10">
 </head>
 <body>
   <main id="musicGame" aria-label="학교 탈출 203호 음악실">
-    <canvas id="roomView" tabindex="0" aria-label="음악실 내부. 화면을 끌거나 방향키로 둘러보고 W A S D로 걸으세요."></canvas>
-    <div class="shade" aria-hidden="true"></div>
-    <header class="room-head"><div class="school">학교 탈출 <span>203호 · 음악실</span></div>
-      <nav aria-label="탐색 메뉴"><button id="bag">소지품 <span id="bagCount">0</span></button><button id="guide">도움말</button><button id="map">안내도</button></nav>
+    <canvas id="roomView" tabindex="0" aria-label="음악실 내부. 바닥을 눌러 이동하고 화면을 끌어 둘러보세요."></canvas>
+    <header class="room-head">
+      <strong class="school"><span>203</span> 음악실</strong>
+      <nav aria-label="메뉴"><button id="bag" hidden>내 악보</button><button id="map">안내도</button></nav>
     </header>
     <div id="spots" aria-label="조사할 물건"></div>
-    <footer class="room-foot"><div class="where"><span>음악실</span><b id="bearing">피아노 쪽</b></div>
-      <div class="movement"><button id="left" aria-label="왼쪽 둘러보기">‹</button><button id="walk">한 걸음 ↑</button><button id="right" aria-label="오른쪽 둘러보기">›</button></div>
+    <footer class="room-foot"><div class="movement" aria-label="이동">
+      <button id="left" aria-label="왼쪽 보기">‹</button><button id="walk" aria-label="한 걸음 앞으로">↑</button><button id="right" aria-label="오른쪽 보기">›</button>
+    </div>
     </footer>
-    <div id="toast" role="status"></div>
     <section id="escape" hidden aria-label="음악실 탈출 완료">
-      <b>음악실 문이 열렸어요!</b><div><a class="main-button" id="nextRoom" href="index.html?room=204">다음 교실로</a><button id="replay">다시 풀기</button></div>
+      <span class="sr-only" role="status">음악실 문이 열렸어요.</span><div><a class="main-button" id="nextRoom" href="index.html?room=204">다음 교실로</a><button id="replay">다시 풀기</button></div>
     </section>
     <dialog id="inspect" aria-labelledby="panelTitle">
-      <div class="panel-top"><span id="panelTag"></span><button id="dismiss" aria-label="닫기">×</button></div>
-      <h1 id="panelTitle"></h1><div id="panelBody"></div>
+      <div class="panel-top"><h1 id="panelTitle"></h1><button id="dismiss" aria-label="닫기">×</button></div>
+      <div id="panelBody"></div>
     </dialog>
     <noscript>음악실에서 물건을 조사하려면 브라우저의 자바스크립트를 켜 주세요.</noscript>
   </main>
-  <script src="three.min.js"></script><script src="rooms.js"></script><script src="music-world.js"></script><script src="music.js"></script>
+  <script src="three.min.js"></script><script src="rooms.js?v=room10"></script><script src="music-ensemble.js?v=room10"></script><script src="music-art.js?v=room10"></script><script src="music-world.js?v=room10"></script><script src="music.js?v=room10"></script>
 </body></html>
