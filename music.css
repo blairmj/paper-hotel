@@ -44,6 +44,9 @@ dialog p{font-size:15px;line-height:1.5;margin:6px 0 12px;word-break:keep-all}.c
 .clock-score{margin-top:14px}
 .clock-score summary{cursor:pointer;color:#235e55;font-weight:600;padding:6px 0}
 .clock-score[open] .clue-sheet{margin-top:5px}
+.notation{display:grid;justify-items:center;line-height:1}
+.notation svg{display:block;width:40px;height:38px}
+.notation small{font:12px/1.2 system-ui,sans-serif;color:#4c6069}
 .spot::before{display:none}
 .spot span,.spot[data-object=lock] span{opacity:0}
 .spot:hover span,.spot:focus-visible span{display:block;opacity:1}

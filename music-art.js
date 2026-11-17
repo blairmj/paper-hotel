@@ -1,7 +1,6 @@
 'use strict';
 
-// Pixel locations on the hand-finished front illustration. Keep the scene art and
-// its interactive objects registered even when the player walks or changes lens.
+// Interactive objects are registered to the front elevation in world space.
 document.body.classList.add('design-preview');
 const paintedRoom = (() => {
   const eyeHeight = 1.55;
@@ -12,12 +11,15 @@ const paintedRoom = (() => {
   function surface(x, y, width, height, depth) {
     return {center: point(x, y, depth), width: width * depth / focal, height: height * depth / focal};
   }
-  const leaf = surface(1239.3, 397.7, 117.9, 183.8, 8.075);
+  const wall={width:19,height:3.12,z:-8.14};
+  // Outer casing in the 1856 x 320 front elevation, measured from the top left.
+  const portal={left:1263,right:1424,top:66};
+  const door=[((portal.left+portal.right)/2/1856-.5)*wall.width,(1-portal.top/320)*wall.height/2,wall.z];
   const clock = surface(930, 339, 58, 58, 8.11);
   const lock = surface(1147, 397, 40, 29, 8.11);
   const paper = point(592, 406, 8.105);
   return {
-    start: [0, eyeHeight, 1.1], leaf, clock, lock, door: leaf.center,
+    start: [0, eyeHeight, 1.1], wall, portal, clock, lock, door,
     targets: [
       {id: 'lock', name: '문 다이얼', xyz: lock.center},
       {id: 'clock', name: '벽시계', xyz: clock.center},
@@ -118,9 +120,13 @@ function tracingPaper() {
   g.shadowColor='transparent';g.strokeStyle='rgba(101,115,103,.36)';g.lineWidth=2;
   for(let i=0;i<5;i++){g.beginPath();g.moveTo(30,55+i*11);g.lineTo(233,45+i*11);g.stroke()}
   g.strokeStyle='#455856';g.lineWidth=3;
-  for(const [x,y,dx,dy] of [[80,65,-18,15],[145,63,17,-13],[85,112,17,12],[149,111,-16,-13]]){
-    g.beginPath();g.moveTo(x+dx,y);g.lineTo(x,y);g.lineTo(x,y+dy);g.stroke();
-  }
+  g.font='600 13px Georgia,serif';g.fillStyle='#374c4a';
+  MUSIC_SCORE.forEach(({a,b,value},i)=>{
+    const x=70+(i%2)*82,y=57+Math.floor(i/2)*48;
+    const [ax,ay]=clockPoint(a,13),[bx,by]=clockPoint(b,13);
+    g.beginPath();g.moveTo(x+ax,y+ay);g.lineTo(x,y);g.lineTo(x+bx,y+by);g.stroke();
+    g.fillText('= '+value,x+19,y+4);
+  });
   g.fillStyle='#397e71';g.beginPath();g.moveTo(23,14);g.lineTo(59,12);g.lineTo(61,53);g.lineTo(46,45);g.lineTo(28,54);g.closePath();g.fill();
   g.fillStyle='#fffef2';g.beginPath();g.moveTo(256,111);g.quadraticCurveTo(237,127,225,124);
   g.quadraticCurveTo(230,136,229,144);g.closePath();g.fill();
@@ -154,12 +160,82 @@ function studioFloor() {
   return tile;
 }
 
+function buildEntrance(scene,panel,elevation,doorArt){
+  const {wall,portal}=paintedRoom;
+  const xAt=pixel=>(pixel/elevation.width-.5)*wall.width;
+  const yAt=pixel=>(1-pixel/elevation.height)*wall.height;
+  function crop(source,x,y,w,h){
+    const image=document.createElement('canvas');image.width=w;image.height=h;
+    image.getContext('2d').drawImage(source,x,y,w,h,0,0,w,h);
+    return image;
+  }
+  function wallSection(x,y,w,h,z=wall.z){
+    panel(imageMap(crop(elevation,x,y,w,h)),w*wall.width/elevation.width,h*wall.height/elevation.height,
+      [xAt(x+w/2),yAt(y+h/2),z]);
+  }
+  // Cut out the entire painted portal, including its curved frame. The
+  // remaining wall ends at the same coordinates as the new straight casing.
+  wallSection(0,0,portal.left,elevation.height);
+  wallSection(portal.right,0,elevation.width-portal.right,elevation.height);
+  // Overlap behind adjacent pieces to avoid subpixel seams in CSS 3D.
+  wallSection(portal.left-2,0,portal.right-portal.left+4,portal.top+1,wall.z-.001);
+  const left=xAt(portal.left),right=xAt(portal.right),top=yAt(portal.top);
+  const center=(left+right)/2,trim=.092,opening=right-left-2*trim,head=top-trim;
+  const jambLeft=left+trim,jambRight=right-trim,recess=.20;
+  // The original illustration supplies the view beyond the threshold. All
+  // four reveals reach this plane, including the underside of the header.
+  const hall=imageMap(crop(elevation,1282,95,130,225));
+  panel(hall,right-left,top,[center,top/2,wall.z-recess]);
+  for(const x of [jambLeft,jambRight]){
+    panel(null,recess,head,[x,head/2,wall.z-recess/2],false,0xa77543).rotation.y=Math.PI/2;
+  }
+  panel(null,opening,recess,[center,head,wall.z-recess/2],false,0x956b44).rotation.x=Math.PI/2;
+  panel(null,opening,recess+.04,[center,.006,wall.z-recess/2+.02],false,0x927e65).rotation.x=-Math.PI/2;
+
+  function moulding(horizontal){
+    const art=document.createElement('canvas');
+    art.width=horizontal?384:24;art.height=horizontal?24:384;
+    const g=art.getContext('2d');
+    if(horizontal){g.translate(art.width,0);g.rotate(Math.PI/2)}
+    g.drawImage(doorArt,150,40,80,800,0,0,24,384);
+    const bevel=g.createLinearGradient(0,0,24,0);
+    for(const [at,color] of [[0,'#603d2488'],[.12,'#ffdf9844'],[.32,'#e5ae6c22'],[.78,'#b0763b33'],[1,'#734829bb']])bevel.addColorStop(at,color);
+    g.fillStyle=bevel;g.fillRect(0,0,24,384);
+    return imageMap(art);
+  }
+  const rail=moulding(false);
+  const lip=.012,casingZ=wall.z+.002;
+  panel(rail,trim+lip,top+lip,[left+(trim-lip)/2,(top+lip)/2,casingZ]);
+  panel(rail,trim+lip,top+lip,[right-(trim-lip)/2,(top+lip)/2,casingZ]).rotation.z=Math.PI;
+  panel(moulding(true),opening+2*lip,trim+lip,[center,head+(trim+lip)/2,wall.z]);
+
+  // A solid leaf sits in the jamb rebate. Its faces share a single hinge,
+  // and the small overlap behind the trim seals the closed door at any angle.
+  const overlap=.012,leafWidth=opening+2*overlap,leafHeight=head+overlap,thickness=.044;
+  const hinge=new THREE.Group();hinge.position.set(jambRight+overlap,0,wall.z-.018);scene.add(hinge);
+  function face(texture,w,h,xyz,color){
+    const mesh=panel(texture,w,h,[0,0,0],false,color);
+    hinge.add(mesh);mesh.position.fromArray(xyz);return mesh;
+  }
+  const wood=imageMap(doorArt);
+  face(wood,leafWidth,leafHeight,[-leafWidth/2,leafHeight/2,0]);
+  face(wood,leafWidth,leafHeight,[-leafWidth/2,leafHeight/2,-thickness]);
+  for(const x of [-leafWidth,0]){
+    face(null,thickness,leafHeight,[x,leafHeight/2,-thickness/2],0xb3844f).rotation.y=Math.PI/2;
+  }
+  for(const y of [0,leafHeight]){
+    face(null,leafWidth,thickness,[-leafWidth/2,y,-thickness/2],0xa77b4a).rotation.x=Math.PI/2;
+  }
+  return amount=>{hinge.rotation.y=1.48*amount};
+}
+
 async function buildPaintedRoom(scene) {
   const wallNames=['front','back','left','right'];
   const [walls,door]=await Promise.all([Promise.all(wallNames.map(studioImage)),(async()=>{
     const image=new Image();image.src='rooms/music-art/door.webp';await image.decode();return image;
   })()]);
-  const width=19,height=3.12,front=-8.14,back=5.4,depth=back-front,mid=(back+front)/2;
+  const {width,height,z:front}=paintedRoom.wall;
+  const back=5.4,depth=back-front,mid=(back+front)/2;
   function panel(map,w,h,xyz,transparent=false,color=0xffffff){
     const material=new THREE.MeshBasicMaterial({map,color,transparent,side:THREE.DoubleSide,toneMapped:false,alphaTest:transparent ? .03 : 0});
     const mesh=new THREE.Mesh(new THREE.PlaneGeometry(w,h),material);
@@ -167,11 +243,11 @@ async function buildPaintedRoom(scene) {
   }
   // Every entire wall is a rigid plane with its own straight-on elevation.
   // No cabinet or drum texture straddles a wall/floor projection seam.
-  panel(imageMap(walls[0]),width,height,[0,height/2,front]);
+  const setDoor=buildEntrance(scene,panel,walls[0],door);
   panel(imageMap(walls[1]),width,height,[0,height/2,back]).rotation.y=Math.PI;
   panel(imageMap(walls[2]),depth,height,[-width/2,height/2,mid]).rotation.y=Math.PI/2;
   panel(imageMap(walls[3]),depth,height,[width/2,height/2,mid]).rotation.y=-Math.PI/2;
-  panel(imageMap(studioFloor()),width,depth,[0,-.004,mid]).rotation.x=-Math.PI/2;
+  panel(imageMap(studioFloor()),width+.02,depth+.01,[0,0,mid]).rotation.x=-Math.PI/2;
   panel(imageMap(studioCeiling()),width,depth,[0,height,mid]).rotation.x=Math.PI/2;
 
   const updateViews=await studioSeats(scene,panel);
@@ -182,25 +258,8 @@ async function buildPaintedRoom(scene) {
   const dial=place(paintedRoom.lock,dialArtwork([0,0]));
   place({center:paintedRoom.targets[2].xyz,width:.75,height:.44},tracingPaper());
 
-  // The skirting in the front elevation is rectified to floor level. Match
-  // the photographed inner lintel with the alpha edge of the hinged leaf.
-  const focal=1774/(2*Math.tan(53*Math.PI/180)),d=8.122;
-  const pivot=1296.45,leafWidth=114.25*d/focal,topWorld=1.55-(307.10-360)*d/focal;
-  const wood=document.createElement('canvas');wood.width=512;wood.height=800;
-  const brush=wood.getContext('2d');
-  for(let x=0;x<wood.width;x++){
-    const u=x/(wood.width-1),top=311.65-4.5*u-2.05*Math.sin(Math.PI*u);
-    const inset=Math.max(0,(top-307.10)*d/focal/topWorld*wood.height);
-    brush.drawImage(door,u*(door.width-1),0,Math.max(1,door.width/512),door.height,x,inset,1.01,wood.height-inset);
-  }
-  const hinge=new THREE.Group();hinge.position.set((pivot-887)*d/focal,0,-d);scene.add(hinge);
-  const leaf=panel(imageMap(wood),leafWidth,topWorld,[0,0,0],true);
-  hinge.add(leaf);leaf.position.set(-leafWidth/2,topWorld/2,0);
-  const edge=panel(null,.032,topWorld-.055,[0,0,0],false,0xa77943);
-  hinge.add(edge);edge.position.set(-leafWidth+.001,(topWorld-.055)/2,-.016);edge.rotation.y=Math.PI/2;
   return {
-    updateViews,
-    setDoor(amount){hinge.rotation.y=1.46*amount},
+    updateViews,setDoor,
     setDigits(values){dial.material.map.image=dialArtwork(values);dial.material.map.needsUpdate=true}
   };
 }

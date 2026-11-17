@@ -4,10 +4,6 @@ const dialog=byId('inspect'),content=byId('panelBody'),closeButton=byId('dismiss
 const saveKey='paperhotel.explore.v1';
 // Bookmarked previews and old cache-busting links now open this same room.
 if(location.search || location.hash)history.replaceState(null,'',location.pathname);
-const examples=[
-  {a:9,b:6,value:54,shape:'┐'},{a:12,b:3,value:36,shape:'└'},
-  {a:3,b:6,value:18,shape:'┌'},{a:9,b:12,value:108,shape:'┘'}
-];
 function readBook(key=saveKey){
   try{const book=JSON.parse(localStorage.getItem(key));if(book&&typeof book.visits==='object'&&book.visits)return book}catch{}
   return {room:203,visits:{}};
@@ -59,11 +55,13 @@ function hand(a,b,center,radius,stroke,width){
   return '<path d="M'+ax+' '+ay+'L'+center+' '+center+'L'+bx+' '+by+'" fill="none" stroke="'+stroke+'" stroke-width="'+width+'" stroke-linecap="round" stroke-linejoin="round"/>';
 }
 function corner(pair,color='#3a657e'){
-  return '<svg viewBox="0 0 60 60" aria-hidden="true">'+hand(pair.a,pair.b,30,19,color,3.1)+'<circle cx="30" cy="30" r="3" fill="'+color+'"/></svg>';
+  const start=clockPoint(pair.a,9,30),end=clockPoint(pair.b,9,30);
+  const arc='M'+start.join(' ')+'A9 9 0 0 '+Number(pair.clockwise)+' '+end.join(' ');
+  return '<svg viewBox="3 3 54 54" aria-hidden="true"><path d="'+arc+'" fill="none" stroke="'+color+'" opacity=".5" stroke-width="1.5"/>'+hand(pair.a,pair.b,30,20,color,3.1)+'<circle cx="30" cy="30" r="2.6" fill="'+color+'"/></svg>';
 }
 function sheet(){
-  return '<div class="clue-sheet" aria-label="투명 악보의 네 가지 기록"><div class="samples">'+
-    examples.map(e=>'<div class="sample" aria-label="'+e.shape+' 모양은 '+e.value+'">'+corner(e)+'<span>= '+e.value+'</span></div>').join('')+'</div></div>';
+  return '<div class="clue-sheet" role="list" aria-label="투명 악보 기록"><div class="samples">'+
+    MUSIC_SCORE.map(e=>'<div class="sample" role="listitem" aria-label="'+e.a+'시와 '+e.b+'시 방향, '+e.degrees+'도, 기록 '+e.value+'"><span class="notation">'+corner(e)+'<small>'+e.degrees+'°</small></span><span>= '+e.value+'</span></div>').join('')+'</div></div>';
 }
 function inspectPaper(){
   modal(visit.paper?'내 악보':'피아노의 투명 악보',sheet());
@@ -93,11 +91,11 @@ function clockDrawing(pair){
   return s+'<circle cx="100" cy="100" r="4.5" fill="#293941"/></svg>';
 }
 function clockPanel(){
-  const pair=overlay?examples[example]:null;
+  const pair=overlay?MUSIC_SCORE[example]:null;
   modal('멈춘 벽시계','<div class="clock-area">'+clockDrawing(pair)+'</div>'+
     (pair?'<div class="tabs" id="recordTabs" aria-label="악보의 예시"></div>':''));
   if(pair){
-    examples.forEach((e,i)=>{
+    MUSIC_SCORE.forEach((e,i)=>{
       const t=action(byId('recordTabs'),'',()=>{example=i;clockPanel();byId('recordTabs').children[i].focus()});
       t.innerHTML=corner(e,'currentColor')+e.value;t.setAttribute('aria-label',e.value+' 기록 겹치기');t.setAttribute('aria-pressed',String(i===example));
     });
