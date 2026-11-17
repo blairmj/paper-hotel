@@ -164,8 +164,8 @@ function studioFloor() {
   return tile;
 }
 
-function buildEntrance(scene,panel,elevation,doorArt){
-  const {wall,portal}=paintedRoom;
+function buildEntrance(scene,panel,elevation,doorArt,room=paintedRoom,corridor=elevation){
+  const {wall,portal}=room;
   const xAt=pixel=>(pixel/elevation.width-.5)*wall.width;
   const yAt=pixel=>(1-pixel/elevation.height)*wall.height;
   function crop(source,x,y,w,h){
@@ -188,7 +188,7 @@ function buildEntrance(scene,panel,elevation,doorArt){
   const jambLeft=left+trim,jambRight=right-trim,recess=.20;
   // The original illustration supplies the view beyond the threshold. All
   // four reveals reach this plane, including the underside of the header.
-  const hall=imageMap(crop(elevation,1282,95,130,225));
+  const hall=imageMap(crop(corridor,1282,95,130,225));
   panel(hall,right-left,top,[center,top/2,wall.z-recess]);
   for(const x of [jambLeft,jambRight]){
     panel(null,recess,head,[x,head/2,wall.z-recess/2],false,0xa77543).rotation.y=Math.PI/2;
@@ -233,6 +233,12 @@ function buildEntrance(scene,panel,elevation,doorArt){
   return amount=>{hinge.rotation.y=1.48*amount};
 }
 
+function placeRoomPanel(scene,map,w,h,xyz,transparent=false,color=0xffffff){
+  const material=new THREE.MeshBasicMaterial({map,color,transparent,side:THREE.DoubleSide,toneMapped:false,alphaTest:transparent ? .03 : 0});
+  const mesh=new THREE.Mesh(new THREE.PlaneGeometry(w,h),material);
+  mesh.position.fromArray(xyz);scene.add(mesh);return mesh;
+}
+
 async function buildPaintedRoom(scene) {
   const wallNames=['front','back','left','right'];
   const [walls,door]=await Promise.all([Promise.all(wallNames.map(studioImage)),(async()=>{
@@ -240,11 +246,7 @@ async function buildPaintedRoom(scene) {
   })()]);
   const {width,height,z:front}=paintedRoom.wall;
   const back=5.4,depth=back-front,mid=(back+front)/2;
-  function panel(map,w,h,xyz,transparent=false,color=0xffffff){
-    const material=new THREE.MeshBasicMaterial({map,color,transparent,side:THREE.DoubleSide,toneMapped:false,alphaTest:transparent ? .03 : 0});
-    const mesh=new THREE.Mesh(new THREE.PlaneGeometry(w,h),material);
-    mesh.position.fromArray(xyz);scene.add(mesh);return mesh;
-  }
+  const panel=(...args)=>placeRoomPanel(scene,...args);
   // Every entire wall is a rigid plane with its own straight-on elevation.
   // No cabinet or drum texture straddles a wall/floor projection seam.
   const setDoor=buildEntrance(scene,panel,walls[0],door);

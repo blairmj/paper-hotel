@@ -1,43 +1,43 @@
 'use strict';
 
-// Floor boundaries in metres. The two ensembles leave a middle aisle and
-// a clear strip along the teaching wall.
-const roomLimits = {left:-9.06, right:9.06, front:-7.54, back:4.94};
-const seatBanks = [[-3.96,-1.10,-4.96,-1.96],[1.10,3.96,-4.96,-1.96]];
-function onOpenFloor(x,z) {
-  return x>=roomLimits.left && x<=roomLimits.right && z>=roomLimits.front && z<=roomLimits.back &&
-    !seatBanks.some(([l,r,f,b])=>x>l && x<r && z>f && z<b);
-}
-function clearSegment(a,b) {
-  const steps=Math.max(1,Math.ceil(Math.hypot(b.x-a.x,b.z-a.z)/.11));
-  for(let i=1;i<=steps;i++){
-    const t=i/steps;
-    if(!onOpenFloor(a.x+(b.x-a.x)*t,a.z+(b.z-a.z)*t)) return false;
+async function createMusicWorld({onInspect,onReadyToMove,room=paintedRoom,buildRoom=buildPaintedRoom}){
+  // Floor boundaries in metres. The two ensembles leave a middle aisle and
+  // a clear strip along the teaching wall.
+  const roomLimits = {left:-9.06, right:9.06, front:-7.54, back:4.94};
+  const seatBanks = room.obstacles ?? [[-3.96,-1.10,-4.96,-1.96],[1.10,3.96,-4.96,-1.96]];
+  function onOpenFloor(x,z) {
+    return x>=roomLimits.left && x<=roomLimits.right && z>=roomLimits.front && z<=roomLimits.back &&
+      !seatBanks.some(([l,r,f,b])=>x>l && x<r && z>f && z<b);
   }
-  return true;
-}
-function floorRoute(start,goal) {
-  if(clearSegment(start,goal)) return [goal];
-  const nodes=[start,goal];
-  for(const [l,r,f,b] of seatBanks) for(const x of [l-.09,r+.09]) for(const z of [f-.09,b+.09]) nodes.push({x,z});
-  const cost=nodes.map(()=>Infinity), prev=nodes.map(()=>-1), visited=new Set();cost[0]=0;
-  for(let i=0;i<nodes.length;i++){
-    let current=-1;
-    for(let k=0;k<nodes.length;k++) if(!visited.has(k) && cost[k]<Infinity && (current<0||cost[k]<cost[current])) current=k;
-    if(current<0) return [];
-    if(current===1) break;
-    visited.add(current);
-    for(let k=1;k<nodes.length;k++){
-      if(visited.has(k)||!clearSegment(nodes[current],nodes[k])) continue;
-      const next=cost[current]+Math.hypot(nodes[k].x-nodes[current].x,nodes[k].z-nodes[current].z);
-      if(next<cost[k]){cost[k]=next;prev[k]=current}
+  function clearSegment(a,b) {
+    const steps=Math.max(1,Math.ceil(Math.hypot(b.x-a.x,b.z-a.z)/.11));
+    for(let i=1;i<=steps;i++){
+      const t=i/steps;
+      if(!onOpenFloor(a.x+(b.x-a.x)*t,a.z+(b.z-a.z)*t)) return false;
     }
+    return true;
   }
-  const path=[];for(let k=1;k>0;k=prev[k]) path.unshift(nodes[k]);
-  return prev[1]<0?[]:path;
-}
+  function floorRoute(start,goal) {
+    if(clearSegment(start,goal)) return [goal];
+    const nodes=[start,goal];
+    for(const [l,r,f,b] of seatBanks) for(const x of [l-.09,r+.09]) for(const z of [f-.09,b+.09]) nodes.push({x,z});
+    const cost=nodes.map(()=>Infinity), prev=nodes.map(()=>-1), visited=new Set();cost[0]=0;
+    for(let i=0;i<nodes.length;i++){
+      let current=-1;
+      for(let k=0;k<nodes.length;k++) if(!visited.has(k) && cost[k]<Infinity && (current<0||cost[k]<cost[current])) current=k;
+      if(current<0) return [];
+      if(current===1) break;
+      visited.add(current);
+      for(let k=1;k<nodes.length;k++){
+        if(visited.has(k)||!clearSegment(nodes[current],nodes[k])) continue;
+        const next=cost[current]+Math.hypot(nodes[k].x-nodes[current].x,nodes[k].z-nodes[current].z);
+        if(next<cost[k]){cost[k]=next;prev[k]=current}
+      }
+    }
+    const path=[];for(let k=1;k>0;k=prev[k]) path.unshift(nodes[k]);
+    return prev[1]<0?[]:path;
+  }
 
-async function createMusicWorld({onInspect,onReadyToMove}){
   const canvas=document.getElementById('roomView'),scene=new THREE.Scene();
   scene.background=new THREE.Color(0xe6ebef);
   const camera=new THREE.PerspectiveCamera(55,1,.04,42);
@@ -46,11 +46,11 @@ async function createMusicWorld({onInspect,onReadyToMove}){
   try {
     renderer=new THREE.WebGLRenderer({canvas,antialias:true,alpha:false,powerPreference:'low-power'});
   }catch{renderer=null}
-  model=await buildPaintedRoom(scene);
+  model=await buildRoom(scene,room);
   if(!renderer)photos=paintedPhotoView(canvas,scene);
   const eye=camera.position;
   const keys=new Set(),point=new THREE.Vector3(),corner=new THREE.Vector3();
-  const targets=paintedRoom.targets.map(o=>{
+  const targets=room.targets.map(o=>{
     const button=document.createElement('button'),label=document.createElement('span');
     button.hidden=true;
     label.textContent=o.name;button.append(label);button.type='button';button.className='spot';
@@ -58,10 +58,10 @@ async function createMusicWorld({onInspect,onReadyToMove}){
     button.onclick=e=>{if(e.detail===0 && !journey?.door && onReadyToMove()) inspectTarget(o.id)};
     button.onpointerdown=e=>startPointer(e,o.id);
     document.getElementById('spots').append(button);
-    const surface=o.id==='clock'?paintedRoom.clock:o.id==='lock'?paintedRoom.lock:{width:.79,height:.50};
+    const surface=o.surface || (o.id==='clock'?room.clock:o.id==='lock'?room.lock:{width:.79,height:.50});
     return {...o,point:new THREE.Vector3(...o.xyz),surface,button};
   });
-  const stopPoints=paintedRoom.stops;
+  const stopPoints=room.stops;
   let width=1,height=1,yaw=0,pitch=0,openness=0,journey,trail,drag,raf=0,previousTime=0;
   const clamp=THREE.MathUtils.clamp, wrap=angle=>Math.atan2(Math.sin(angle),Math.cos(angle));
   function heading(position){return Math.atan2(position[0]-eye.x,eye.z-position[2])}
@@ -79,7 +79,7 @@ async function createMusicWorld({onInspect,onReadyToMove}){
   }
   function draw(){
     camera.rotation.set(pitch,-yaw,0,'YXZ');camera.updateMatrixWorld();
-    model.updateViews(eye);
+    model.updateViews?.(eye);
     if(renderer)renderer.render(scene,camera);
     else photos.draw(height/(2*Math.tan(camera.fov*Math.PI/360)),yaw,pitch,eye);
     for(const target of targets){
@@ -92,7 +92,9 @@ async function createMusicWorld({onInspect,onReadyToMove}){
       let halfWidth=0,halfHeight=0;
       for(const dx of [-.5,.5])for(const dy of [-.5,.5]){
         corner.copy(target.point);
-        corner.x+=dx*target.surface.width;corner.y+=dy*target.surface.height;
+        corner.x+=dx*target.surface.width*Math.cos(target.rotationY||0);
+        corner.z-=dx*target.surface.width*Math.sin(target.rotationY||0);
+        corner.y+=dy*target.surface.height;
         corner.project(camera);
         halfWidth=Math.max(halfWidth,Math.abs(width*(1+corner.x)/2-px));
         halfHeight=Math.max(halfHeight,Math.abs(height*(1-corner.y)/2-py));
@@ -103,9 +105,13 @@ async function createMusicWorld({onInspect,onReadyToMove}){
   }
   function queue(){if(!raf)raf=requestAnimationFrame(frame)}
   function move(front,side){
-    const dx=Math.sin(yaw)*front+Math.cos(yaw)*side, dz=-Math.cos(yaw)*front+Math.sin(yaw)*side;
-    if(onOpenFloor(eye.x+dx,eye.z)) eye.x+=dx;
-    if(onOpenFloor(eye.x,eye.z+dz)) eye.z+=dz;
+    const increments=Math.max(1,Math.ceil(Math.hypot(front,side)/.1));
+    const dx=(Math.sin(yaw)*front+Math.cos(yaw)*side)/increments;
+    const dz=(-Math.cos(yaw)*front+Math.sin(yaw)*side)/increments;
+    for(let i=0;i<increments;i++){
+      if(onOpenFloor(eye.x+dx,eye.z)) eye.x+=dx;
+      if(onOpenFloor(eye.x,eye.z+dz)) eye.z+=dz;
+    }
   }
   function walkTo(goal, face=null, done=null) {
     if(!onOpenFloor(goal.x,goal.z)) return;
@@ -137,17 +143,18 @@ async function createMusicWorld({onInspect,onReadyToMove}){
   function inspectTarget(id){
     const object=targets.find(t=>t.id===id), [x,,z]=object.xyz;
     const approachX=id==='paper'?x+.65:x;
-    walkTo({x:clamp(approachX,-5.3,5.3),z:clamp(z+2.35,-6.2,-5.16)},object.xyz,()=>onInspect(id));
+    const approach=object.approach || {x:clamp(approachX,-5.3,5.3),z:clamp(z+2.35,-6.2,-5.16)};
+    walkTo(approach,object.xyz,()=>onInspect(id));
   }
   const raycaster=new THREE.Raycaster(),mousePoint=new THREE.Vector2(),destination=new THREE.Vector3();
   const roomBox=new THREE.Box3(
-    new THREE.Vector3(-paintedRoom.wall.width/2,0,paintedRoom.wall.z),
-    new THREE.Vector3(paintedRoom.wall.width/2,paintedRoom.wall.height,5.4)
+    new THREE.Vector3(-room.wall.width/2,0,room.wall.z),
+    new THREE.Vector3(room.wall.width/2,room.wall.height,5.4)
   );
   function walkToPixel(x,y){
     mousePoint.set(2*x/width-1,1-2*y/height);
     raycaster.setFromCamera(mousePoint,camera);
-    if(!raycaster.ray.intersectBox(roomBox,destination)||destination.y>=paintedRoom.wall.height-.001)return;
+    if(!raycaster.ray.intersectBox(roomBox,destination)||destination.y>=room.wall.height-.001)return;
     let goal={
       x:clamp(destination.x,roomLimits.left,roomLimits.right),
       z:clamp(destination.z,roomLimits.front,roomLimits.back)
@@ -239,17 +246,17 @@ async function createMusicWorld({onInspect,onReadyToMove}){
     if(!onReadyToMove()||journey?.door)return;
     trail=null;move(distance,0);queue();
   }
-  movementButton('walk',()=>step(.36));
-  movementButton('stepBack',()=>step(-.36));
+  movementButton('walk',()=>step(1.2));
+  movementButton('stepBack',()=>step(-1.2));
   new ResizeObserver(resize).observe(canvas);resize();
   return {
     clearKeys, lookAtPiano(){inspectTarget('paper')},
     setDigits(digits){model.setDigits(digits);queue()},
-    facingDoor(done){clearKeys();look(paintedRoom.door,true,done)},
+    facingDoor(done){clearKeys();look(room.door,true,done)},
     reset(open=false,digits=[0,0]){
       clearKeys();journey=null;
-      eye.fromArray(paintedRoom.start);openness=open?1:0;
-      const initial=open?paintedRoom.door:(width/height<.85?paintedRoom.portraitView:paintedRoom.firstView);
+      eye.fromArray(room.start);openness=open?1:0;
+      const initial=open?room.door:(width/height<.85?room.portraitView:room.firstView);
       yaw=heading(initial);pitch=tilt(initial);
       model?.setDoor(openness);model.setDigits(digits);
       queue();

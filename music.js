@@ -5,8 +5,7 @@ const saveKey='paperhotel.explore.v1';
 // Bookmarked previews and old cache-busting links now open this same room.
 if(location.search || location.hash)history.replaceState(null,'',location.pathname);
 function readBook(key=saveKey){
-  try{const book=JSON.parse(localStorage.getItem(key));if(book&&typeof book.visits==='object'&&book.visits)return book}catch{}
-  return {room:203,visits:{}};
+  return readSchoolBook(key);
 }
 function newVisit(){return {singleScoreSave:true,paper:false,overlaid:false,solved:false,digits:[0,0]}}
 let visit=newVisit();
@@ -152,9 +151,9 @@ function inspectLock(){
 }
 function directory(){
   modal('학교 안내도','<div class="map-list" id="classList"></div>','map');
-  for(const r of SCHOOL_ROOMS){
+  for(const r of REVIEW_ROOMS){
     const el=document.createElement('a');el.textContent=r.n+'호 · '+r.place;
-    el.href=r.n===203?'music.html':'index.html?room='+r.n;
+    el.href=r.href;
     if(r.n===203)el.onclick=e=>{e.preventDefault();closePanel()};
     byId('classList').append(el);
   }
@@ -183,9 +182,10 @@ createMusicWorld({
 }).then(w=>{
   if(!w)return;
   world=w;byId('bag').hidden=!visit.paper;world.reset(visit.solved,visit.digits);storeVisit();
-  const next=SCHOOL_ROOMS.slice(1).find(r=>!readBook().visits[r.n]?.escaped);
-  if(next){byId('nextRoom').href='index.html?room='+next.n;byId('nextRoom').textContent=next.place+'로 이동'}
-  else{byId('nextRoom').textContent='학교 안내도';byId('nextRoom').onclick=e=>{e.preventDefault();directory()}}
+  const next=nextReviewRoom(203);
+  if(next){byId('nextRoom').href=next.href;byId('nextRoom').textContent=next.place+'로 이동'}
+  else{byId('nextRoom').href='music.html';byId('nextRoom').textContent='학교 안내도';byId('nextRoom').onclick=e=>{e.preventDefault();directory()}}
   if(visit.solved)showExit()
 
 }).catch(failed);
+setupReviewNavigation(203);

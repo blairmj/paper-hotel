@@ -108,7 +108,8 @@ function help(){if(opening)return;modal('학교 탈출','놀이 방법','<p>교�
 function interact(id){if(opening)return;if(id==='station')puzzle();else findClue(id)}
 function mark(p,x,y,z,id){const anchor=group(p,x,y,z);const el=document.createElement('button');el.type='button';el.className='mark';const name=id==='station'?room.station:room.clues.find(c=>c[0]===id)[1];const icon=document.createElement('i');icon.setAttribute('aria-hidden','true');el.append(icon,document.createTextNode(name));el.onclick=()=>interact(id);$('marks').append(el);markers.push({anchor,id,el,pos:new THREE.Vector3()})}
 function enter(n){
- if(n===203){book.room=n;save();location.assign('music.html');return}
+ const review=REVIEW_ROOMS.find(r=>r.n===n);
+ if(review){book.room=n;save();location.assign(review.href);return}
  opening=null;document.body.classList.remove('opening');$('exitNotice').hidden=true;
  discardRoom(scene,root);markers=[];$('marks').replaceChildren();room=SCHOOL_ROOMS.find(r=>r.n===n)||SCHOOL_ROOMS[0];
  book.room=room.n;save();yaw=0;pitch=-.055;facingTarget=moving=null;keys.clear();
@@ -152,8 +153,9 @@ window.addEventListener('keydown',e=>{if(opening||dlg.open||!room||e.altKey||e.c
 window.addEventListener('keyup',e=>keys.delete(e.key.toLowerCase()));window.addEventListener('blur',()=>{keys.clear();drag=null});
 $('directory').onclick=directory;$('journal').onclick=journal;$('help').onclick=help;$('turnL').onclick=()=>turn(-1);$('turnR').onclick=()=>turn(1);$('step').onclick=step;
 const requestedRoom=Number(new URLSearchParams(location.search).get('room'));
-const firstRoom=SCHOOL_ROOMS.some(r=>r.n===requestedRoom)?requestedRoom:book.room;
-if(firstRoom===203){location.replace('music.html')}
+const firstRoom=SCHOOL_ROOMS.some(r=>r.n===requestedRoom)?requestedRoom:203;
+const firstReview=REVIEW_ROOMS.find(r=>r.n===firstRoom);
+if(firstReview){location.replace(firstReview.href)}
 else try{
  renderer=new THREE.WebGLRenderer({canvas,antialias:true,powerPreference:'high-performance'});renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;renderer.shadowMap.autoUpdate=false;
  scene=new THREE.Scene();scene.background=new THREE.Color(0x46313c);camera=new THREE.PerspectiveCamera(64,1,.055,40);resize();window.addEventListener('resize',resize);enter(firstRoom);if(requestedRoom===firstRoom)history.replaceState(null,'',location.pathname);requestAnimationFrame(tick);

@@ -98,3 +98,47 @@ dialog p{font-size:16px;line-height:1.5;margin:6px 0 12px;word-break:keep-all}
 .spot::before{display:none}
 .spot span,.spot[data-object=lock] span{opacity:0}
 .spot:hover span,.spot:focus-visible span{display:block;opacity:1}
+
+.room-head{gap:10px;align-items:flex-start}
+.room-location{display:flex;align-items:center;flex-wrap:wrap;gap:7px;min-width:0;max-width:calc(100% - 130px);pointer-events:auto}
+.room-head>nav{flex-shrink:0}
+.room-location .school{white-space:nowrap}
+.review-jump{position:relative;color:#27323b;font-size:14px}
+.review-jump summary{cursor:pointer;min-height:36px;padding:7px 10px;background:#fafbfbed;border:1px solid #bdc6cc;border-radius:4px}
+.review-jump nav{position:absolute;top:calc(100% + 6px);left:0;z-index:6;display:grid;gap:0;min-width:175px;padding:5px;background:#fff;border:1px solid #c3ccc7;border-radius:5px;box-shadow:0 6px 20px #25393030}
+.review-jump a{display:flex;align-items:center;min-height:44px;padding:8px 12px;color:#293f35;text-decoration:none;white-space:nowrap}
+.review-jump a:hover,.review-jump a[aria-current=page]{background:#eaf0eb}
+.school-clue svg{display:block;width:100%;height:auto}
+.stamp-tray{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;padding:12px;background:#e2d5bf;border:1px solid #c7b59b}
+.stamp{display:grid;place-items:center;min-width:0;min-height:150px;padding:8px;background:linear-gradient(135deg,#b98f5e,#9e7247);border:1px solid #8a653f;color:#fff9e8;box-shadow:inset 0 2px 3px #ffe5b640,0 3px 0 #7e5d3d}
+.stamp:hover{background:#a37b50}.stamp[aria-pressed=true]{background:#efe5cb;color:#403c30}
+.stamp-letter{font-family:Georgia,serif;font-weight:bold}
+.stamp-dots{display:flex;justify-content:center;flex-wrap:wrap;gap:7px}
+.stamp-dots i{width:12px;height:12px;border-radius:50%;background:#393c32}
+.stamp-instruction{text-align:center;color:#5c655b}
+.collected-clues{display:grid;gap:8px}.collected-clues button{min-height:48px;text-align:left}
+.code-strip{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:5px;margin:8px 0 18px}
+.code-strip span{min-height:56px;display:grid;place-items:center;background:#f1f2eb;border:1px solid #bac5bd;border-radius:3px;font:30px Georgia,serif}
+.letter-keys{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}
+.letter-keys button{min-height:56px;font:30px Georgia,serif}
+.four-digits{gap:clamp(5px,1vw,10px);padding:12px}
+.four-digits .digit button,.four-digits .digit output{width:clamp(44px,8vw,68px)}
+.signal-device{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:24px}
+.signal-device section{min-width:0}
+.signal-device h2{text-align:center;font-size:16px;font-weight:600;margin:6px 0 12px}
+.pixel-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;max-width:250px;margin:auto}
+.pixel-grid>span,.pixel-key{aspect-ratio:1;min-width:0;display:grid;place-items:center;border:1px solid #aab9af;border-radius:4px;background:#d8dfda;padding:0}
+.input-grid>span{background:#fafaf1;font:clamp(24px,3vw,34px) Georgia,serif}
+.sample-output>.on,.pixel-key[aria-pressed=true]{background:#4d8d79;border-color:#2f6e59}
+.pixel-key:hover{background:#c0d0c5}.pixel-key[aria-pressed=true]:hover{background:#3c7b67}
+.trial-record{text-align:center}
+@media(max-width:520px){
+  .signal-device{gap:18px;grid-template-columns:1fr}
+  .pixel-grid{width:min(220px,100%)}
+  .stamp-tray{gap:7px;padding:8px}
+  .stamp{min-height:125px}
+}
+@media(max-width:380px){
+  .school{font-size:14px;gap:5px;padding:7px 8px}
+  .room-head>nav button{font-size:12px;padding:6px 8px;white-space:nowrap}
+}
