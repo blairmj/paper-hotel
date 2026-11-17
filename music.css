@@ -3,7 +3,7 @@
 #musicGame{width:100%;height:100vh;height:100dvh;position:relative;isolation:isolate;overflow:hidden;background:#e1e6e9}
 #roomView,#spots,.flat-viewport{position:absolute;inset:0;width:100%;height:100%}
 #roomView{touch-action:none;cursor:grab;display:block}#roomView:active{cursor:grabbing}
-.flat-viewport{overflow:hidden;pointer-events:none}.flat-cube{position:absolute;left:50%;top:50%;width:0;height:0;transform-style:preserve-3d}.flat-cube img{position:absolute;width:1025px;height:1025px;left:-512.5px;top:-512.5px;backface-visibility:hidden}
+.flat-viewport{overflow:hidden;pointer-events:none}.flat-cube{position:absolute;left:50%;top:50%;width:0;height:0;transform-style:preserve-3d}.flat-cube .painted-face{position:absolute;width:1025px;height:1025px;left:-512.5px;top:-512.5px;backface-visibility:hidden}
 .room-head,.room-foot{position:absolute;z-index:2;left:0;right:0;display:flex;align-items:center;justify-content:space-between;padding:clamp(14px,2.2vw,29px);pointer-events:none}
 .room-head{top:0}.room-foot{bottom:0;justify-content:center}.school{font-size:16px;font-weight:650;display:flex;align-items:center;gap:8px;color:#25313c;background:#fafbfcf2;padding:7px 11px;border-left:3px solid #4d7793;box-shadow:0 1px 3px #101b251e}.school span{font:500 12px/1 system-ui;color:#586775;font-variant-numeric:tabular-nums}
 .room-head nav,.movement{display:flex;pointer-events:auto}.room-head nav{gap:5px}
