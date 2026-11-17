@@ -2,6 +2,7 @@
 
 function studioRenderer(canvas) {
   const renderer=new THREE.WebGLRenderer({canvas,antialias:true,alpha:false,powerPreference:'low-power'});
+  renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=.98;
   renderer.shadowMap.enabled=true;
   renderer.shadowMap.type=THREE.PCFSoftShadowMap;
   renderer.shadowMap.autoUpdate=false;
@@ -17,7 +18,7 @@ function studioPhotoView(canvas) {
   let front,open=false;
   for(const [name,rotation] of Object.entries(sides)){
     const image=document.createElement('img');
-    image.alt='';image.draggable=false;image.src='rooms/studio-'+name+'.webp';
+    image.alt='';image.draggable=false;image.src='rooms/studio-'+name+'.webp?v=oak4';
     image.style.transform=rotation+' translateZ(-512px)';cube.append(image);
     if(name==='front')front=image;
   }
@@ -25,7 +26,7 @@ function studioPhotoView(canvas) {
     draw(focal,yaw,pitch,opened){
       viewport.style.perspective=focal+'px';
       cube.style.transform='translateZ('+focal+'px) rotateX('+pitch+'rad) rotateY('+yaw+'rad)';
-      if(open!==opened){open=opened;front.src='rooms/studio-'+(open?'open':'front')+'.webp'}
+      if(open!==opened){open=opened;front.src='rooms/studio-'+(open?'open':'front')+'.webp?v=oak4'}
     }
   };
 }
@@ -37,7 +38,7 @@ async function createMusicWorld({onInspect,onReadyToMove}){
   camera.rotation.order='YXZ';
   let renderer,model,photos;
   try {renderer=studioRenderer(canvas)}catch{photos=studioPhotoView(canvas)}
-  if(renderer)model=buildMusicStudio(scene);
+  if(renderer)model=buildMusicStudio(scene,await loadStudioFinishes());
   const eye=camera.position;
   const keys=new Set(),point=new THREE.Vector3();
   const targets=studio.objects.map(o=>{
@@ -51,6 +52,16 @@ async function createMusicWorld({onInspect,onReadyToMove}){
   const stopPoints=[[1.25,1.58,-4.6],[5.60,1.4,.6],[0,1.1,4.40],[-4.70,1.1,1.18],studio.objects[2].xyz];
   let width=1,height=1,yaw=0,pitch=0,openness=0,zoom=1,journey,drag,raf=0,previousTime=0;
   const clamp=THREE.MathUtils.clamp, wrap=angle=>Math.atan2(Math.sin(angle),Math.cos(angle));
+  const minZoom=.8,maxZoom=3,zoomStep=1.25;
+  const zoomIn=document.getElementById('zoomIn'),zoomOut=document.getElementById('zoomOut');
+  function setZoom(value){
+    zoom=clamp(value,minZoom,maxZoom);
+    camera.zoom=zoom;
+    camera.updateProjectionMatrix();
+    zoomOut.disabled=zoom<=minZoom;
+    zoomIn.disabled=zoom>=maxZoom;
+    queue();
+  }
   function heading(position){return Math.atan2(position[0]-eye.x,eye.z-position[2])}
   function tilt(position){return Math.atan2(position[1]-eye.y,Math.hypot(position[0]-eye.x,position[2]-eye.z))}
   function resize(){
@@ -76,7 +87,7 @@ async function createMusicWorld({onInspect,onReadyToMove}){
   function queue(){if(!raf)raf=requestAnimationFrame(frame)}
   function move(front,side){
     if(!renderer){
-      zoom=clamp(zoom+front*.15,.90,1.30);camera.zoom=zoom;camera.updateProjectionMatrix();yaw=wrap(yaw+side*.20);return;
+      setZoom(zoom*Math.exp(front*.15));yaw=wrap(yaw+side*.20);return;
     }
     const dx=Math.sin(yaw)*front+Math.cos(yaw)*side,dz=-Math.cos(yaw)*front+Math.sin(yaw)*side;
     function walkable(x,z){
@@ -97,6 +108,7 @@ async function createMusicWorld({onInspect,onReadyToMove}){
       const aim=1-(1-clamp(t/(j.door ? .42 : 1),0,1))**3;
       yaw=wrap(j.from+wrap(j.to-j.from)*aim);pitch=j.p+(j.targetPitch-j.p)*aim;
       if(j.door){
+        if(zoom!==1)setZoom(j.startZoom+(1-j.startZoom)*aim);
         const slide=clamp((t-.28)/.68,0,1);
         openness=slide*slide*(3-2*slide);
         if(model){model.hinge.rotation.y=-1.54*openness;renderer.shadowMap.needsUpdate=true}
@@ -111,7 +123,7 @@ async function createMusicWorld({onInspect,onReadyToMove}){
   }
   function look(target,door=false,done){
     const reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
-    journey={from:yaw,p:pitch,to:heading(target),targetPitch:tilt(target),door,done,start:performance.now(),duration:reduced?1:door?1200:280};
+    journey={from:yaw,p:pitch,to:heading(target),targetPitch:tilt(target),door,done,startZoom:zoom,start:performance.now(),duration:reduced?1:door?1200:280};
     queue();
   }
   function turn(direction){
@@ -146,6 +158,15 @@ async function createMusicWorld({onInspect,onReadyToMove}){
   });
   document.addEventListener('keyup',e=>keys.delete(e.key.toLowerCase()));
   window.addEventListener('blur',clearKeys);
+  function canZoom(){return onReadyToMove()&&!journey?.door}
+  zoomIn.onclick=()=>{if(canZoom())setZoom(zoom*zoomStep)};
+  zoomOut.onclick=()=>{if(canZoom())setZoom(zoom/zoomStep)};
+  document.getElementById('musicGame').addEventListener('wheel',e=>{
+    if(!canZoom()||e.ctrlKey||e.metaKey||!(e.target===canvas||e.target.closest('.spot')))return;
+    e.preventDefault();
+    const pixels=e.deltaY*(e.deltaMode===1?16:e.deltaMode===2?height:1);
+    setZoom(zoom*Math.exp(-clamp(pixels,-240,240)*.0024));
+  },{passive:false});
   document.getElementById('left').onclick=()=>turn(-1);
   document.getElementById('right').onclick=()=>turn(1);
   document.getElementById('walk').onclick=()=>{if(onReadyToMove()&&!journey?.door){move(.48,0);queue()}};
@@ -154,7 +175,7 @@ async function createMusicWorld({onInspect,onReadyToMove}){
     clearKeys,setDigits(digits){model?.setDigits(digits);queue()},
     facingDoor(done){clearKeys();look(studio.door,true,done)},
     reset(open=false,digits=[0,0]){
-      clearKeys();journey=null;zoom=camera.zoom=1;camera.updateProjectionMatrix();
+      clearKeys();journey=null;setZoom(1);
       eye.fromArray(studio.start);openness=open?1:0;
       const initial=open?studio.door:(width/height<.85?[.44,1.42,-4.5]:[-.65,1.34,-4.5]);
       yaw=heading(initial);pitch=tilt(initial);

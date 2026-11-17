@@ -25,3 +25,10 @@ dialog p{font-size:15px;line-height:1.5;margin:6px 0 12px;word-break:keep-all}.c
 @media(max-width:600px){.room-head,.room-foot{padding:12px}.movement button{height:44px}#escape{display:grid;text-align:center;gap:8px}}
 .sr-only{position:absolute;width:1px;height:1px;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
 #escape{bottom:clamp(12px,2vw,24px);background:transparent;border:0;padding:0;box-shadow:none}
+.zoom-tools{position:absolute;right:clamp(12px,2.2vw,29px);display:flex;pointer-events:auto;border:1px solid #bbc5cb;border-radius:5px;background:#fafbfcf2;overflow:hidden;box-shadow:0 2px 8px #20293623}
+.zoom-tools button{border:0;border-radius:0;background:transparent;width:42px;height:40px;padding:0;font:22px/1 Arial,sans-serif}
+.zoom-tools button+button{border-left:1px solid #d2d7db}
+.zoom-tools button:disabled{color:#aeb6ba;cursor:default}
+.spot::before{content:'';width:12px;height:12px;background:#fff;border:3px solid #50666b;box-shadow:0 0 0 2px #fff,0 1px 6px #142d3966}
+@media(max-width:600px){.zoom-tools button{height:44px;width:40px}}
+@media(max-width:350px){.room-foot{justify-content:flex-start}}

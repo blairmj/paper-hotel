@@ -98,6 +98,7 @@ function solve(){
 }
 function showExit(){
   document.querySelector('.movement').hidden=true;
+  byId('zoomTools').hidden=true;
   byId('escape').hidden=false;
 }
 function inspectLock(){
@@ -142,6 +143,7 @@ byId('replay').onclick=()=>{
   visit=newVisit();overlay=false;example=0;opening=false;
   byId('escape').hidden=true;byId('spots').inert=false;byId('bag').hidden=true;
   document.querySelector('.movement').hidden=false;
+  byId('zoomTools').hidden=false;
   world.reset();storeVisit(true);
 };
 function failed(){
