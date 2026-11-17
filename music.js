@@ -37,13 +37,14 @@ function storeVisit(restart=false){
     solved:!!((!restart&&old.solved)||visit.solved),escaped:!!((!restart&&old.escaped)||visit.solved)};
   try{localStorage.setItem(saveKey,JSON.stringify(book))}catch{}
 }
-function modal(title,html){
+function modal(title,html,panel='message'){
   if(opening)return;
   world?.clearKeys();
+  dialog.dataset.panel=panel;
   byId('panelTitle').textContent=title;
   content.innerHTML=html;
   if(!dialog.open)dialog.showModal();
-  dialog.scrollTop=0;
+  content.scrollTop=0;
 }
 function closePanel(){if(dialog.open)dialog.close();byId('roomView').focus({preventScroll:true})}
 function action(host,text,fn,primary=false){
@@ -64,7 +65,7 @@ function sheet(){
     MUSIC_SCORE.map(e=>'<div class="sample" role="listitem" aria-label="'+e.a+'시와 '+e.b+'시 방향, '+e.degrees+'도, 기록 '+e.value+'"><span class="notation">'+corner(e)+'<small>'+e.degrees+'°</small></span><span>= '+e.value+'</span></div>').join('')+'</div></div>';
 }
 function inspectPaper(){
-  modal(visit.paper?'내 악보':'피아노의 투명 악보',sheet());
+  modal(visit.paper?'내 악보':'피아노의 투명 악보',sheet(),'paper');
   if(!visit.paper){
     action(row(),'악보 얻기',()=>{
       visit.paper=true;
@@ -93,7 +94,7 @@ function clockDrawing(pair){
 function clockPanel(){
   const pair=overlay?MUSIC_SCORE[example]:null;
   modal('멈춘 벽시계','<div class="clock-area">'+clockDrawing(pair)+'</div>'+
-    (pair?'<div class="tabs" id="recordTabs" aria-label="악보의 예시"></div>':''));
+    (pair?'<div class="tabs" id="recordTabs" aria-label="악보의 예시"></div>':''),'clock');
   if(pair){
     MUSIC_SCORE.forEach((e,i)=>{
       const t=action(byId('recordTabs'),'',()=>{example=i;clockPanel();byId('recordTabs').children[i].focus()});
@@ -128,7 +129,7 @@ function showExit(){
   byId('escape').hidden=false;
 }
 function inspectLock(){
-  modal('문 다이얼','<div class="switches" id="wheels"></div><p class="readout" id="lockReadout" role="status"></p>');
+  modal('문 다이얼','<div class="switches" id="wheels"></div><p class="readout" id="lockReadout" role="status"></p>','lock');
   let digitsChanged=false;
   const outputs=[];
   function rotate(i,amount){
@@ -150,7 +151,7 @@ function inspectLock(){
 
 }
 function directory(){
-  modal('학교 안내도','<div class="map-list" id="classList"></div>');
+  modal('학교 안내도','<div class="map-list" id="classList"></div>','map');
   for(const r of SCHOOL_ROOMS){
     const el=document.createElement('a');el.textContent=r.n+'호 · '+r.place;
     el.href=r.n===203?'music.html':'index.html?room='+r.n;
