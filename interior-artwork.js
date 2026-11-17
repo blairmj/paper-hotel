@@ -28,6 +28,15 @@ const InteriorArtwork = (() => {
     }
   };
 
+  // The same black fabric catches different amounts of light on each wall.
+  // Panel seams give each wall its own rhythm even when viewed up close.
+  const STUDIO_WALL_FINISH = {
+    front: {tint:'#b6a298', lift:.15, light:'#f5d8be', pools:[.22,.77], strength:.11, panelWidth:96, seams:[]},
+    left: {tint:'#b9afa5', lift:.27, light:'#f3dcca', pools:[.34,.78], strength:.13, panelWidth:178, seams:[.63]},
+    right: {tint:'#a3aab5', lift:.19, light:'#d4e2ef', pools:[.19,.60], strength:.16, panelWidth:121, seams:[.45,.76]},
+    back: {tint:'#b9b1a7', lift:.23, light:'#eee5dc', pools:[.20,.53,.82], strength:.10, panelWidth:155, seams:[.34,.68]}
+  };
+
   function canvasMap(width, height, draw) {
     const canvas = document.createElement('canvas');
     canvas.width = width;
@@ -63,6 +72,45 @@ const InteriorArtwork = (() => {
       gradient.addColorStop(1, 'transparent');
       g.fillStyle = gradient;
       g.fillRect(0, 0, width, height);
+    }
+  }
+
+  function studioWall(g, width, height, side) {
+    const finish = STUDIO_WALL_FINISH[side];
+    g.fillStyle = finish.tint;
+    g.globalAlpha = finish.lift;
+    g.fillRect(0, 0, width, height);
+    g.globalAlpha = 1;
+
+    for (const x of finish.pools) {
+      wash(g, width * x, height * .12, width * .27, height * .74, finish.light, finish.strength);
+    }
+    const falloff = g.createLinearGradient(0, 0, 0, height);
+    falloff.addColorStop(0, '#17141415');
+    falloff.addColorStop(.35, '#17141400');
+    falloff.addColorStop(.70, '#17141409');
+    falloff.addColorStop(1, '#19161550');
+    g.fillStyle = falloff;
+    g.fillRect(0, 0, width, height);
+    edgeShade(g, width, height, .065, .23);
+
+    const panel = finish.panelWidth;
+    for (let x = 0; x < width; x += panel) {
+      const bevel = g.createLinearGradient(x, 0, x + panel, 0);
+      bevel.addColorStop(0, '#14100fe0');
+      bevel.addColorStop(.021, '#f7eee719');
+      bevel.addColorStop(.065, '#ffffff00');
+      bevel.addColorStop(.92, '#ffffff00');
+      bevel.addColorStop(1, '#100e0e69');
+      g.fillStyle = bevel;
+      g.fillRect(x, 0, panel, height);
+    }
+    for (const seam of finish.seams) {
+      const y = Math.round(height * seam);
+      g.fillStyle = '#1816168c';
+      g.fillRect(0, y, width, 2);
+      g.fillStyle = '#e9e3dd23';
+      g.fillRect(0, y + 2, width, 1.4);
     }
   }
 
@@ -119,31 +167,23 @@ const InteriorArtwork = (() => {
         };
         tile(g, name, w, h, ...repeats[name]);
         if (name === 'wall') {
+          if (music) {
+            studioWall(g, w, h, side);
+            return;
+          }
           const light = g.createLinearGradient(0, 0, 0, h);
-          light.addColorStop(0, music ? '#110e0e19' : '#3444482e');
+          light.addColorStop(0, '#3444482e');
           light.addColorStop(.31, '#ffffff02');
           light.addColorStop(.72, '#ffffff02');
-          light.addColorStop(1, music ? '#140f0e45' : '#34444849');
+          light.addColorStop(1, '#34444849');
           g.fillStyle = light;
           g.fillRect(0, 0, w, h);
-          edgeShade(g, w, h, .09, music ? .31 : .12);
+          edgeShade(g, w, h, .09, .12);
           if (side === 'left' || side === 'right') {
-            g.fillStyle = music ? '#07050519' : '#45626112';
+            g.fillStyle = '#45626112';
             g.fillRect(0, 0, w, h);
           }
-          if (music) {
-            const panel = 96;
-            for (let x = 0; x < w; x += panel) {
-              const bevel = g.createLinearGradient(x, 0, x + panel, 0);
-              bevel.addColorStop(0, '#14100f');
-              bevel.addColorStop(.021, '#f8e9e107');
-              bevel.addColorStop(.055, '#fbefdb04');
-              bevel.addColorStop(.93, '#ffffff00');
-              bevel.addColorStop(1, '#100e0e6e');
-              g.fillStyle = bevel;
-              g.fillRect(x, 0, panel, h);
-            }
-          } else if (side === 'front') {
+          if (side === 'front') {
             wash(g, w * .20, h * .16, w * .18, h * .50, '#f5faff', .17);
             wash(g, w * .75, h * .13, w * .17, h * .50, '#f6f9ff', .22);
           }

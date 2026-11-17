@@ -179,13 +179,17 @@ const SchoolInterior = (() => {
       painted(artwork.surface('ceiling', w, d)));
     flat(scene, w, d, 0, 0, d/2, artwork.surface('floor', w, d));
 
-    const trim = standard(music ? '#3b3332' : '#8b8175');
+    const trim = standard(music ? '#5c5552' : '#8b8175');
     for (const x of [-w/2, w/2]) box(scene, .024, .075, d, x, .0375, d/2, trim);
     box(scene, w, .075, .024, 0, .0375, d, trim);
     box(scene, left + w/2, .075, .024, (left - w/2)/2, .0375, .013, trim);
     box(scene, w/2 - right, .075, .024, (right + w/2)/2, .0375, .013, trim);
 
     if (music) {
+      const cornerTrim = standard('#625d5b', .8);
+      for (const x of [-w/2 + .012, w/2 - .012]) {
+        for (const z of [.012, d - .012]) box(scene, .036, h, .036, x, h/2, z, cornerTrim);
+      }
       const slat = standard('#302a28', .88);
       for (let x = -5.15; x <= -2.52; x += .097) {
         rounded(scene, .044, 3.02, .036, x, 1.71, .039, slat, .007);
