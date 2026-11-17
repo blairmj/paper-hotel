@@ -49,9 +49,8 @@ function showExit(){
   byId('nextRoom').textContent=next?next.place+'로 이동':'음악실로 돌아가기';
 }
 function solve(){
-  if(run.solved||opening||countdown?.check())return;
+  if(run.solved||opening||countdown?.stop()===false)return;
   run.solved=true;save();close();opening=true;
-  countdown?.stop();
   byId('spots').inert=true;document.querySelector('.room-head').inert=true;
   world.facingDoor(()=>{
     opening=false;byId('spots').inert=false;document.querySelector('.room-head').inert=false;
@@ -92,7 +91,7 @@ function inventory(){
   modal('찾은 단서','<div class="collected-clues" id="collectedClues"></div>');
   for(const clue of room.clues.filter(clue=>run.found.includes(clue.id)))action(byId('collectedClues'),clue.name,()=>inspectClue(clue.id));
 }
-function hint(text){content.insertAdjacentHTML('beforeend','<details class="hint"><summary>힌트</summary><p>'+text+'</p></details>')}
+function hint(text){appendRoomTextHint(content,countdown,text)}
 function inspectLock(){
   if(run.solved)return;
   const answer=SCHOOL_ROOMS.find(r=>r.n===room.n).answer;

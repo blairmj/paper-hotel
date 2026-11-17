@@ -33,15 +33,22 @@ for(const kind of ['music','art'])test(kind+' keeps half the original floor area
 
 function timerHarness(){
  let now=1_000_000,expires=0;
- const values=new Map(),events={},labels=[],jobs=[];
- const element=()=>({dataset:{},className:'',innerHTML:'',textContent:'',setAttribute(){},classList:{toggle(){}},append(){},querySelector(){const label={textContent:''};labels.push(label);return label}});
+ const values=new Map(),events={},labels=[],jobs=[],badges=[];
+ const element=()=>({dataset:{},className:'',innerHTML:'',textContent:'',setAttribute(){},append(){}});
+ const timerBadge=()=>{
+  const badge=element(),classes=new Set();
+  badge.classList={toggle:(name,enabled)=>enabled?classes.add(name):classes.delete(name),contains:name=>classes.has(name)};
+  badge.querySelector=()=>{const label={textContent:''};labels.push(label);return label};
+  badges.push(badge);
+  return badge;
+ };
  const context=vm.createContext({
   Date:{now:()=>now},localStorage:{getItem:k=>values.get(k)??null,setItem:(k,v)=>values.set(k,v)},
-  document:{createElement:element,querySelector:()=>element(),addEventListener:(k,fn)=>events[k]=fn},
+  document:{createElement:timerBadge,querySelector:selector=>selector==='.hint-confirm[open]'?null:element(),addEventListener:(k,fn)=>events[k]=fn},
   window:{addEventListener:(k,fn)=>events[k]=fn},setInterval:()=>1,clearInterval(){},queueMicrotask:fn=>jobs.push(fn)
  });
  vm.runInContext(fs.readFileSync(path.join(root,'review-rooms.js'),'utf8')+'\nglobalThis.timerFactory=setupSchoolTimer;',context);
- return {advance:ms=>now+=ms,load:(solved=false)=>{const timer=context.timerFactory(203,{isSolved:()=>solved,onExpire:()=>expires++});while(jobs.length)jobs.shift()();return timer},get label(){return labels.at(-1).textContent},get expires(){return expires},events};
+ return {advance:ms=>now+=ms,load:(solved=false)=>{const timer=context.timerFactory(203,{isSolved:()=>solved,onExpire:()=>expires++});while(jobs.length)jobs.shift()();return timer},get label(){return labels.at(-1).textContent},get warning(){return badges.at(-1).classList.contains('running-low')},get expires(){return expires},events};
 }
 test('deadline survives reload and expiration fires exactly once',()=>{
  const h=timerHarness();h.load();assert.equal(h.label,'2:00');h.advance(60_000);
@@ -53,4 +60,28 @@ test('a successful escape freezes time and retry starts a new two-minute attempt
  const h=timerHarness(),timer=h.load();h.advance(32_000);assert.equal(timer.stop(),true);assert.equal(h.label,'1:28');
  h.advance(180_000);assert.equal(timer.check(),false);assert.equal(h.expires,0);assert.equal(h.label,'1:28');
  timer.reset();assert.equal(h.label,'2:00');h.advance(120_000);assert.equal(timer.check(),true);assert.equal(h.expires,1);
+});
+
+test('a hint shortens the saved deadline by ten seconds',()=>{
+ const h=timerHarness(),timer=h.load();h.advance(6_000);
+ assert.equal(timer.spendHint(),true);
+ assert.equal(h.label,'1:44');
+ h.advance(3_000);h.load();
+ assert.equal(h.label,'1:41');
+});
+
+test('the last-ten-seconds warning begins at 0:10 and ends when the room is solved',()=>{
+ const h=timerHarness(),timer=h.load();h.advance(109_999);timer.check();
+ assert.equal(h.label,'0:11');assert.equal(h.warning,false);
+ h.advance(1);timer.check();
+ assert.equal(h.label,'0:10');assert.equal(h.warning,true);
+ assert.equal(timer.stop(),true);assert.equal(h.warning,false);
+ assert.equal(timer.spendHint(),false);assert.equal(h.label,'0:10');
+});
+
+test('when a hint uses all the remaining time, expiration happens instead of revealing it',()=>{
+ const h=timerHarness(),timer=h.load();h.advance(111_000);
+ assert.equal(timer.spendHint(),false);assert.equal(h.label,'0:00');assert.equal(h.warning,false);
+ assert.equal(h.expires,1);assert.equal(timer.spendHint(),false);assert.equal(h.expires,1);
+ h.load();assert.equal(h.label,'0:00');
 });

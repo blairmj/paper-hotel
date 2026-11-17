@@ -64,7 +64,13 @@ dialog p{font-size:16px;line-height:1.5;margin:6px 0 12px;word-break:keep-all}
 .tabs button{display:flex;align-items:center;justify-content:center;gap:4px;min-width:0;min-height:48px;padding:4px;font-size:clamp(14px,1.4vw,18px)}
 .tabs svg{flex:none;width:clamp(22px,2.5vw,32px);height:auto}
 .tabs [aria-pressed=true]{background:#e5eef4;border-color:#7597ac;color:#214861}
-.actions:not(:empty){display:flex;justify-content:center;margin-top:12px}.hint{border-top:1px solid #dde2e6;margin-top:15px;padding-top:10px}.hint summary{font-size:13px;cursor:pointer;color:#475762}.hint p{margin-top:8px}
+.actions:not(:empty){display:flex;justify-content:center;margin-top:12px}.hint{border-top:1px solid #dde2e6;margin-top:15px;padding-top:10px}.hint button{min-height:44px}.hint p{margin:0}
+.hint-confirm{width:min(430px,calc(100vw - 32px))}
+.hint-confirm::backdrop{background:#18243032}
+.hint-confirm form{padding:var(--panel-padding);overflow:auto}
+.hint-confirm p{margin:0}
+.hint-confirm .actions{flex-direction:row;justify-content:flex-end;margin-top:18px}
+.hint-confirm .actions button{width:auto;min-width:74px;min-height:44px;font-size:15px}
 .switches{display:flex;align-items:center;justify-content:center;gap:14px;padding:16px;background:#e7ecef;border:1px solid #cdd5da;border-radius:5px}
 .digit{display:grid;justify-items:center;gap:5px}.digit small{display:none}
 .digit button{width:clamp(64px,8vw,80px);padding:3px;min-height:44px;font-size:18px}
@@ -94,7 +100,10 @@ dialog p{font-size:16px;line-height:1.5;margin:6px 0 12px;word-break:keep-all}
 .menu-icon svg{width:23px;height:23px}
 .room-timer{display:flex;align-items:center;justify-content:center;gap:8px;min-width:104px;height:40px;padding:7px 11px;border:1px solid #bdc6cc;border-radius:4px;background:#fafbfcf2;color:#27323b;font:650 22px/1 Consolas,monospace;font-variant-numeric:tabular-nums;white-space:nowrap}
 .room-timer svg{width:22px;height:22px}
-.room-timer.running-low{color:#9c352b}
+.room-timer.running-low,.room-timer[data-expired="true"]{color:#fff;background:#a62030;border-color:#8f1b29}
+.room-timer.running-low{animation:timer-warning 1s steps(1,end) infinite}
+@keyframes timer-warning{50%{color:#8f1b29;background:#fff0f0;border-color:#ba434e}}
+@media(prefers-reduced-motion:reduce){.room-timer.running-low{animation:none}}
 @media(max-width:450px){.school span{display:none}.room-head{gap:6px}.room-head .menu-icon{width:34px;height:36px;padding:6px}.room-timer{min-width:88px;height:36px;font-size:20px;gap:5px;padding:6px 8px}.room-timer svg{width:19px;height:19px}.room-location{gap:5px!important}.review-jump summary{padding:7px!important}}
 .clock-score{margin-top:14px}
 .clock-score summary{cursor:pointer;color:#235e55;font-weight:600;min-height:44px;padding:10px 0}

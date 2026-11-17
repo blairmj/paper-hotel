@@ -100,23 +100,35 @@ function clockPanel(){
       t.innerHTML=scoreHands(e,'currentColor')+e.value;t.setAttribute('aria-label',e.value+' 기록 겹치기');t.setAttribute('aria-pressed',String(i===example));
     });
   }
-  const a=row();
   if(visit.paper){
-    action(a,pair?'악보 걷기':'악보 겹치기',()=>{overlay=!overlay;if(overlay){visit.overlaid=true;storeVisit()}clockPanel()},true);
+    if(pair){
+      action(row(),'악보 걷기',()=>{
+        overlay=false;
+        clockPanel();
+        content.querySelector('[aria-haspopup="dialog"]')?.focus();
+      },true);
+    }else if(!visit.solved){
+      const hintButton=action(row(),'힌트 보기',()=>confirmRoomHint(countdown,()=>{
+        overlay=true;
+        example=0;
+        visit.overlaid=true;
+        storeVisit();
+        clockPanel();
+        byId('recordTabs').firstElementChild.focus();
+      }),true);
+      hintButton.setAttribute('aria-haspopup','dialog');
+    }
     const reference=document.createElement('details');
     reference.className='clock-score';
     reference.innerHTML='<summary>내 악보 보기</summary>'+sheet();
     content.append(reference);
   } else {
-    const missing=action(a,'악보 겹치기',()=>{});
-    missing.disabled=true;
-    action(a,'피아노 악보 보기',()=>{closePanel();world.lookAtPiano()});
+    action(row(),'피아노 악보 보기',()=>{closePanel();world.lookAtPiano()});
   }
 }
 function solve(){
-  if(opening||visit.solved||countdown?.check())return;
+  if(opening||visit.solved||countdown?.stop()===false)return;
   visit.solved=true;storeVisit();closePanel();opening=true;
-  countdown?.stop();
   byId('spots').inert=true;
   document.querySelector('.room-head').inert=true;
   world.facingDoor(()=>{
@@ -147,8 +159,9 @@ function inspectLock(){
     const out=document.createElement('output');out.setAttribute('aria-label',label);out.textContent=String(visit.digits[i]);outputs.push(out);wheel.append(out);
     action(wheel,'▼',()=>rotate(i,-1)).setAttribute('aria-label',label+' 내리기');
   }
-  content.insertAdjacentHTML('beforeend','<details class="hint"><summary>힌트</summary><p>'+(visit.overlaid?'악보에서 찾은 계산을 실제 바늘에도 적용해 보세요.':'피아노의 악보를 벽시계에 겹쳐 보세요.')+'</p></details>');
-
+  appendRoomTextHint(content,countdown,visit.overlaid
+    ? '악보에서 찾은 계산을 실제 바늘에도 적용해 보세요.'
+    : '피아노 악보의 두 바늘이 가리키는 수를 벽시계에서 확인해 보세요.');
 }
 function directory(){
   modal('학교 안내도','<div class="map-list" id="classList"></div>','map');

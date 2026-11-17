@@ -54,6 +54,49 @@ function setupReviewNavigation(number){
   }
 }
 
+function confirmRoomHint(timer, reveal){
+  if(!timer || timer.check())return;
+
+  const prompt=document.createElement('dialog');
+  prompt.className='hint-confirm';
+  prompt.setAttribute('role','alertdialog');
+  prompt.setAttribute('aria-label','힌트 확인');
+  prompt.setAttribute('aria-describedby','hintCostMessage');
+  prompt.innerHTML=`
+    <form method="dialog">
+      <p id="hintCostMessage">힌트를 보면 시간이 10초 줄어듭니다. 그래도 보시겠습니까?</p>
+      <div class="actions">
+        <button value="cancel" autofocus>취소</button>
+        <button value="confirm" class="primary">확인</button>
+      </div>
+    </form>`;
+  prompt.addEventListener('close',()=>{
+    const confirmed=prompt.returnValue==='confirm';
+    prompt.remove();
+    if(confirmed && timer.spendHint())reveal();
+  },{once:true});
+  document.body.append(prompt);
+  prompt.showModal();
+}
+
+function appendRoomTextHint(host,timer,text){
+  const hint=document.createElement('div');
+  hint.className='hint';
+  const trigger=document.createElement('button');
+  trigger.type='button';
+  trigger.textContent='힌트 보기';
+  trigger.setAttribute('aria-haspopup','dialog');
+  trigger.onclick=()=>confirmRoomHint(timer,()=>{
+    const message=document.createElement('p');
+    message.textContent=text;
+    message.tabIndex=-1;
+    hint.replaceChildren(message);
+    message.focus({preventScroll:true});
+  });
+  hint.append(trigger);
+  host.append(hint);
+}
+
 function setupSchoolTimer(number,{isSolved,onExpire}){
   const duration=120000,key='paperhotel.explore.v1',saved=readSchoolBook().visits[number]?.escapeTimer;
   let deadline=Number.isFinite(saved?.deadline)?saved.deadline:Date.now()+duration;
@@ -68,12 +111,20 @@ function setupSchoolTimer(number,{isSolved,onExpire}){
   }
   function render(){
     const seconds=Math.max(0,Math.ceil(remaining/1000));text.textContent=Math.floor(seconds/60)+':'+String(seconds%60).padStart(2,'0');
-    badge.dataset.expired=String(expired);badge.classList.toggle('running-low',!stopped&&seconds<=20);
+    badge.dataset.expired=String(expired);badge.classList.toggle('running-low',!stopped&&seconds>0&&seconds<=10);
   }
   function check(){
     if(stopped)return false;
-    remaining=Math.max(0,deadline-Date.now());render();
-    if(remaining===0&&!expired){expired=true;save();render();onExpire()}
+    remaining=Math.max(0,deadline-Date.now());
+    if(remaining===0&&!expired){
+      expired=true;
+      save();
+      render();
+      document.querySelector('.hint-confirm[open]')?.close('cancel');
+      onExpire();
+    }else{
+      render();
+    }
     return expired;
   }
   let tick=setInterval(check,200);
@@ -82,7 +133,14 @@ function setupSchoolTimer(number,{isSolved,onExpire}){
   save();render();queueMicrotask(check);
   return {
     get expired(){return expired||(!stopped&&Date.now()>=deadline)},check,
-    stop(){if(check())return false;remaining=Math.max(0,deadline-Date.now());stopped=true;save();render();return true},
+    spendHint(){
+      if(stopped||check())return false;
+      deadline-=10_000;
+      if(check())return false;
+      save();
+      return true;
+    },
+    stop(){if(check())return false;stopped=true;save();render();return true},
     reset(){deadline=Date.now()+duration;remaining=duration;expired=false;stopped=false;save();render()}
   };
 }
