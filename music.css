@@ -25,22 +25,14 @@ dialog p{font-size:15px;line-height:1.5;margin:6px 0 12px;word-break:keep-all}.c
 @media(max-width:600px){.room-head,.room-foot{padding:12px}.movement button{height:44px}#escape{display:grid;text-align:center;gap:8px}}
 .sr-only{position:absolute;width:1px;height:1px;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
 #escape{bottom:clamp(12px,2vw,24px);background:transparent;border:0;padding:0;box-shadow:none}
-.zoom-tools{position:absolute;right:clamp(12px,2.2vw,29px);display:flex;pointer-events:auto;border:1px solid #bbc5cb;border-radius:5px;background:#fafbfcf2;overflow:hidden;box-shadow:0 2px 8px #20293623}
-.zoom-tools button{border:0;border-radius:0;background:transparent;width:42px;height:40px;padding:0;font:22px/1 Arial,sans-serif}
-.zoom-tools button+button{border-left:1px solid #d2d7db}
-.zoom-tools button:disabled{color:#aeb6ba;cursor:default}
 .spot::before{content:'';width:12px;height:12px;background:#fff;border:3px solid #50666b;box-shadow:0 0 0 2px #fff,0 1px 6px #142d3966}
-@media(max-width:600px){.zoom-tools button{height:44px;width:40px}}
-@media(max-width:350px){.room-foot{justify-content:flex-start}}
-.zoom-tools{align-items:center}
-.zoom-tools output{min-width:3.2em;text-align:center;color:#344049;font:500 12px/1 system-ui;font-variant-numeric:tabular-nums}
-.zoom-tools button{width:44px;height:44px}
+@media(max-width:350px){.room-foot{justify-content:center}}
 .spot{width:44px;height:44px}
 .design-preview .spot::before,.design-preview .spot span{display:none}
 .design-preview .spot:focus-visible{outline-offset:0}
 .design-preview .spot{border-radius:3px}
 .design-preview .clue-sheet{background:linear-gradient(135deg,#fafaf2,#eeeee3);border:1px solid #d8d8cb;box-shadow:inset -4px -3px 7px #d8d9ca}
-@media(max-width:450px){.room-foot{justify-content:flex-start}.movement button{min-width:41px}#escape{bottom:72px}}
+@media(max-width:450px){.room-foot{justify-content:center}.movement button{min-width:41px}#escape{bottom:72px}}
 
 .actions{flex-direction:column;align-items:center;gap:7px}
 .actions button{width:100%;min-height:46px;font-size:16px;font-weight:650}
@@ -49,6 +41,9 @@ dialog p{font-size:15px;line-height:1.5;margin:6px 0 12px;word-break:keep-all}.c
 .actions button:disabled{color:#55625e;background:#edf1ed;border-color:#c5cec8;cursor:default}
 .actions small{font-size:12px;color:#52615a}
 #bag{border-left:4px solid #2a7060}
+.clock-score{margin-top:14px}
+.clock-score summary{cursor:pointer;color:#235e55;font-weight:600;padding:6px 0}
+.clock-score[open] .clue-sheet{margin-top:5px}
 .spot::before{display:none}
 .spot span,.spot[data-object=lock] span{opacity:0}
 .spot:hover span,.spot:focus-visible span{display:block;opacity:1}

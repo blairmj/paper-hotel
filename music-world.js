@@ -61,20 +61,8 @@ async function createMusicWorld({onInspect,onReadyToMove}){
     return {...o,point:new THREE.Vector3(...o.xyz),surface,button};
   });
   const stopPoints=paintedRoom.stops;
-  let paperCollected=false;
-  let width=1,height=1,yaw=0,pitch=0,openness=0,zoom=1,journey,trail,drag,raf=0,previousTime=0;
+  let width=1,height=1,yaw=0,pitch=0,openness=0,journey,trail,drag,raf=0,previousTime=0;
   const clamp=THREE.MathUtils.clamp, wrap=angle=>Math.atan2(Math.sin(angle),Math.cos(angle));
-  const minZoom=.5,maxZoom=3,zoomStep=1.4;
-  const zoomIn=document.getElementById('zoomIn'),zoomOut=document.getElementById('zoomOut');
-  function setZoom(value){
-    zoom=clamp(value,minZoom,maxZoom);
-    camera.zoom=zoom;
-    camera.updateProjectionMatrix();
-    document.getElementById('zoomValue').textContent=Number(zoom.toFixed(2))+'×';
-    zoomOut.disabled=zoom<=minZoom;
-    zoomIn.disabled=zoom>=maxZoom;
-    queue();
-  }
   function heading(position){return Math.atan2(position[0]-eye.x,eye.z-position[2])}
   function tilt(position){return Math.atan2(position[1]-eye.y,Math.hypot(position[0]-eye.x,position[2]-eye.z))}
   function resize(){
@@ -88,12 +76,12 @@ async function createMusicWorld({onInspect,onReadyToMove}){
     camera.rotation.set(pitch,-yaw,0,'YXZ');camera.updateMatrixWorld();
     model.updateViews(eye);
     if(renderer)renderer.render(scene,camera);
-    else photos.draw(height/(2*Math.tan(camera.fov*Math.PI/360))*zoom,yaw,pitch,eye);
+    else photos.draw(height/(2*Math.tan(camera.fov*Math.PI/360)),yaw,pitch,eye);
     for(const target of targets){
       point.copy(target.point);
       const v=point.project(camera),px=width*(1+v.x)/2,py=height*(1-v.y)/2;
       const b=target.button;
-      b.hidden=(target.id==='paper'&&paperCollected)||v.z<0||v.z>=1||px<20||px>width-20||py<55||py>height-56||!!journey||openness===1;
+      b.hidden=v.z<0||v.z>=1||px<20||px>width-20||py<55||py>height-56||!!journey||(openness===1&&target.id==='lock');
       target.px=px;target.py=py;
       if(b.hidden)continue;
       let halfWidth=0,halfHeight=0;
@@ -166,7 +154,6 @@ async function createMusicWorld({onInspect,onReadyToMove}){
       const aim=1-(1-clamp(t/(j.door ? .42 : 1),0,1))**3;
       yaw=wrap(j.from+wrap(j.to-j.from)*aim);pitch=j.p+(j.targetPitch-j.p)*aim;
       if(j.door){
-        if(zoom!==1)setZoom(j.startZoom+(1-j.startZoom)*aim);
         const slide=clamp((t-.28)/.68,0,1);
         openness=slide*slide*(3-2*slide);
         model?.setDoor(openness);
@@ -184,7 +171,7 @@ async function createMusicWorld({onInspect,onReadyToMove}){
   function look(target,door=false,done){
     trail=null;
     const reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
-    journey={from:yaw,p:pitch,to:heading(target),targetPitch:tilt(target),door,done,startZoom:zoom,start:performance.now(),duration:reduced?1:door?1200:280};
+    journey={from:yaw,p:pitch,to:heading(target),targetPitch:tilt(target),door,done,start:performance.now(),duration:reduced?1:door?1200:280};
     queue();
   }
   function turn(direction){
@@ -220,25 +207,16 @@ async function createMusicWorld({onInspect,onReadyToMove}){
   });
   document.addEventListener('keyup',e=>keys.delete(e.key.toLowerCase()));
   window.addEventListener('blur',clearKeys);
-  function canZoom(){return onReadyToMove()&&!journey?.door}
-  zoomIn.onclick=()=>{if(canZoom())setZoom(zoom*zoomStep)};
-  zoomOut.onclick=()=>{if(canZoom())setZoom(zoom/zoomStep)};
-  document.getElementById('musicGame').addEventListener('wheel',e=>{
-    if(!canZoom()||e.ctrlKey||e.metaKey)return;
-    e.preventDefault();
-    const pixels=e.deltaY*(e.deltaMode===1?16:e.deltaMode===2?height:1);
-    setZoom(zoom*Math.exp(-clamp(pixels,-240,240)*.0024));
-  },{passive:false});
   document.getElementById('left').onclick=()=>turn(-1);
   document.getElementById('right').onclick=()=>turn(1);
   document.getElementById('walk').onclick=()=>{if(onReadyToMove()&&!journey?.door){trail=null;move(.36,0);queue()}};
   new ResizeObserver(resize).observe(canvas);resize();
   return {
-    clearKeys,setPaperCollected(value){paperCollected=value;model.setPaperCollected(value);queue()},
+    clearKeys, lookAtPiano(){inspectTarget('paper')},
     setDigits(digits){model.setDigits(digits);queue()},
     facingDoor(done){clearKeys();look(paintedRoom.door,true,done)},
     reset(open=false,digits=[0,0]){
-      clearKeys();journey=null;setZoom(1);
+      clearKeys();journey=null;
       eye.fromArray(paintedRoom.start);openness=open?1:0;
       const initial=open?paintedRoom.door:(width/height<.85?paintedRoom.portraitView:paintedRoom.firstView);
       yaw=heading(initial);pitch=tilt(initial);

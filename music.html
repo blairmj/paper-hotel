@@ -6,24 +6,20 @@
   <meta name="theme-color" content="#f4f6f7">
   <title>멈춘 벽시계 · 음악실 | 학교 탈출</title>
   <link rel="icon" href="data:,">
-  <link rel="stylesheet" href="music.css?v=rehearsal7">
+  <link rel="stylesheet" href="music.css?v=score8">
 </head>
 <body>
   <main id="musicGame" aria-label="학교 탈출 203호 음악실">
     <canvas id="roomView" tabindex="0" aria-label="음악실 내부. 바닥을 눌러 이동하고 화면을 끌어 둘러보세요."></canvas>
     <header class="room-head">
       <strong class="school"><span>203</span> 음악실</strong>
-      <nav aria-label="메뉴"><button id="bag" hidden>악보</button><button id="map">안내도</button></nav>
+      <nav aria-label="메뉴"><button id="bag" hidden>내 악보</button><button id="map">안내도</button></nav>
     </header>
     <div id="spots" aria-label="조사할 물건"></div>
     <footer class="room-foot"><div class="movement" aria-label="이동">
       <button id="left" aria-label="왼쪽 보기">‹</button><button id="walk" aria-label="한 걸음 앞으로">↑</button><button id="right" aria-label="오른쪽 보기">›</button>
     </div>
-    <div id="zoomTools" class="zoom-tools" role="group" aria-label="화면 배율">
-      <button type="button" id="zoomOut" disabled title="축소" aria-label="축소">−</button>
-      <output id="zoomValue" aria-label="현재 화면 배율">1×</output>
-      <button type="button" id="zoomIn" disabled title="확대" aria-label="확대">＋</button>
-    </div></footer>
+    </footer>
     <section id="escape" hidden aria-label="음악실 탈출 완료">
       <span class="sr-only" role="status">음악실 문이 열렸어요.</span><div><a class="main-button" id="nextRoom" href="index.html?room=204">다음 교실로</a><button id="replay">다시 풀기</button></div>
     </section>
@@ -33,5 +29,5 @@
     </dialog>
     <noscript>음악실에서 물건을 조사하려면 브라우저의 자바스크립트를 켜 주세요.</noscript>
   </main>
-  <script src="three.min.js"></script><script src="rooms.js"></script><script src="music-ensemble.js?v=rehearsal7"></script><script src="music-art.js?v=rehearsal7"></script><script src="music-world.js?v=rehearsal7"></script><script src="music.js?v=rehearsal7"></script>
+  <script src="three.min.js"></script><script src="rooms.js?v=score8"></script><script src="music-ensemble.js?v=score8"></script><script src="music-art.js?v=score8"></script><script src="music-world.js?v=score8"></script><script src="music.js?v=score8"></script>
 </body></html>

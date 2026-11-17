@@ -2,7 +2,6 @@
 
 // Pixel locations on the hand-finished front illustration. Keep the scene art and
 // its interactive objects registered even when the player walks or changes lens.
-const musicDesignPreview = new URLSearchParams(location.search).get('preview') === 'music-room';
 document.body.classList.add('design-preview');
 const paintedRoom = (() => {
   const eyeHeight = 1.55;
@@ -36,6 +35,11 @@ async function studioImage(name) {
   return image;
 }
 
+function clockPoint(mark,length,center=0){
+  const angle=(mark%12)*Math.PI/6;
+  return [center+length*Math.sin(angle),center-length*Math.cos(angle)];
+}
+
 function clockArtwork() {
   const image = document.createElement('canvas');
   image.width=image.height=320;
@@ -56,8 +60,9 @@ function clockArtwork() {
     if(i%5===0)g.fillText(i===0?12:i/5,104*Math.sin(a),-104*Math.cos(a)+1);
   }
   g.strokeStyle='#363a34';g.lineCap='round';
-  for(const [length,weight] of [[-91,5],[71,7]]){
-    g.lineWidth=weight;g.beginPath();g.moveTo(0,0);g.lineTo(0,length);g.stroke();
+  for(const [mark,length,weight] of [[MUSIC_CLOCK.minuteMark,91,5],[MUSIC_CLOCK.hour,71,7]]){
+    const [x,y]=clockPoint(mark,length);
+    g.lineWidth=weight;g.beginPath();g.moveTo(0,0);g.lineTo(x,y);g.stroke();
   }
   g.fillStyle='#74634e';g.beginPath();g.arc(0,0,5.5,0,2*Math.PI);g.fill();
   {
@@ -175,7 +180,7 @@ async function buildPaintedRoom(scene) {
   }
   place(paintedRoom.clock,clockArtwork());
   const dial=place(paintedRoom.lock,dialArtwork([0,0]));
-  const paper=place({center:paintedRoom.targets[2].xyz,width:.75,height:.44},tracingPaper());
+  place({center:paintedRoom.targets[2].xyz,width:.75,height:.44},tracingPaper());
 
   // The skirting in the front elevation is rectified to floor level. Match
   // the photographed inner lintel with the alpha edge of the hinged leaf.
@@ -195,7 +200,6 @@ async function buildPaintedRoom(scene) {
   hinge.add(edge);edge.position.set(-leafWidth+.001,(topWorld-.055)/2,-.016);edge.rotation.y=Math.PI/2;
   return {
     updateViews,
-    setPaperCollected(value){paper.visible=!value},
     setDoor(amount){hinge.rotation.y=1.46*amount},
     setDigits(values){dial.material.map.image=dialArtwork(values);dial.material.map.needsUpdate=true}
   };

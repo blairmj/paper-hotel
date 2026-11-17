@@ -1,25 +1,41 @@
 'use strict';
 const byId=id=>document.getElementById(id);
 const dialog=byId('inspect'),content=byId('panelBody'),closeButton=byId('dismiss');
-const saveKey=musicDesignPreview?'paperhotel.musicroom.preview.v2':'paperhotel.explore.v1';
+const saveKey='paperhotel.explore.v1';
+// Bookmarked previews and old cache-busting links now open this same room.
+if(location.search || location.hash)history.replaceState(null,'',location.pathname);
 const examples=[
   {a:9,b:6,value:54,shape:'┐'},{a:12,b:3,value:36,shape:'└'},
   {a:3,b:6,value:18,shape:'┌'},{a:9,b:12,value:108,shape:'┘'}
 ];
-function readBook(){
-  try{const book=JSON.parse(localStorage.getItem(saveKey));if(book&&typeof book.visits==='object'&&book.visits)return book}catch{}
+function readBook(key=saveKey){
+  try{const book=JSON.parse(localStorage.getItem(key));if(book&&typeof book.visits==='object'&&book.visits)return book}catch{}
   return {room:203,visits:{}};
 }
-function newVisit(){return {paper:false,overlaid:false,solved:false,digits:[0,0]}}
+function newVisit(){return {singleScoreSave:true,paper:false,overlaid:false,solved:false,digits:[0,0]}}
 let visit=newVisit();
-const saved=readBook().visits[203]?.clockPuzzle;
-if(saved && typeof saved==='object'){
-  visit.paper=saved.paper===true;visit.overlaid=visit.paper&&saved.overlaid===true;visit.solved=saved.solved===true;
-  if(Array.isArray(saved.digits)&&saved.digits.length===2&&saved.digits.every(n=>Number.isInteger(n)&&n>=0&&n<=9))visit.digits=saved.digits.slice();
+const current=readBook().visits[203]?.clockPuzzle;
+const previews=current?.singleScoreSave?[]:['paperhotel.musicroom.preview.v2','paperhotel.musicroom.preview.v1']
+  .map(key=>readBook(key).visits[203]?.clockPuzzle).filter(Boolean);
+const saved=current||previews[0];
+if(saved){
+  const previous=[saved,...previews];
+  visit.paper=previous.some(run=>run.paper===true || run.overlaid===true);
+  visit.overlaid=previous.some(run=>run.overlaid===true);
+  visit.solved=saved.solved===true;
+  if(visit.solved){
+    visit.digits=Array.from(SCHOOL_ROOMS[0].answer,Number);
+  }else if(Array.isArray(saved.digits)&&saved.digits.length===2&&saved.digits.every(n=>Number.isInteger(n)&&n>=0&&n<=9)){
+    visit.digits=saved.digits.slice();
+  }
 }
 let world,opening=false,overlay=false,example=0;
 function storeVisit(restart=false){
   const book=readBook(),old=book.visits[203]||{};
+  if(!restart && old.clockPuzzle?.paper){
+    visit.paper=true;
+    visit.overlaid ||= old.clockPuzzle.overlaid===true;
+  }
   book.room=203;
   book.visits[203]={found:[],tests:[],...old,clockPuzzle:visit,
     solved:!!((!restart&&old.solved)||visit.solved),escaped:!!((!restart&&old.escaped)||visit.solved)};
@@ -38,12 +54,8 @@ function action(host,text,fn,primary=false){
   const b=document.createElement('button');b.type='button';b.textContent=text;if(primary)b.className='primary';b.onclick=fn;host.append(b);return b;
 }
 function row(){const div=document.createElement('div');div.className='actions';content.append(div);return div}
-function point(n,length,center=50){
-  const angle=(n%12)*Math.PI/6;
-  return [center+Math.sin(angle)*length,center-Math.cos(angle)*length];
-}
 function hand(a,b,center,radius,stroke,width){
-  const [ax,ay]=point(a,radius,center),[bx,by]=point(b,radius,center);
+  const [ax,ay]=clockPoint(a,radius,center),[bx,by]=clockPoint(b,radius,center);
   return '<path d="M'+ax+' '+ay+'L'+center+' '+center+'L'+bx+' '+by+'" fill="none" stroke="'+stroke+'" stroke-width="'+width+'" stroke-linecap="round" stroke-linejoin="round"/>';
 }
 function corner(pair,color='#3a657e'){
@@ -60,21 +72,23 @@ function inspectPaper(){
       visit.paper=true;
       storeVisit();
       byId('bag').hidden=false;
-      world.setPaperCollected(true);
       closePanel();
       byId('bag').focus({preventScroll:true});
     },true);
   }
 }
 function clockDrawing(pair){
-  let s='<svg class="clock-face" viewBox="0 0 200 200" role="img" aria-label="'+(pair?'악보 선의 두 끝이 가리키는 수: '+pair.a+', '+pair.b:'시곗바늘은 12와 6을 가리킵니다.')+'"><circle cx="100" cy="100" r="95" fill="#3b4750"/><circle cx="100" cy="100" r="88" fill="#fbfcfc"/>';
+  let s='<svg class="clock-face" viewBox="0 0 200 200" role="img" aria-label="'+(pair?'악보 선의 두 끝이 가리키는 수: '+pair.a+', '+pair.b:'긴 바늘은 '+MUSIC_CLOCK.minuteMark+', 짧은 바늘은 '+MUSIC_CLOCK.hour+'를 가리킵니다.')+'"><circle cx="100" cy="100" r="95" fill="#3b4750"/><circle cx="100" cy="100" r="88" fill="#fbfcfc"/>';
   for(let n=1;n<=12;n++){
-    const [x,y]=point(n,72,100),lit=pair&&(n===pair.a||n===pair.b);
+    const [x,y]=clockPoint(n,72,100),lit=pair&&(n===pair.a||n===pair.b);
     if(lit)s+='<circle cx="'+x+'" cy="'+y+'" r="12" fill="#497593"/>';
     s+='<text x="'+x+'" y="'+(y+5.4)+'" text-anchor="middle" font-family="Georgia,serif" font-size="16" fill="'+(lit?'#ffffff':'#2f3740')+'">'+n+'</text>';
   }
   const opacity=pair?'.23':'1';
-  s+='<g opacity="'+opacity+'"><path d="M100 100V44" stroke="#25323b" stroke-width="4" stroke-linecap="round"/><path d="M100 100v43" stroke="#25323b" stroke-width="6" stroke-linecap="round"/></g>';
+  for(const [mark,length,width] of [[MUSIC_CLOCK.minuteMark,56,4],[MUSIC_CLOCK.hour,43,6]]){
+    const [x,y]=clockPoint(mark,length,100);
+    s+='<path opacity="'+opacity+'" d="M100 100L'+x+' '+y+'" stroke="#25323b" stroke-width="'+width+'" stroke-linecap="round"/>';
+  }
   if(pair)s+='<g class="film"><rect x="21" y="21" width="158" height="158" rx="5" fill="#cfe1ef" fill-opacity=".13" stroke="#819dac" stroke-dasharray="3 3"/>'+hand(pair.a,pair.b,100,57,'#436f8c',4)+'</g>';
   return s+'<circle cx="100" cy="100" r="4.5" fill="#293941"/></svg>';
 }
@@ -91,12 +105,14 @@ function clockPanel(){
   const a=row();
   if(visit.paper){
     action(a,pair?'악보 걷기':'악보 겹치기',()=>{overlay=!overlay;if(overlay){visit.overlaid=true;storeVisit()}clockPanel()},true);
+    const reference=document.createElement('details');
+    reference.className='clock-score';
+    reference.innerHTML='<summary>내 악보 보기</summary>'+sheet();
+    content.append(reference);
   } else {
     const missing=action(a,'악보 겹치기',()=>{});
     missing.disabled=true;
-    const note=document.createElement('small');
-    note.textContent='피아노에서 악보를 얻으면 사용할 수 있어요.';
-    a.append(note);
+    action(a,'피아노 악보 보기',()=>{closePanel();world.lookAtPiano()});
   }
 }
 function solve(){
@@ -105,13 +121,12 @@ function solve(){
   byId('spots').inert=true;
   document.querySelector('.room-head').inert=true;
   world.facingDoor(()=>{
-    opening=false;document.querySelector('.room-head').inert=false;
+    opening=false;byId('spots').inert=false;document.querySelector('.room-head').inert=false;
     showExit();byId('nextRoom').focus({preventScroll:true});
   });
 }
 function showExit(){
   document.querySelector('.movement').hidden=true;
-  byId('zoomTools').hidden=false;
   byId('escape').hidden=false;
 }
 function inspectLock(){
@@ -156,23 +171,22 @@ byId('replay').onclick=()=>{
   visit=newVisit();overlay=false;example=0;opening=false;
   byId('escape').hidden=true;byId('spots').inert=false;byId('bag').hidden=true;
   document.querySelector('.movement').hidden=false;
-  byId('zoomTools').hidden=false;
-  world.setPaperCollected(false);world.reset();storeVisit(true);
+  world.reset();storeVisit(true);
 };
 function failed(){
   modal('음악실을 열지 못했어요.','');
   action(row(),'다시 열기',()=>location.reload(),true);
 }
 createMusicWorld({
-  onInspect:id=>{if(!opening&&!visit.solved){if(id==='paper')inspectPaper();if(id==='clock'){overlay=false;clockPanel()}if(id==='lock')inspectLock()}},
+  onInspect:id=>{if(!opening){if(id==='paper')inspectPaper();if(id==='clock'){overlay=false;clockPanel()}if(id==='lock'&&!visit.solved)inspectLock()}},
   onReadyToMove:()=>!dialog.open&&!opening,
   onError:failed
 }).then(w=>{
   if(!w)return;
-  world=w;byId('bag').hidden=!visit.paper;world.setPaperCollected(visit.paper);world.reset(visit.solved,visit.digits);storeVisit();
+  world=w;byId('bag').hidden=!visit.paper;world.reset(visit.solved,visit.digits);storeVisit();
   const next=SCHOOL_ROOMS.slice(1).find(r=>!readBook().visits[r.n]?.escaped);
   if(next){byId('nextRoom').href='index.html?room='+next.n;byId('nextRoom').textContent=next.place+'로 이동'}
   else{byId('nextRoom').textContent='학교 안내도';byId('nextRoom').onclick=e=>{e.preventDefault();directory()}}
-  if(visit.solved){showExit();byId('spots').inert=true}
+  if(visit.solved)showExit()
 
 }).catch(failed);
