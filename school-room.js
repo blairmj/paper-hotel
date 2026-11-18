@@ -10,27 +10,29 @@ const book=()=>readSchoolBook(bookKey);
 const byId=id=>document.getElementById(id),dialog=byId('inspect'),content=byId('panelBody');
 const roomHead=document.querySelector('.room-head'),movement=document.querySelector('.movement');
 const saved=book().visits[room.n]?.restoration;
-const sequenceLabel=key=>STAMPS[key]?.label??RESET_KEYS[key];
-const sequenceGlyph=key=>STAMPS[key]?.glyph??RESET_GLYPHS[key];
+const outdated=saved?.revision!==puzzle.revision;
 
 function newRun(){
-  const entry=puzzle.control==='sequence'?[]:Array(puzzle.answer.length).fill(puzzle.control==='dial'?'0':'');
-  return {found:[],entry,solved:false};
+  const entry=puzzle.control==='sequence'?[]:Array(puzzle.answer.length).fill(puzzle.control==='routing'?'':'0');
+  return {revision:puzzle.revision,found:[],entry,solved:false};
 }
 let run=newRun(),world,countdown,opening=false,finished=false;
-if(saved){
+if(saved&&!outdated){
   run.found=Array.isArray(saved.found)?saved.found.filter(id=>room.clues.some(clue=>clue.id===id)):[];
   if(Array.isArray(saved.entry)){
     if(puzzle.control==='sequence')run.entry=saved.entry.filter(key=>puzzle.keys.includes(key)).slice(0,puzzle.answer.length);
     else run.entry=run.entry.map((value,i)=>{
       const stored=saved.entry[i];
-      const valid=puzzle.control==='dial'?typeof stored==='string'&&/^\d$/.test(stored):Object.hasOwn(ROUTE_NAMES,stored);
+      let valid;
+      if(puzzle.control==='selection')valid=stored==='0'||stored==='1';
+      else if(puzzle.control==='dial')valid=typeof stored==='string'&&/^\d$/.test(stored);
+      else valid=Object.hasOwn(ROUTE_NAMES,stored);
       return valid?stored:value;
     });
   }
-  run.solved=saved.solved===true;
-  if(run.solved)run.entry=puzzle.answer.slice();
 }
+run.solved=saved?.solved===true&&(!outdated||story);
+if(run.solved)run.entry=puzzle.answer.slice();
 
 function save(){
   const next=book(),visit=next.visits[room.n];
@@ -107,13 +109,6 @@ function scoreSheet(){
   return '<div class="number-score" aria-label="악보에 적힌 건반 번호">'+
     MUSIC_KEYS.map(number=>'<span><b aria-hidden="true">♩</b>'+number+'</span>').join('')+'</div>';
 }
-function stampMark(shape){
-  return '<span class="stamp-mark" style="--ink:'+STAMPS[shape].color+'" aria-hidden="true">'+sequenceGlyph(shape)+'</span>';
-}
-function stampTray(){
-  return '<div class="stamp-tray">'+puzzle.keys.map(shape=>'<span class="stamp-swatch">'+stampMark(shape)+
-    '<span>'+STAMPS[shape].label+'</span></span>').join('')+'</div>';
-}
 function signalRecords(){
   const fields=Object.keys(SIGNAL_FIELDS);
   return '<table class="record-table"><thead><tr><th scope="col">신호</th>'+
@@ -155,7 +150,6 @@ function inspectClue(id){
   byId('bag').hidden=false;
   switch(id){
     case 'paper':modal(clue.name,scoreSheet());break;
-    case 'stamps':modal(clue.name,stampTray());break;
     case 'recordA':modal(clue.name,signalRecords());break;
     case 'ballLine':
       modal(clue.name,'<p class="object-note">공을 하나 뺄 때마다 <strong>뺀 공을 제외하고 배열에서 움직인 공의 개수</strong>를 구하세요.</p>'+
@@ -176,21 +170,35 @@ function sequencePanel(){
   modal(puzzle.title,'<div class="sequence-output" id="sequenceOutput" aria-label="입력한 순서"></div>'+
     '<div class="sequence-keys" id="sequenceKeys"></div><p class="readout" id="entryFeedback" role="status"></p>','lock');
   function draw(){
-    const steps=puzzle.answer.map((_,i)=>'<span>'+
-      (run.entry[i]?(room.kind==='art'?stampMark(run.entry[i]):sequenceGlyph(run.entry[i])):'·')+'</span>');
+    const steps=puzzle.answer.map((_,i)=>'<span>'+(RESET_GLYPHS[run.entry[i]]??'·')+'</span>');
     byId('sequenceOutput').innerHTML=steps.join('');
     byId('entryFeedback').textContent=run.entry.length===puzzle.answer.length&&!correct()?'순서를 다시 확인해 보세요.':'';
   }
   for(const key of puzzle.keys){
-    const label=sequenceLabel(key);
+    const label=RESET_KEYS[key];
     const button=action(byId('sequenceKeys'),label,()=>{
       if(run.entry.length>=puzzle.answer.length)return;
       run.entry.push(key);draw();changed();
     });
-    button.innerHTML=(room.kind==='art'?stampMark(key):'<b aria-hidden="true">'+sequenceGlyph(key)+'</b>')+'<span>'+label+'</span>';
+    button.innerHTML='<b aria-hidden="true">'+RESET_GLYPHS[key]+'</b><span>'+label+'</span>';
   }
   action(actions(),'한 단계 지우기',()=>{run.entry.pop();draw();changed()});
   draw();
+}
+
+function selectionPanel(){
+  modal(puzzle.title,'<p class="object-note">인쇄할 도안의 버튼을 켜세요.</p>'+
+    '<div class="print-keys" id="printKeys" aria-label="인쇄할 도안"></div>','lock');
+  const keys=byId('printKeys');
+  for(const [i,{label}] of PRINT_SAMPLES.entries()){
+    const button=action(keys,label,()=>{
+      run.entry[i]=run.entry[i]==='1'?'0':'1';
+      button.setAttribute('aria-pressed',String(run.entry[i]==='1'));
+      changed();
+    });
+    button.setAttribute('aria-label','도안 '+label);
+    button.setAttribute('aria-pressed',String(run.entry[i]==='1'));
+  }
 }
 
 function dial(host,i) {
@@ -247,7 +255,7 @@ function routingPanel(){
 }
 function inspectLock(){
   if(run.solved||!countdown||countdown.check())return;
-  const panels={sequence:sequencePanel,dial:dialPanel,routing:routingPanel};
+  const panels={sequence:sequencePanel,selection:selectionPanel,dial:dialPanel,routing:routingPanel};
   panels[puzzle.control]();
   appendRoomTextHint(content,countdown,puzzle.hint);
 }
@@ -291,6 +299,10 @@ function start(){
   if(story&&(stage>nextStage||(stage===0&&nextStage>0))){
     location.replace(recoveryRoomLink(next,true));
     return;
+  }
+  if(outdated&&!run.solved){
+    progress.visits[room.n]={restoration:run};
+    writeSchoolBook(bookKey,progress);
   }
   byId('dismiss').onclick=close;byId('bag').onclick=inventory;byId('map').onclick=directory;
   byId('replay').onclick=restart;

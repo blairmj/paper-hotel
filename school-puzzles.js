@@ -17,12 +17,15 @@ function encodeMusic(values) {
 }
 const MUSIC_CONVERTED = encodeMusic(MUSIC_KEYS);
 
-const STAMPS = {
-  circle:{label:'원',color:'#499694',glyph:'●'},
-  triangle:{label:'삼각형',color:'#cf8c3e',glyph:'▲'},
-  square:{label:'사각형',color:'#ac5f7c',glyph:'■'}
-};
-const PRINT_ORDER = ['circle','triangle','square'];
+const PRINT_MIN_DOTS = 2;
+const PRINT_SAMPLES = [
+  {label:'A',frame:true,dots:2},
+  {label:'B',frame:false,dots:3},
+  {label:'C',frame:true,dots:1},
+  {label:'D',frame:true,dots:3},
+  {label:'E',frame:false,dots:2},
+  {label:'F',frame:false,dots:1}
+];
 
 const BALLS = ['A','B','C','D','E','F'];
 const BALL_COLORS = ['#b76744','#527e9d','#6d8c62','#a97a45','#86678f','#5c9b91'];
@@ -65,8 +68,9 @@ const SCHOOL_PUZZLES = {
     hint:'칠판에서 화살표가 이어지는 방향대로 버튼을 누르세요.'},
   music:{control:'dial',title:'문 다이얼',answer:MUSIC_GAPS.map(i=>MUSIC_CONVERTED[i]),
     hint:'악보에서 같은 번호가 연달아 나오는 곳만 한 묶음으로 세세요. 변환 결과에는 개수, 번호 순으로 적습니다.'},
-  art:{control:'sequence',title:'문 인쇄판',keys:['triangle','square','circle'],answer:PRINT_ORDER,
-    hint:'두 모양이 겹친 곳에서는 나중에 찍은 도장 자국이 위에 보입니다.'},
+  art:{control:'selection',title:'문 인쇄판',revision:2,
+    answer:PRINT_SAMPLES.map(({frame,dots})=>frame&&dots>=PRINT_MIN_DOTS?'1':'0'),
+    hint:'도안마다 진한 테두리가 있는지, 점이 두 개 이상인지 각각 확인하세요. 두 조건을 모두 만족하면 인쇄합니다.'},
   sports:{control:'dial',title:'문 다이얼',answer:countBallMoves(BALLS,BALL_PICKUP),
     hint:'뺀 공을 제외하고 이번에 한 칸씩 왼쪽으로 움직인 공의 개수를 세세요. 다음 공은 바뀐 배열에서 빼세요.'},
   computer:{control:'routing',title:'출입 신호판',answer:NEW_SIGNALS.map(routeSignal),

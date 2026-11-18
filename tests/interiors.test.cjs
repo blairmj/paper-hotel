@@ -130,12 +130,13 @@ test('the first incomplete room determines the story continuation',()=>{
  assert.equal(ctx.recoveryRoomLink(ctx.order[0],false),'index.html?review=1');
 });
 
-test('the puzzle answers come from the displayed sequence, queue and decision rules',()=>{
+test('the puzzle answers come from the displayed sequence, printing, queue and decision rules',()=>{
  const ctx=vm.createContext({});
  vm.runInContext(fs.readFileSync(path.join(root,'school-puzzles.js'),'utf8')+
   '\nglobalThis.puzzles=SCHOOL_PUZZLES;',ctx);
  assert.deepEqual(Array.from(ctx.encodeMusic(['1','1','2','1'])),['2','1','1','2','1','1']);
  assert.equal(ctx.puzzles.music.answer.join(''),'43');
+ assert.equal(ctx.puzzles.art.answer.join(''),'100100');
  assert.equal(ctx.puzzles.sports.answer.join(''),'2331');
  assert.equal(ctx.routeSignal({reply:false,power:true,code:true}),'link');
  assert.equal(ctx.puzzles.computer.answer.join(','),'link,code,send');

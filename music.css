@@ -167,13 +167,16 @@ dialog[data-panel=intro] p,dialog[data-panel=timeout] p{line-height:1.6}
 .route-list li{padding:11px 12px;border-bottom:1px solid #dbe3e0;color:#3e4b52}
 .route-list li[aria-current=step]{background:#edf4f1;color:#174e42}
 .route-list li>span:last-child{float:right;font-size:13px;color:#516c62}
-.sequence-output,.sequence-keys{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.sequence-output,.sequence-keys,.print-keys{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
 .sequence-output{margin:4px 0 14px}
 .sequence-output>span{display:grid;place-items:center;min-height:57px;background:#ebf0ed;border:1px solid #bdc9c4;border-radius:4px;font-size:31px;color:#3f625d}
 .sequence-keys button{display:grid;justify-items:center;align-content:center;gap:5px;min-height:72px;padding:6px}
 .sequence-keys b{font-size:28px;color:#426c63}
-.stamp-swatch{display:grid;justify-items:center;align-content:center;gap:8px;min-height:92px;background:#f3ede0;border:1px solid #d2c5ac;border-radius:3px;color:#4b4a43}
-.stamp-mark{font-size:32px;line-height:1;color:var(--ink)}
+.print-keys{padding:10px;background:#e9eeeb;border:1px solid #c6d1cb;border-radius:4px}
+.print-keys button{display:flex;align-items:center;justify-content:space-between;gap:5px;min-height:55px;padding:9px clamp(7px,2vw,17px);font:650 25px/1 Consolas,monospace}
+.print-keys button::after{content:'';width:10px;height:10px;flex:0 0 10px;border:1px solid #a6b8af;border-radius:2px;background:#e1e9e4}
+.print-keys button[aria-pressed=true]{background:#d3e8dc;border-color:#6a9481;color:#234d3d}
+.print-keys button[aria-pressed=true]::after{background:#4e826b;border-color:#3e6e5a;box-shadow:0 0 0 2px #f2f8f4}
 .number-score{display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:4px;background:#f7f6f0;border:1px solid #d5dbd4;border-radius:4px;padding:18px clamp(3px,2vw,24px)}
 .number-score span{display:grid;justify-items:center;gap:8px;color:#2b393b;font:600 clamp(19px,3vw,30px)/1.1 Consolas,monospace}
 .number-score b{font-size:clamp(21px,3vw,31px);font-family:Georgia,serif;font-weight:400;color:#476464}

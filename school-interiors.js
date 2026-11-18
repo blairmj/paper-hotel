@@ -15,6 +15,7 @@ const SchoolInterior = (() => {
   const STAND_DISTANCE = .72;
   const STAND_OFFSET = .10;
   const MUSIC_SAMPLE = {width:.42,height:.245,offset:.028};
+  const PRINT_SHEET_TILT = -Math.PI / 4;
 
   function definition(kind) {
     const music = kind === 'music';
@@ -31,8 +32,8 @@ const SchoolInterior = (() => {
         [REHEARSAL_SEATS[0].x+STAND_OFFSET,1.172,REHEARSAL_SEATS[0].z-STAND_DISTANCE+.026],
         MUSIC_SAMPLE.width,MUSIC_SAMPLE.height,-3.55,4.03)
     ] : [
-      target('stamps', '작업대 도장함', [-3.38, 1.01, .80], .90, .48, -3.65, 2.15),
-      target('printOrder', '게시판의 완성 그림', [-3.71, 2.13, .086], 1.15, .68, -3.10, 2.15)
+      target('printSamples', '작업대의 판화 도안', [-3.38, 1.108, .76], .92, .53, -3.65, 2.15),
+      target('printRule', '게시판의 인쇄 기준', [-3.71, 2.13, .086], 1.15, .68, -3.10, 2.15)
     ];
     const entry = RECOVERY_ROOMS.find(item => item.kind === kind);
     return {
@@ -635,14 +636,8 @@ const SchoolInterior = (() => {
       for (const z of [benchZ-.264,benchZ+.264]) box(scene,.13,.803,.13,x,.402,z,wood);
     }
     for (let i=0;i<4;i++) box(scene,.792,.009,.405,benchX-.31,.902+i*.009,benchZ,paper);
-    box(scene,.755,.038,.314,-3.36,.918,.73,wood);
-    for (const [i,shape] of SCHOOL_PUZZLES.art.keys.entries()) {
-      const x=-3.61+i*.237;
-      rounded(scene,.145,.056,.127,x,.964,.75,woodFace,.012);
-      cylinder(scene,.017,.025,.111,x,1.034,.75,woodFace);
-      const knob = new THREE.Mesh(new THREE.SphereGeometry(.041,24,14),standard(STAMPS[shape].color,.68));
-      knob.position.set(x,1.099,.75);scene.add(knob);
-    }
+    box(scene,.95,.032,.42,-3.38,.915,.76,wood);
+    box(scene,.87,.037,.034,-3.38,.945,.949,woodFace);
 
     // Beveled tile, two recessed basins and a cabinet photographed in the concept.
     const counter = standard('#535451', .5);
@@ -762,8 +757,10 @@ const SchoolInterior = (() => {
 
   async function build(scene, room) {
     const music = room.kind === 'music';
-    const clue=room.clues[1];
-    const [artwork,clueArt]=await Promise.all([InteriorArtwork.load(room.kind),clueBoardArt(clue)]);
+    const cards=music?[room.clues[1]]:room.clues;
+    const [artwork,clueArt]=await Promise.all([
+      InteriorArtwork.load(room.kind),Promise.all(cards.map(clueBoardArt))
+    ]);
     scene.add(new THREE.HemisphereLight(music ? '#fff1e3' : '#fbffff', music ? '#a18c80' : '#aebdbc', 2.72));
     const fill = new THREE.DirectionalLight(music ? '#ffe8d4' : '#fff9ee', 1.19);
     fill.position.set(-3.4,3.25,5.1);
@@ -777,10 +774,13 @@ const SchoolInterior = (() => {
     if (music) {
       musicPiano(scene,artwork);
       musicWorkstation(scene,artwork);
-      rehearsalFurniture(scene,artwork,imageMap(clueArt));
+      rehearsalFurniture(scene,artwork,imageMap(clueArt[0]));
     } else {
       artWorkshop(scene,artwork);
-      patchPlane(scene,clue.surface.width,clue.surface.height,...clue.xyz,imageMap(clueArt));
+      for(const [i,clue] of cards.entries()){
+        const sheet=patchPlane(scene,clue.surface.width,clue.surface.height,...clue.xyz,imageMap(clueArt[i]));
+        if(clue.id==='printSamples')sheet.rotation.x=PRINT_SHEET_TILT;
+      }
     }
     addShadows(scene,music);
     const lock = patchPlane(scene,room.lock.width,room.lock.height,...room.lock.center,imageMap(schoolLockArt(room,[])));

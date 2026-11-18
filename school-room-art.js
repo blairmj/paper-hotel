@@ -36,14 +36,29 @@ function musicExamplesDiagram(){
   }).join('');
 }
 
-function finishedPrint(){
-  const marks={
-    circle:'<circle cx="209" cy="206" r="100" fill="'+STAMPS.circle.color+'"/>',
-    triangle:'<path d="M306 52 190 273 431 273Z" fill="'+STAMPS.triangle.color+'"/>',
-    square:'<rect x="368" y="132" width="130" height="130" fill="'+STAMPS.square.color+'"/>'
-  };
-  return '<rect x="22" y="15" width="556" height="330" rx="4" fill="#f7f3e8" stroke="#cfc8b5"/>'+
-    PRINT_ORDER.map(shape=>marks[shape]).join('');
+function printSamplesDiagram(){
+  return PRINT_SAMPLES.map(({label,frame,dots},i)=>{
+    const x=13+(i%3)*196,y=12+Math.floor(i/3)*175;
+    const border=frame?'<rect x="'+(x+13)+'" y="'+(y+13)+'" width="156" height="133" rx="4" fill="none" stroke="#315e56" stroke-width="5"/>':'';
+    const ink=Array.from({length:dots},(_,d)=>{
+      const cx=x+91+(d-(dots-1)/2)*34;
+      return '<circle cx="'+cx+'" cy="'+(y+100)+'" r="11" fill="#4d8077"/>';
+    }).join('');
+    return '<rect x="'+x+'" y="'+y+'" width="182" height="159" rx="6" fill="#f0eee2"/>'+
+      border+svgText(x+91,y+59,label,31)+ink;
+  }).join('');
+}
+
+function printRuleDiagram(){
+  const left='<rect x="49" y="43" width="216" height="151" rx="7" fill="#eef1e6"/>'+
+    '<rect x="130" y="69" width="54" height="53" rx="2" fill="none" stroke="#315e56" stroke-width="5"/>'+
+    svgText(157,165,'진한 테두리 있음',24);
+  const right='<rect x="335" y="43" width="216" height="151" rx="7" fill="#eef1e6"/>'+
+    Array.from({length:PRINT_MIN_DOTS},(_,i)=>'<circle cx="'+(443+(i-(PRINT_MIN_DOTS-1)/2)*33)+'" cy="96" r="11" fill="#4d8077"/>').join('')+
+    svgText(443,165,'점이 '+PRINT_MIN_DOTS+'개 이상',24);
+  return left+right+svgText(300,131,'+',33)+svgText(300,236,'↓',34)+
+    '<rect x="164" y="258" width="272" height="65" rx="6" fill="#dfece3" stroke="#a0b5a6"/>'+
+    svgText(300,300,'둘 다 만족하면 인쇄',27,'#315e56');
 }
 
 function ballDiagram(order){
@@ -90,7 +105,9 @@ function schoolClueSvg(id){
   const diagrams={
     resetOrder:[resetDiagram,'전원, 연결, 확인을 차례로 잇는 화살표'],
     musicSample:[musicExamplesDiagram,MUSIC_EXAMPLES.map(values=>values.join(' ')+' → '+encodeMusic(values).join(' ')).join('. ')],
-    printOrder:[finishedPrint,'원과 삼각형이 겹친 곳에는 삼각형의 색이, 삼각형과 사각형이 겹친 곳에는 사각형의 색이 보입니다.'],
+    printSamples:[printSamplesDiagram,PRINT_SAMPLES.map(({label,frame,dots})=>
+      '도안 '+label+' 테두리 '+(frame?'있음':'없음')+', 점 '+dots+'개').join('. ')],
+    printRule:[printRuleDiagram,'진한 테두리가 있고 점이 '+PRINT_MIN_DOTS+'개 이상이면 인쇄합니다.'],
     ballLine:[()=>ballDiagram(BALLS),BALLS.join(' ')+' 순서로 놓인 공'],
     ballOrder:[()=>ballDiagram(BALL_PICKUP),BALL_PICKUP.join(', ')+' 순으로 회수'],
     recordA:[signalsDiagram,'출입 신호 기록'],
@@ -129,12 +146,15 @@ function schoolLockArt(room,values){
   g.textAlign='center';g.textBaseline='middle';
   for(let i=0;i<count;i++){
     const value=values[i], x=43+i*stride;
-    g.fillStyle=puzzle.control==='routing'&&value?'#749e91':'#e2e4df';
+    const selected=puzzle.control==='selection';
+    const lit=selected?value==='1':puzzle.control==='routing'&&!!value;
+    g.fillStyle=lit?'#749e91':'#e2e4df';
     g.fillRect(x,54,stride-6,128);
-    g.fillStyle=STAMPS[value]?.color??'#30414a';
-    g.font=puzzle.control==='dial'?'88px Georgia':'600 53px Malgun Gothic,Arial,sans-serif';
-    g.fillText(puzzle.control==='dial'?(value??'0'):
-      (STAMPS[value]?.glyph??RESET_GLYPHS[value]??(value?'✓':'·')),x+(stride-6)/2,122);
+    g.fillStyle='#30414a';
+    g.font=puzzle.control==='dial'?'88px Georgia':(selected?'600 34px Arial':'600 53px Malgun Gothic,Arial,sans-serif');
+    const mark=selected?PRINT_SAMPLES[i].label:
+      puzzle.control==='dial'?(value??'0'):(RESET_GLYPHS[value]??(value?'✓':'·'));
+    g.fillText(mark,x+(stride-6)/2,122);
   }
   return canvas;
 }
