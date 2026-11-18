@@ -14,6 +14,7 @@ const SchoolInterior = (() => {
   const REHEARSAL_SEATS = [{x: -4.81, z: 3.24}, {x: -3.82, z: 3.40}];
   const STAND_DISTANCE = .72;
   const STAND_OFFSET = .10;
+  const MUSIC_SAMPLE = {width:.42,height:.245,offset:.028};
 
   function definition(kind) {
     const music = kind === 'music';
@@ -26,12 +27,14 @@ const SchoolInterior = (() => {
     });
     const clues = music ? [
       target('paper', '피아노 악보', SCORE_CENTER, SCORE.width, SCORE.height, -3.07, 2.35),
-      target('clock', '벽시계', [-.17, 2.25, .14], .71, .71, -.17, 2.05)
+      target('musicSample', '보면대 변환 기록',
+        [REHEARSAL_SEATS[0].x+STAND_OFFSET,1.172,REHEARSAL_SEATS[0].z-STAND_DISTANCE+.026],
+        MUSIC_SAMPLE.width,MUSIC_SAMPLE.height,-3.55,4.03)
     ] : [
       target('stamps', '작업대 도장함', [-3.38, 1.01, .80], .90, .48, -3.65, 2.15),
-      target('printOrder', '인쇄 순서 카드', [-3.71, 2.13, .063], 1.15, .68, -3.10, 2.15)
+      target('printOrder', '게시판의 완성 그림', [-3.71, 2.13, .086], 1.15, .68, -3.10, 2.15)
     ];
-    const entry = REVIEW_ROOMS.find(item => item.kind === kind);
+    const entry = RECOVERY_ROOMS.find(item => item.kind === kind);
     return {
       ...entry, interior: true, kind, wall, bounds, depth: DEPTH, ceilingMinimum: music ? 3.4 : 3.2,
       start: [0, 1.55, 9.24], firstView: [0, 1.10, 0],
@@ -313,23 +316,22 @@ const SchoolInterior = (() => {
       g.quadraticCurveTo(173,296,12,322);
       g.closePath();
       g.fill();
-      for (const [i, {a, b}] of MUSIC_SCORE.entries()) {
-        const x = 155 + i%2 * 285;
-        const y = 108 + Math.floor(i/2) * 133;
-        for (const [mark, length, line] of [[a, 53, 7], [b, 38, 10]]) {
-          const [dx, dy] = clockPoint(mark, length);
-          g.strokeStyle = '#37312b';
-          g.lineCap = 'round';
-          g.lineWidth = line;
-          g.beginPath();
-          g.moveTo(x,y);
-          g.lineTo(x+dx,y+dy);
-          g.stroke();
-        }
-        g.fillStyle = '#392e29';
+      g.strokeStyle='#776650';
+      g.lineWidth=1.5;
+      for(const left of [54,327])for(let y=137;y<=189;y+=13){
         g.beginPath();
-        g.arc(x, y, 6, 0, Math.PI*2);
+        g.moveTo(left,y);g.lineTo(left+215,y);g.stroke();
+      }
+      g.fillStyle = '#392e29';
+      g.font='600 36px Arial,sans-serif';
+      g.textAlign='center';
+      for (const [i,number] of MUSIC_KEYS.entries()) {
+        const x=(i<4?78:351)+(i%4)*54, y=number==='1'?175:149;
+        g.beginPath();
+        g.ellipse(x,y,11,7,-.28,0,Math.PI*2);
         g.fill();
+        g.fillRect(x+8,y-43,3,43);
+        g.fillText(number,x,247);
       }
     });
   }
@@ -393,7 +395,7 @@ const SchoolInterior = (() => {
     patchPlane(scene,.71,.71,-.17,2.25,.131,clock,true);
   }
 
-  function rehearsalFurniture(scene, artwork) {
+  function rehearsalFurniture(scene, artwork, sampleMap) {
     const fabric = standard('#80716c', .91);
     const chairFrame = standard('#585856', .49, .23);
     const standFrame = standard('#2e2d2c', .51, .20);
@@ -452,6 +454,9 @@ const SchoolInterior = (() => {
       scene.add(tray);
       tray.add(new THREE.Mesh(trayGeometry, standFrame));
       rounded(tray,.493,.026,.067,0,-.140,.025,standFrame,.008);
+      if(x===REHEARSAL_SEATS[0].x){
+        patchPlane(tray,MUSIC_SAMPLE.width,MUSIC_SAMPLE.height,0,0,MUSIC_SAMPLE.offset,sampleMap);
+      }
     }
   }
 
@@ -631,11 +636,11 @@ const SchoolInterior = (() => {
     }
     for (let i=0;i<4;i++) box(scene,.792,.009,.405,benchX-.31,.902+i*.009,benchZ,paper);
     box(scene,.755,.038,.314,-3.36,.918,.73,wood);
-    for (const [i,size] of [.073,.086,.105].entries()) {
+    for (const [i,shape] of SCHOOL_PUZZLES.art.keys.entries()) {
       const x=-3.61+i*.237;
-      rounded(scene,size*1.51,.056,size*1.24,x,.964,.75,woodFace,.012);
-      cylinder(scene,size*.16,size*.25,.111,x,1.034,.75,woodFace);
-      const knob = new THREE.Mesh(new THREE.SphereGeometry(size*.45,24,14),woodFace);
+      rounded(scene,.145,.056,.127,x,.964,.75,woodFace,.012);
+      cylinder(scene,.017,.025,.111,x,1.034,.75,woodFace);
+      const knob = new THREE.Mesh(new THREE.SphereGeometry(.041,24,14),standard(STAMPS[shape].color,.68));
       knob.position.set(x,1.099,.75);scene.add(knob);
     }
 
@@ -755,48 +760,10 @@ const SchoolInterior = (() => {
     }
   }
 
-  function lockMap(kind, values=[]) {
-    return InteriorArtwork.canvasMap(420,236,(g,w,h) => {
-      const music=kind==='music';
-      const bevel=g.createLinearGradient(0,0,w,h);
-      bevel.addColorStop(0,'#a79d90');
-      bevel.addColorStop(.22,'#686461');
-      bevel.addColorStop(.67,'#393637');
-      bevel.addColorStop(1,'#77726b');
-      g.fillStyle=bevel;
-      g.strokeStyle='#a99c8b';
-      g.lineWidth=4;
-      g.beginPath();
-      g.roundRect(3,3,w-6,h-6,16);
-      g.fill();
-      g.stroke();
-      const n=music?2:6, step=(w-65)/n;
-      const enamel=g.createLinearGradient(0,34,0,h-29);
-      enamel.addColorStop(0,'#b5a68d');
-      enamel.addColorStop(.35,'#fbf1df');
-      enamel.addColorStop(.73,'#f5ebd5');
-      enamel.addColorStop(1,'#a69a85');
-      for(let i=0;i<n;i++) {
-        g.fillStyle='#262422';g.fillRect(30+i*step,31,step-1,h-62);
-        g.fillStyle=enamel;g.fillRect(32+i*step,40,step-7,h-80);
-        g.fillStyle='#38322d';
-        g.font=(music?'66px':'47px')+' Georgia';
-        g.textAlign='center';
-        g.textBaseline='middle';
-        g.fillText(values[i]??(music?'0':''),32+i*step+(step-7)/2,h/2+.5);
-      }
-      for(const x of [15,w-15]) for(const y of [18,h-18]) {
-        g.fillStyle='#c4bbad';
-        g.beginPath();
-        g.arc(x,y,3,0,2*Math.PI);
-        g.fill();
-      }
-    });
-  }
-
   async function build(scene, room) {
     const music = room.kind === 'music';
-    const artwork = await InteriorArtwork.load(room.kind);
+    const clue=room.clues[1];
+    const [artwork,clueArt]=await Promise.all([InteriorArtwork.load(room.kind),clueBoardArt(clue)]);
     scene.add(new THREE.HemisphereLight(music ? '#fff1e3' : '#fbffff', music ? '#a18c80' : '#aebdbc', 2.72));
     const fill = new THREE.DirectionalLight(music ? '#ffe8d4' : '#fff9ee', 1.19);
     fill.position.set(-3.4,3.25,5.1);
@@ -810,12 +777,13 @@ const SchoolInterior = (() => {
     if (music) {
       musicPiano(scene,artwork);
       musicWorkstation(scene,artwork);
-      rehearsalFurniture(scene,artwork);
+      rehearsalFurniture(scene,artwork,imageMap(clueArt));
     } else {
       artWorkshop(scene,artwork);
+      patchPlane(scene,clue.surface.width,clue.surface.height,...clue.xyz,imageMap(clueArt));
     }
     addShadows(scene,music);
-    const lock = patchPlane(scene,room.lock.width,room.lock.height,...room.lock.center,lockMap(room.kind),true);
+    const lock = patchPlane(scene,room.lock.width,room.lock.height,...room.lock.center,imageMap(schoolLockArt(room,[])));
     const canvas = document.getElementById('roomView');
     Object.assign(canvas.dataset,{
       interior:'v7', artwork:'approved', width:WIDTH, depth:DEPTH, area:WIDTH*DEPTH,
@@ -824,8 +792,8 @@ const SchoolInterior = (() => {
     return {
       setDoor,
       setDigits(values) {
-        lock.material.map.dispose();
-        lock.material.map = lockMap(room.kind,values);
+        lock.material.map.image=schoolLockArt(room,values);
+        lock.material.map.needsUpdate=true;
       }
     };
   }

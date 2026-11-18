@@ -5,16 +5,19 @@ const path=require('node:path');
 const vm=require('node:vm');
 const root=path.join(__dirname,'..');
 
-const layoutContext=vm.createContext({REVIEW_ROOMS:[
- {n:203,kind:'music'},{n:207,kind:'art'},{n:208,kind:'sports'},{n:209,kind:'computer'}
+const layoutContext=vm.createContext({RECOVERY_ROOMS:[
+ {n:502,kind:'classroom'},{n:203,kind:'music'},{n:207,kind:'art'},{n:208,kind:'sports'},{n:209,kind:'computer'}
 ]});
 vm.runInContext(fs.readFileSync(path.join(root,'school-interiors.js'),'utf8')+'\nglobalThis.interior=SchoolInterior;',layoutContext);
 vm.runInContext(fs.readFileSync(path.join(root,'sports-computer-interiors.js'),'utf8')+
  '\nglobalThis.sportsComputer=SportsComputerInteriors;',layoutContext);
-for(const kind of ['music','art','sports','computer'])test(kind+' keeps half the original floor area and reachable clues',()=>{
- const interiors=['sports','computer'].includes(kind)?layoutContext.sportsComputer:layoutContext.interior;
+vm.runInContext(fs.readFileSync(path.join(root,'classroom-interior.js'),'utf8')+
+ '\nglobalThis.classroom=ClassroomInterior;',layoutContext);
+for(const kind of ['classroom','music','art','sports','computer'])test(kind+' has reachable clues',()=>{
+ const interiors=kind==='classroom'?layoutContext.classroom:
+  ['sports','computer'].includes(kind)?layoutContext.sportsComputer:layoutContext.interior;
  const room=interiors.definition(kind),b=room.bounds;
- assert.ok(Math.abs(room.wall.width*room.depth/(19*13.54)-.5)<1e-12);
+ if(kind!=='classroom')assert.ok(Math.abs(room.wall.width*room.depth/(19*13.54)-.5)<1e-12);
  assert.equal(room.start[1],1.55);
  const open=(x,z)=>x>=b.left&&x<=b.right&&z>=b.front&&z<=b.back&&!room.obstacles.some(([l,r,f,k])=>x>l&&x<r&&z>f&&z<k);
  assert.ok(open(room.start[0],room.start[2]),'start must not be inside furniture or outside the walls');
@@ -68,7 +71,7 @@ function timerHarness(){
   window:{addEventListener:(k,fn)=>events[k]=fn},setInterval:()=>1,clearInterval(){},queueMicrotask:fn=>jobs.push(fn)
  });
  vm.runInContext(fs.readFileSync(path.join(root,'review-rooms.js'),'utf8')+'\nglobalThis.timerFactory=setupSchoolTimer;',context);
- return {advance:ms=>now+=ms,load:(solved=false)=>{const timer=context.timerFactory(203,{isSolved:()=>solved,onExpire:()=>expires++});while(jobs.length)jobs.shift()();return timer},get label(){return labels.at(-1).textContent},get warning(){return badges.at(-1).classList.contains('running-low')},get expires(){return expires},events};
+ return {advance:ms=>now+=ms,load:(solved=false,key)=>{const timer=context.timerFactory(203,{key,isSolved:()=>solved,onExpire:()=>expires++});while(jobs.length)jobs.shift()();return timer},get label(){return labels.at(-1).textContent},get warning(){return badges.at(-1).classList.contains('running-low')},get expires(){return expires},events};
 }
 test('deadline survives reload and expiration fires exactly once',()=>{
  const h=timerHarness();h.load();assert.equal(h.label,'2:00');h.advance(60_000);
@@ -104,4 +107,36 @@ test('when a hint uses all the remaining time, expiration happens instead of rev
  assert.equal(timer.spendHint(),false);assert.equal(h.label,'0:00');assert.equal(h.warning,false);
  assert.equal(h.expires,1);assert.equal(timer.spendHint(),false);assert.equal(h.expires,1);
  h.load();assert.equal(h.label,'0:00');
+});
+
+test('a review room visit does not spend the story timer',()=>{
+ const h=timerHarness();h.load(false,'story');h.advance(35_000);
+ h.load(false,'review');assert.equal(h.label,'2:00');
+ h.load(false,'story');assert.equal(h.label,'1:25');
+});
+
+test('the first incomplete room determines the story continuation',()=>{
+ const ctx=vm.createContext({});
+ vm.runInContext(fs.readFileSync(path.join(root,'review-rooms.js'),'utf8')+
+  '\nglobalThis.order=RECOVERY_ROOMS;',ctx);
+ const progress={visits:{}};
+ assert.equal(ctx.firstUnrestoredRoom(progress).kind,'classroom');
+ for(const stage of ctx.order){
+  assert.equal(ctx.firstUnrestoredRoom(progress).kind,stage.kind);
+  progress.visits[stage.n]={restoration:{solved:true}};
+ }
+ assert.equal(ctx.firstUnrestoredRoom(progress),undefined);
+ assert.equal(ctx.recoveryRoomLink(ctx.order[4],true),'computer.html?school=1');
+ assert.equal(ctx.recoveryRoomLink(ctx.order[0],false),'index.html?review=1');
+});
+
+test('the puzzle answers come from the displayed sequence, queue and decision rules',()=>{
+ const ctx=vm.createContext({});
+ vm.runInContext(fs.readFileSync(path.join(root,'school-puzzles.js'),'utf8')+
+  '\nglobalThis.puzzles=SCHOOL_PUZZLES;',ctx);
+ assert.deepEqual(Array.from(ctx.encodeMusic(['1','1','2','1'])),['2','1','1','2','1','1']);
+ assert.equal(ctx.puzzles.music.answer.join(''),'43');
+ assert.equal(ctx.puzzles.sports.answer.join(''),'2331');
+ assert.equal(ctx.routeSignal({reply:false,power:true,code:true}),'link');
+ assert.equal(ctx.puzzles.computer.answer.join(','),'link,code,send');
 });

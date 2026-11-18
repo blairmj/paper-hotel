@@ -24,8 +24,8 @@ const SportsComputerInteriors = (() => {
       {x: 3.3, finish: 'orange', color: '#c47b36'}
     ];
     const compartments = [
-      {bank: 0, column: 5, tier: 1, id: 'photo', name: '운동회 사진'},
-      {bank: 1, column: 2, tier: 1, id: 'ballOrder', name: '공 반납 순서'}
+      {bank: 0, column: 5, tier: 1, id: 'ballLine', name: '공 선반 배열'},
+      {bank: 1, column: 2, tier: 1, id: 'ballOrder', name: '공 회수 순서'}
     ].map(slot => {
       const position = lockerPosition(banks[slot.bank],slot.column,slot.tier);
       const [x,,z] = position;
@@ -55,9 +55,9 @@ const SportsComputerInteriors = (() => {
     const rows = [1.62, 3.37, 5.12, 6.87].map(z => columns.map(x => ({x,z})));
     const rearStation = rows[3][3];
     const clues = [
-      {id:'recordA', name:'모니터 출력 기록', xyz:[-.16,1.94,.057],
+      {id:'recordA', name:'출입 신호 기록', xyz:[-.16,1.94,.057],
         surface:{width:1.28,height:.75}, approach:{x:0,z:1.02}},
-      {id:'recordB', name:'뒤쪽 화면 점검 기록',
+      {id:'recordB', name:'신호 분기표',
         xyz:[rearStation.x,SCREEN.y,rearStation.z+SCREEN.z], surface:SCREEN,
         approach:{x:rearStation.x,z:rearStation.z+1.30}}
     ];
@@ -85,7 +85,7 @@ const SportsComputerInteriors = (() => {
       width:sports?.75:.53,height:sports?.35:.53};
     const startX = sports ? -1.54 : 0;
     return {
-      ...REVIEW_ROOMS.find(item => item.kind === kind),
+      ...RECOVERY_ROOMS.find(item => item.kind === kind),
       interior:true, kind, wall:{width,height,z:0,back:depth}, depth, ceilingMinimum:height,
       bounds:{left:-width/2+.27,right:width/2-.27,front:.29,back:depth-.27},
       entrance:doorway, door:[doorway.x,doorway.height/2,.05], lock, layout,

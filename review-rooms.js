@@ -7,12 +7,39 @@ const REVIEW_ROOMS = [
   {n:209, place:'컴퓨터실', href:'computer.html', kind:'computer'}
 ];
 
+const RECOVERY_ROOMS = [{n:502,place:'우리 교실',href:'index.html',kind:'classroom'},...REVIEW_ROOMS];
+const SCHOOL_STORY_KEY = 'paperhotel.recovery.school.v1';
+const SCHOOL_REVIEW_KEY = 'paperhotel.recovery.review.v1';
+
+function recoveryRoomLink(room, story) {
+  if (room.kind==='classroom') return story ? './' : 'index.html?review=1';
+  return room.href+(story?'?school=1':'');
+}
+
+function roomRestored(book, room) {
+  return book.visits[room.n]?.restoration?.solved===true;
+}
+
+function firstUnrestoredRoom(book) {
+  return RECOVERY_ROOMS.find(room=>!roomRestored(book,room));
+}
+
 function readSchoolBook(key='paperhotel.explore.v1'){
-  try{
-    const book=JSON.parse(localStorage.getItem(key));
-    if(book && book.visits && typeof book.visits==='object')return book;
-  }catch{}
+  for(const store of ['localStorage','sessionStorage']){
+    try{
+      const book=JSON.parse(globalThis[store].getItem(key));
+      if(book && book.visits && typeof book.visits==='object')return book;
+    }catch{}
+  }
   return {room:203,visits:{}};
+}
+
+function writeSchoolBook(key,book){
+  const value=JSON.stringify(book);
+  for(const store of ['localStorage','sessionStorage']){
+    try{globalThis[store].setItem(key,value);return true}catch{}
+  }
+  return false;
 }
 
 function reviewRoomSolved(room,book=readSchoolBook()){
@@ -28,24 +55,26 @@ function nextReviewRoom(number){
   return following.find(room=>!reviewRoomSolved(room,book));
 }
 
-function setupReviewNavigation(number){
+function setupReviewNavigation(number,{showJump=true,rooms=REVIEW_ROOMS,urlFor=room=>room.href}={}){
   const school=document.querySelector('.school'),location=document.createElement('div');
   location.className='room-location';
   school.before(location);location.append(school);
-  const jump=document.createElement('details');
-  jump.className='review-jump';jump.id='reviewJump';
-  const summary=document.createElement('summary');summary.textContent='바로가기';
-  const links=document.createElement('nav');links.setAttribute('aria-label','검토용 교실 바로가기');
-  for(const room of REVIEW_ROOMS){
-    const link=document.createElement('a');link.href=room.href;link.textContent=room.place;
-    if(room.n===number){
-      link.setAttribute('aria-current','page');
-      link.onclick=event=>{event.preventDefault();jump.open=false};
+  if(showJump){
+    const jump=document.createElement('details');
+    jump.className='review-jump';jump.id='reviewJump';
+    const summary=document.createElement('summary');summary.textContent='바로가기';
+    const links=document.createElement('nav');links.setAttribute('aria-label','검토용 교실 바로가기');
+    for(const room of rooms){
+      const link=document.createElement('a');link.href=urlFor(room);link.textContent=room.place;
+      if(room.n===number){
+        link.setAttribute('aria-current','page');
+        link.onclick=event=>{event.preventDefault();jump.open=false};
+      }
+      links.append(link);
     }
-    links.append(link);
+    jump.append(summary,links);location.append(jump);
+    document.addEventListener('click',event=>{if(!jump.contains(event.target))jump.open=false});
   }
-  jump.append(summary,links);location.append(jump);
-  document.addEventListener('click',event=>{if(!jump.contains(event.target))jump.open=false});
   const paths={bag:'M12 5Q7 2 3 4V20Q7 18 12 21Q17 18 21 20V4Q17 2 12 5V21',map:'M3 5L9 3L15 5L21 3V19L15 21L9 19L3 21ZM9 3V19M15 5V21'};
   for(const [id,path]of Object.entries(paths)){
     const button=document.getElementById(id),label=button.textContent;
@@ -97,8 +126,8 @@ function appendRoomTextHint(host,timer,text){
   host.append(hint);
 }
 
-function setupSchoolTimer(number,{isSolved,onExpire}){
-  const duration=120000,key='paperhotel.explore.v1',saved=readSchoolBook().visits[number]?.escapeTimer;
+function setupSchoolTimer(number,{isSolved,onExpire,key='paperhotel.explore.v1'}){
+  const duration=120000,saved=readSchoolBook(key).visits[number]?.escapeTimer;
   let deadline=Number.isFinite(saved?.deadline)?saved.deadline:Date.now()+duration;
   let expired=false,stopped=isSolved(),remaining=stopped?(saved?.remaining??duration):duration;
   const badge=document.createElement('span');badge.className='room-timer';badge.setAttribute('aria-label','남은 시간');
@@ -106,8 +135,8 @@ function setupSchoolTimer(number,{isSolved,onExpire}){
   document.querySelector('.room-head > nav').append(badge);
   const text=badge.querySelector('#roomTime');
   function save(){
-    const book=readSchoolBook();book.visits[number]={...book.visits[number],escapeTimer:{deadline,remaining,expired,stopped}};
-    try{localStorage.setItem(key,JSON.stringify(book))}catch{}
+    const book=readSchoolBook(key);book.visits[number]={...book.visits[number],escapeTimer:{deadline,remaining,expired,stopped}};
+    writeSchoolBook(key,book);
   }
   function render(){
     const seconds=Math.max(0,Math.ceil(remaining/1000));text.textContent=Math.floor(seconds/60)+':'+String(seconds%60).padStart(2,'0');

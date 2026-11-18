@@ -1,11 +1,48 @@
 <!doctype html>
-<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#261b25"><title>학교 탈출</title><link rel="icon" href="data:,"><link rel="stylesheet" href="school.css"></head>
-<body><main id="stage"><canvas id="world" tabindex="0" aria-label="교실 내부. 드래그나 방향키로 시선을 돌리고 W A S D로 이동하세요. 탭으로 보이는 물건을 선택합니다."></canvas><div id="vignette"></div><div id="marks"></div></main>
-<header><div class="brand"><i class="emblem" aria-hidden="true">♢</i><div><small>SCHOOL ESCAPE</small><strong>학교 탈출</strong></div></div><nav><button id="journal">단서 수첩 <b id="clueCount">0</b></button><button id="directory">학교 안내도</button><button id="help" aria-label="조작 도움말">?</button></nav></header>
-<footer><div class="room-label"><small id="roomNo"></small><h1 id="roomTitle"></h1></div><div class="look"><button id="turnL" aria-label="왼쪽 벽 보기">‹</button><span id="bearing">정면</span><button id="turnR" aria-label="오른쪽 벽 보기">›</button></div><div class="foot-end"><button id="step" title="바라보는 쪽으로 한 걸음">한 걸음 ↑</button></div></footer>
-<section id="exitNotice" aria-label="탈출 결과" hidden>
-  <span id="exitText" role="status"></span><button type="button" id="continueRoom"></button>
-</section>
-<div id="tip" role="status"></div><div id="fatal" hidden></div>
-<dialog id="sheet" aria-labelledby="modalTitle"><div class="modal-head"><small id="modalKicker"></small><button id="close" aria-label="닫기">×</button></div><h2 id="modalTitle"></h2><div id="modalBody"></div></dialog>
-<script src="three.min.js"></script><script src="rooms.js?v=controls12"></script><script src="review-rooms.js?v=review14"></script><script src="scenery.js"></script><script src="game.js?v=review14"></script></body></html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#f4f6f7">
+  <title>학교 탈출 · 우리 교실</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="music.css?v=school-story22">
+</head>
+<body data-room="classroom">
+  <main id="musicGame" aria-label="학교 탈출 5학년 2반">
+    <canvas id="roomView" tabindex="0" aria-label="5학년 2반 교실 내부. 바닥을 눌러 이동하고 화면을 끌어 둘러보세요."></canvas>
+    <header class="room-head">
+      <strong class="school"><span>5-2</span>우리 교실</strong>
+      <nav aria-label="메뉴"><button id="bag" type="button" hidden>찾은 단서</button><button id="map" type="button">안내도</button></nav>
+    </header>
+    <div id="spots" aria-label="조사할 물건"></div>
+    <footer class="room-foot">
+      <div class="movement" aria-label="이동">
+        <button id="left" type="button" aria-label="왼쪽 보기">‹</button>
+        <button id="walk" type="button" aria-label="한 걸음 앞으로">↑</button>
+        <button id="stepBack" type="button" aria-label="한 걸음 뒤로">↓</button>
+        <button id="right" type="button" aria-label="오른쪽 보기">›</button>
+      </div>
+    </footer>
+    <section id="escape" hidden aria-label="우리 교실 복구 완료">
+      <span class="sr-only" role="status">우리 교실 문이 열렸어요.</span>
+      <div><a class="main-button" id="nextRoom" href="music.html?school=1">다음 교실로</a><button id="replay" type="button">다시 풀기</button></div>
+    </section>
+    <dialog id="inspect" aria-labelledby="panelTitle">
+      <div class="panel-top"><h1 id="panelTitle"></h1><button id="dismiss" type="button" aria-label="닫기">×</button></div>
+      <div id="panelBody"></div>
+    </dialog>
+    <noscript>게임을 플레이하려면 자바스크립트를 켜 주세요.</noscript>
+  </main>
+  <script src="three.min.js"></script>
+  <script src="review-rooms.js?v=school-story22"></script>
+  <script src="school-puzzles.js?v=school-story22"></script>
+  <script src="music-art.js?v=interiors15"></script>
+  <script src="music-world.js?v=school-story22"></script>
+  <script src="interior-artwork.js?v=room-layout20"></script>
+  <script src="school-interiors.js?v=school-story22"></script>
+  <script src="classroom-interior.js?v=school-story22"></script>
+  <script src="school-room-art.js?v=school-story22"></script>
+  <script src="school-room.js?v=school-story22"></script>
+</body>
+</html>

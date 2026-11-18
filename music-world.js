@@ -79,7 +79,7 @@ async function createMusicWorld({onInspect,onReadyToMove,room=paintedRoom,buildR
     return {...o,point:new THREE.Vector3(...o.xyz),surface,button};
   });
   const stopPoints=room.stops;
-  let width=1,height=1,yaw=0,pitch=0,openness=0,journey,trail,drag,raf=0,previousTime=0;
+  let width=1,height=1,yaw=0,pitch=0,openness=0,journey,trail,drag,finale,raf=0,previousTime=0;
   const clamp=THREE.MathUtils.clamp, wrap=angle=>Math.atan2(Math.sin(angle),Math.cos(angle));
   function heading(position){return Math.atan2(position[0]-eye.x,eye.z-position[2])}
   function tilt(position){return Math.atan2(position[1]-eye.y,Math.hypot(position[0]-eye.x,position[2]-eye.z))}
@@ -95,6 +95,14 @@ async function createMusicWorld({onInspect,onReadyToMove,room=paintedRoom,buildR
     camera.updateProjectionMatrix();queue();
   }
   function draw(){
+    if(finale){
+      if(finale.camera.aspect!==width/height){
+        finale.camera.aspect=width/height;
+        finale.camera.updateProjectionMatrix();
+      }
+      renderer.render(finale.scene,finale.camera);
+      return;
+    }
     camera.rotation.set(pitch,-yaw,0,'YXZ');camera.updateMatrixWorld();
     model.updateViews?.(eye);
     if(renderer)renderer.render(scene,camera);
@@ -209,6 +217,19 @@ async function createMusicWorld({onInspect,onReadyToMove,room=paintedRoom,buildR
   }
   function frame(time){
     raf=0;const dt=Math.min(.06,(time-previousTime)/1000);previousTime=time;
+    if(finale){
+      const t=clamp((time-finale.start)/finale.duration,0,1);
+      const swing=clamp((t-.14)/.72,0,1);
+      finale.setDoor(swing*swing*(3-2*swing));
+      draw();
+      if(t<1)queue();
+      else if(finale.done){
+        const done=finale.done;
+        finale.done=null;
+        done();
+      }
+      return;
+    }
     if(journey){
       const j=journey,t=clamp((time-j.start)/j.duration,0,1);
       const aim=1-(1-clamp(t/(j.door ? .42 : 1),0,1))**3;
@@ -291,8 +312,13 @@ async function createMusicWorld({onInspect,onReadyToMove,room=paintedRoom,buildR
     clearKeys, lookAtPiano(){inspectTarget('paper')},
     setDigits(digits){model.setDigits(digits);queue()},
     facingDoor(done){clearKeys();look(room.door,true,done)},
-    reset(open=false,digits=[0,0]){
+    showFinale(view,done){
       clearKeys();journey=null;
+      finale={...view,done,start:performance.now(),duration:reducedMotion.matches?1:1320};
+      queue();
+    },
+    reset(open=false,digits=[0,0]){
+      clearKeys();journey=null;finale=null;
       eye.fromArray(room.start);openness=open?1:0;
       const initial=open?room.door:(width/height<.85?room.portraitView:room.firstView);
       yaw=heading(initial);pitch=tilt(initial);
