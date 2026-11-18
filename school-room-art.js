@@ -36,29 +36,36 @@ function musicExamplesDiagram(){
   }).join('');
 }
 
+function printCard({label,frame,dots},x,y,w,h){
+  const inset=10;
+  const border=frame?'<rect x="'+(x+inset)+'" y="'+(y+inset)+'" width="'+(w-2*inset)+'" height="'+(h-2*inset)+'" rx="4" fill="none" stroke="#315e56" stroke-width="5"/>':'';
+  const columns=dots>4?Math.ceil(dots/2):dots;
+  const ink=Array.from({length:dots},(_,i)=>{
+    const row=Math.floor(i/columns), rowSize=Math.min(columns,dots-row*columns);
+    const cx=x+w/2+(i%columns-(rowSize-1)/2)*w*.153;
+    const cy=y+h*(label ? .66 : .50)+(dots>4?(row-.5)*h*.206:0);
+    return '<circle cx="'+cx+'" cy="'+cy+'" r="'+w*.058+'" fill="#4d8077"/>';
+  }).join('');
+  return '<rect x="'+x+'" y="'+y+'" width="'+w+'" height="'+h+'" rx="6" fill="#f0eee2"/>'+
+    border+(label?svgText(x+w/2,y+h*.30,label,29):'')+ink;
+}
+
 function printSamplesDiagram(){
-  return PRINT_SAMPLES.map(({label,frame,dots},i)=>{
-    const x=13+(i%3)*196,y=12+Math.floor(i/3)*175;
-    const border=frame?'<rect x="'+(x+13)+'" y="'+(y+13)+'" width="156" height="133" rx="4" fill="none" stroke="#315e56" stroke-width="5"/>':'';
-    const ink=Array.from({length:dots},(_,d)=>{
-      const cx=x+91+(d-(dots-1)/2)*34;
-      return '<circle cx="'+cx+'" cy="'+(y+100)+'" r="11" fill="#4d8077"/>';
-    }).join('');
-    return '<rect x="'+x+'" y="'+y+'" width="182" height="159" rx="6" fill="#f0eee2"/>'+
-      border+svgText(x+91,y+59,label,31)+ink;
+  return PRINT_SAMPLES.map((sample,i)=>printCard(sample,13+(i%3)*196,12+Math.floor(i/3)*175,182,159)).join('');
+}
+
+function printRecordsDiagram(){
+  return [true,false].map((printed,row)=>{
+    const y=25+row*164;
+    return '<rect x="10" y="'+y+'" width="580" height="143" rx="7" fill="'+(printed?'#e2ede4':'#e9e9e3')+'"/>'+
+      svgText(54,y+81,printed?'인쇄':'보관',24)+
+      PRINT_RECORDS.filter(sample=>shouldPrint(sample)===printed)
+        .map((sample,i)=>printCard(sample,105+i*158,y+13,138,116)).join('');
   }).join('');
 }
 
-function printRuleDiagram(){
-  const left='<rect x="49" y="43" width="216" height="151" rx="7" fill="#eef1e6"/>'+
-    '<rect x="130" y="69" width="54" height="53" rx="2" fill="none" stroke="#315e56" stroke-width="5"/>'+
-    svgText(157,165,'진한 테두리 있음',24);
-  const right='<rect x="335" y="43" width="216" height="151" rx="7" fill="#eef1e6"/>'+
-    Array.from({length:PRINT_MIN_DOTS},(_,i)=>'<circle cx="'+(443+(i-(PRINT_MIN_DOTS-1)/2)*33)+'" cy="96" r="11" fill="#4d8077"/>').join('')+
-    svgText(443,165,'점이 '+PRINT_MIN_DOTS+'개 이상',24);
-  return left+right+svgText(300,131,'+',33)+svgText(300,236,'↓',34)+
-    '<rect x="164" y="258" width="272" height="65" rx="6" fill="#dfece3" stroke="#a0b5a6"/>'+
-    svgText(300,300,'둘 다 만족하면 인쇄',27,'#315e56');
+function describePrintCard({label,frame,dots}){
+  return (label?'도안 '+label+', ':'')+'테두리 '+(frame?'있음':'없음')+', 점 '+dots+'개';
 }
 
 function ballDiagram(order){
@@ -105,9 +112,9 @@ function schoolClueSvg(id){
   const diagrams={
     resetOrder:[resetDiagram,'전원, 연결, 확인을 차례로 잇는 화살표'],
     musicSample:[musicExamplesDiagram,MUSIC_EXAMPLES.map(values=>values.join(' ')+' → '+encodeMusic(values).join(' ')).join('. ')],
-    printSamples:[printSamplesDiagram,PRINT_SAMPLES.map(({label,frame,dots})=>
-      '도안 '+label+' 테두리 '+(frame?'있음':'없음')+', 점 '+dots+'개').join('. ')],
-    printRule:[printRuleDiagram,'진한 테두리가 있고 점이 '+PRINT_MIN_DOTS+'개 이상이면 인쇄합니다.'],
+    printSamples:[printSamplesDiagram,PRINT_SAMPLES.map(describePrintCard).join('. ')],
+    printRule:[printRecordsDiagram,[true,false].map(printed=>(printed?'인쇄. ':'보관. ')+
+      PRINT_RECORDS.filter(sample=>shouldPrint(sample)===printed).map(describePrintCard).join('. ')).join('. ')],
     ballLine:[()=>ballDiagram(BALLS),BALLS.join(' ')+' 순서로 놓인 공'],
     ballOrder:[()=>ballDiagram(BALL_PICKUP),BALL_PICKUP.join(', ')+' 순으로 회수'],
     recordA:[signalsDiagram,'출입 신호 기록'],

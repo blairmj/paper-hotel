@@ -17,15 +17,23 @@ function encodeMusic(values) {
 }
 const MUSIC_CONVERTED = encodeMusic(MUSIC_KEYS);
 
-const PRINT_MIN_DOTS = 2;
-const PRINT_SAMPLES = [
-  {label:'A',frame:true,dots:2},
-  {label:'B',frame:false,dots:3},
-  {label:'C',frame:true,dots:1},
-  {label:'D',frame:true,dots:3},
-  {label:'E',frame:false,dots:2},
-  {label:'F',frame:false,dots:1}
+const PRINT_RECORDS = [
+  {frame:true,dots:2},
+  {frame:true,dots:4},
+  {frame:true,dots:6},
+  {frame:true,dots:3},
+  {frame:true,dots:5},
+  {frame:false,dots:4}
 ];
+const PRINT_SAMPLES = [
+  {label:'A',frame:false,dots:6},
+  {label:'B',frame:true,dots:3},
+  {label:'C',frame:true,dots:4},
+  {label:'D',frame:false,dots:2},
+  {label:'E',frame:true,dots:8},
+  {label:'F',frame:true,dots:5}
+];
+function shouldPrint({frame,dots}){return frame&&dots%2===0}
 
 const BALLS = ['A','B','C','D','E','F'];
 const BALL_COLORS = ['#b76744','#527e9d','#6d8c62','#a97a45','#86678f','#5c9b91'];
@@ -68,9 +76,9 @@ const SCHOOL_PUZZLES = {
     hint:'칠판에서 화살표가 이어지는 방향대로 버튼을 누르세요.'},
   music:{control:'dial',title:'문 다이얼',answer:MUSIC_GAPS.map(i=>MUSIC_CONVERTED[i]),
     hint:'악보에서 같은 번호가 연달아 나오는 곳만 한 묶음으로 세세요. 변환 결과에는 개수, 번호 순으로 적습니다.'},
-  art:{control:'selection',title:'문 인쇄판',revision:2,
-    answer:PRINT_SAMPLES.map(({frame,dots})=>frame&&dots>=PRINT_MIN_DOTS?'1':'0'),
-    hint:'도안마다 진한 테두리가 있는지, 점이 두 개 이상인지 각각 확인하세요. 두 조건을 모두 만족하면 인쇄합니다.'},
+  art:{control:'selection',title:'문 인쇄판',revision:3,
+    answer:PRINT_SAMPLES.map(sample=>shouldPrint(sample)?'1':'0'),
+    hint:'점 개수가 같은 두 기록을 비교해 테두리를 살펴보세요. 인쇄된 도안의 점을 두 개씩 짝지어 보세요.'},
   sports:{control:'dial',title:'문 다이얼',answer:countBallMoves(BALLS,BALL_PICKUP),
     hint:'뺀 공을 제외하고 이번에 한 칸씩 왼쪽으로 움직인 공의 개수를 세세요. 다음 공은 바뀐 배열에서 빼세요.'},
   computer:{control:'routing',title:'출입 신호판',answer:NEW_SIGNALS.map(routeSignal),

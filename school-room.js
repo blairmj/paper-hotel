@@ -187,7 +187,7 @@ function sequencePanel(){
 }
 
 function selectionPanel(){
-  modal(puzzle.title,'<p class="object-note">인쇄할 도안의 버튼을 켜세요.</p>'+
+  modal(puzzle.title,'<p class="object-note">게시판의 기록과 같은 기준으로 인쇄할 도안을 켜세요.</p>'+
     '<div class="print-keys" id="printKeys" aria-label="인쇄할 도안"></div>','lock');
   const keys=byId('printKeys');
   for(const [i,{label}] of PRINT_SAMPLES.entries()){

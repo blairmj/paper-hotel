@@ -15,7 +15,7 @@ const SchoolInterior = (() => {
   const STAND_DISTANCE = .72;
   const STAND_OFFSET = .10;
   const MUSIC_SAMPLE = {width:.42,height:.245,offset:.028};
-  const PRINT_SHEET_TILT = -Math.PI / 4;
+  const PRINT_SHEET = {center:[2.25,1.144,5.16],width:.92,height:.53,tilt:-Math.PI/4};
 
   function definition(kind) {
     const music = kind === 'music';
@@ -32,8 +32,8 @@ const SchoolInterior = (() => {
         [REHEARSAL_SEATS[0].x+STAND_OFFSET,1.172,REHEARSAL_SEATS[0].z-STAND_DISTANCE+.026],
         MUSIC_SAMPLE.width,MUSIC_SAMPLE.height,-3.55,4.03)
     ] : [
-      target('printSamples', '작업대의 판화 도안', [-3.38, 1.108, .76], .92, .53, -3.65, 2.15),
-      target('printRule', '게시판의 인쇄 기준', [-3.71, 2.13, .086], 1.15, .68, -3.10, 2.15)
+      target('printSamples', '작업대의 판화 도안', PRINT_SHEET.center, PRINT_SHEET.width, PRINT_SHEET.height, 2.25, 6.82),
+      target('printRule', '게시판의 인쇄 기록', [-3.71, 2.13, .086], 1.20, .70, -3.10, 2.15)
     ];
     const entry = RECOVERY_ROOMS.find(item => item.kind === kind);
     return {
@@ -636,8 +636,9 @@ const SchoolInterior = (() => {
       for (const z of [benchZ-.264,benchZ+.264]) box(scene,.13,.803,.13,x,.402,z,wood);
     }
     for (let i=0;i<4;i++) box(scene,.792,.009,.405,benchX-.31,.902+i*.009,benchZ,paper);
-    box(scene,.95,.032,.42,-3.38,.915,.76,wood);
-    box(scene,.87,.037,.034,-3.38,.945,.949,woodFace);
+    const [sheetX,,sheetZ]=PRINT_SHEET.center;
+    box(scene,.95,.018,.41,sheetX,.958,sheetZ,wood);
+    box(scene,.87,.031,.033,sheetX,.974,sheetZ+.190,woodFace);
 
     // Beveled tile, two recessed basins and a cabinet photographed in the concept.
     const counter = standard('#535451', .5);
@@ -755,11 +756,28 @@ const SchoolInterior = (() => {
     }
   }
 
+  async function loadArtMural(){
+    const image=new Image();
+    image.src='rooms/interiors/art-mural.png';
+    await image.decode();
+    return image;
+  }
+
+  function paintArtWall(scene, image) {
+    const aspect=image.naturalWidth/image.naturalHeight;
+    const height=Math.min(2.51,6.44/aspect);
+    const mural=patchPlane(scene,height*aspect,height,WIDTH/2-.008,1.86,3.98,imageMap(image),true);
+    mural.rotation.y=-Math.PI/2;
+    mural.material.opacity=.94;
+    mural.material.depthWrite=false;
+  }
+
   async function build(scene, room) {
     const music = room.kind === 'music';
     const cards=music?[room.clues[1]]:room.clues;
-    const [artwork,clueArt]=await Promise.all([
-      InteriorArtwork.load(room.kind),Promise.all(cards.map(clueBoardArt))
+    const [artwork,clueArt,mural]=await Promise.all([
+      InteriorArtwork.load(room.kind),Promise.all(cards.map(clueBoardArt)),
+      music?null:loadArtMural().catch(()=>null)
     ]);
     scene.add(new THREE.HemisphereLight(music ? '#fff1e3' : '#fbffff', music ? '#a18c80' : '#aebdbc', 2.72));
     const fill = new THREE.DirectionalLight(music ? '#ffe8d4' : '#fff9ee', 1.19);
@@ -777,9 +795,10 @@ const SchoolInterior = (() => {
       rehearsalFurniture(scene,artwork,imageMap(clueArt[0]));
     } else {
       artWorkshop(scene,artwork);
+      if(mural)paintArtWall(scene,mural);
       for(const [i,clue] of cards.entries()){
         const sheet=patchPlane(scene,clue.surface.width,clue.surface.height,...clue.xyz,imageMap(clueArt[i]));
-        if(clue.id==='printSamples')sheet.rotation.x=PRINT_SHEET_TILT;
+        if(clue.id==='printSamples')sheet.rotation.x=PRINT_SHEET.tilt;
       }
     }
     addShadows(scene,music);

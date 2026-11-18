@@ -37,6 +37,12 @@ for(const kind of ['classroom','music','art','sports','computer'])test(kind+' ha
   assert.ok(seen.has(x+','+z),target.id+' is reachable from the entrance');
  }
  if(kind==='music')assert.deepEqual(Object.values(room.finishes),Array(4).fill('black-acoustic'));
+ if(kind==='art'){
+  const [samples,record]=room.clues;
+  assert.ok(samples.xyz[0]>1&&samples.xyz[2]>4,'new designs sit on the right workshop table');
+  assert.ok(record.xyz[0]<0&&record.xyz[2]<.2,'printing examples are on the front display board');
+  assert.ok(Math.hypot(samples.xyz[0]-record.xyz[0],samples.xyz[2]-record.xyz[2])>6);
+ }
  if(kind==='sports'){
   const {banks,compartments}=room.layout;
   assert.equal(banks.length,3);
@@ -136,7 +142,10 @@ test('the puzzle answers come from the displayed sequence, printing, queue and d
   '\nglobalThis.puzzles=SCHOOL_PUZZLES;',ctx);
  assert.deepEqual(Array.from(ctx.encodeMusic(['1','1','2','1'])),['2','1','1','2','1','1']);
  assert.equal(ctx.puzzles.music.answer.join(''),'43');
- assert.equal(ctx.puzzles.art.answer.join(''),'100100');
+ assert.equal(ctx.puzzles.art.answer.join(''),'001010');
+ assert.equal(ctx.shouldPrint({frame:true,dots:8}),true);
+ assert.equal(ctx.shouldPrint({frame:true,dots:5}),false);
+ assert.equal(ctx.shouldPrint({frame:false,dots:6}),false);
  assert.equal(ctx.puzzles.sports.answer.join(''),'2331');
  assert.equal(ctx.routeSignal({reply:false,power:true,code:true}),'link');
  assert.equal(ctx.puzzles.computer.answer.join(','),'link,code,send');
