@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#f4f6f7">
+  <title>방송실 | 학교 탈출</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="music.css?v=school-route28">
+  <link rel="stylesheet" href="route-ui.css?v=school-route28">
+</head>
+<body data-room="broadcast">
+  <main id="musicGame" aria-label="학교 탈출 206호 방송실">
+    <canvas id="roomView" tabindex="0" aria-label="방송실 내부. 바닥을 눌러 이동하고 화면을 끌어 둘러보세요."></canvas>
+    <header class="room-head">
+      <strong class="school"><span>206</span>방송실</strong>
+      <nav aria-label="메뉴"><button id="bag" type="button" hidden>찾은 단서</button><button id="map" type="button">안내도</button></nav>
+    </header>
+    <div id="spots" aria-label="조사할 물건"></div>
+    <footer class="room-foot">
+      <div class="movement" aria-label="이동">
+        <button id="left" type="button" aria-label="왼쪽 보기">‹</button>
+        <button id="walk" type="button" aria-label="한 걸음 앞으로">↑</button>
+        <button id="stepBack" type="button" aria-label="한 걸음 뒤로">↓</button>
+        <button id="right" type="button" aria-label="오른쪽 보기">›</button>
+      </div>
+    </footer>
+    <section id="escape" hidden aria-label="방송실 복구 완료">
+      <span class="sr-only" role="status">방송실 문이 열렸어요.</span>
+      <div><a class="main-button" id="nextRoom" href="hallway.html">복도로 나가기</a><button id="replay" type="button">다시 풀기</button></div>
+    </section>
+    <dialog id="inspect" aria-labelledby="panelTitle">
+      <div class="panel-top"><h1 id="panelTitle"></h1><button id="dismiss" type="button" aria-label="닫기">×</button></div>
+      <div id="panelBody"></div>
+    </dialog>
+    <noscript>게임을 플레이하려면 자바스크립트를 켜 주세요.</noscript>
+  </main>
+  <script src="three.min.js"></script>
+  <script src="review-rooms.js?v=school-route28"></script>
+  <script src="school-routes.js?v=school-route28"></script>
+  <script src="school-map.js?v=school-route28"></script>
+  <script src="school-puzzles.js?v=school-route28"></script>
+  <script src="music-art.js?v=interiors15"></script>
+  <script src="music-world.js?v=school-route28"></script>
+  <script src="interior-artwork.js?v=room-layout20"></script>
+  <script src="school-interiors.js?v=school-route28"></script>
+  <script src="specialty-interiors.js?v=school-route28"></script>
+  <script src="school-room-art.js?v=school-route28"></script>
+  <script src="school-room.js?v=school-route28"></script>
+</body>
+</html>

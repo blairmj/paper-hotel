@@ -759,7 +759,7 @@ const SchoolInterior = (() => {
 
   async function loadArtMural(width, height){
     const image=new Image();
-    image.src='rooms/interiors/art-wall-mural.png';
+    image.src='rooms/interiors/art-wall-mural.png?v=chaekgeori28';
     await image.decode();
     const wallAspect=width/height, imageAspect=image.naturalWidth/image.naturalHeight;
     const map=imageMap(image);

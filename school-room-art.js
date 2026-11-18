@@ -2,7 +2,9 @@
 
 function roomInterior(kind){
   if(kind==='classroom')return ClassroomInterior;
-  return ['art','music'].includes(kind)?SchoolInterior:SportsComputerInteriors;
+  if(['art','music'].includes(kind))return SchoolInterior;
+  if(['sports','computer'].includes(kind))return SportsComputerInteriors;
+  return SpecialtyInteriors;
 }
 
 function schoolRoomDefinition(kind){return roomInterior(kind).definition(kind)}
@@ -108,6 +110,50 @@ function branchingDiagram(){
     box(373,254,132,'□','#faf9f1')+box(517,254,132,ROUTE_NAMES[no.no],'#f1f2ec');
 }
 
+function libraryExampleDiagram(){
+  const probes=bookSearch(SHELF_NUMBERS,SEARCH_EXAMPLE);
+  return svgText(300,56,SEARCH_EXAMPLE+'번을 찾는 예',29)+
+    SHELF_NUMBERS.map((number,i)=>{
+      const x=62+i*79,checked=probes.includes(String(number));
+      return '<rect x="'+(x-29)+'" y="111" width="58" height="109" rx="5" fill="'+
+        (checked?'#f6c549':'#e1eaff')+'" stroke="#6d88a7"/>'+svgText(x,177,number,30);
+    }).join('')+
+    svgText(300,272,probes[0]+' 먼저 확인 → 더 작은 번호 쪽으로',22)+
+    svgText(300,312,'남은 책의 가운데 '+probes[1]+' 확인',22);
+}
+
+function waterCycleDiagram(){
+  const steps=['물 '+WATER_CYCLE.fill+'칸 넣기',WATER_CYCLE.drain+'칸 이상이면 '+WATER_CYCLE.drain+'칸 빼기','남은 물 높이 적기'];
+  return steps.map((item,i)=>{
+    const y=37+i*98;
+    return '<rect x="95" y="'+y+'" width="410" height="58" rx="7" fill="#dff4f4"/>'+
+      svgText(300,y+37,item,26)+(i<2?svgText(300,y+89,'↓',29):'');
+  }).join('')+svgText(300,337,'총 '+WATER_CYCLE.cycles+'회 반복',22);
+}
+
+function waterStartDiagram(){
+  const filled=WATER_CYCLE.initial;
+  return svgText(363,143,'시작할 때',25)+svgText(363,205,'물 '+filled+'칸',43,'#197d9e')+
+    Array.from({length:5},(_,i)=>'<rect x="110" y="'+(240-i*40)+'" width="95" height="40" fill="'+
+      (i<filled?'#60c9e2':'#e8f7fa')+'" stroke="#5e9eb4" stroke-width="2"/>').join('');
+}
+
+function broadcastRulesDiagram(){
+  return Object.values(BROADCAST_COMMANDS).map(({label,before},i)=>{
+    const y=30+i*78;
+    return '<rect x="21" y="'+y+'" width="558" height="63" rx="6" fill="#ebf0fb"/>'+
+      svgText(161,y+40,before,24)+svgText(300,y+40,'→',26)+svgText(433,y+40,label,26);
+  }).join('');
+}
+
+function broadcastLogDiagram(){
+  const {trace,state}=broadcastTrace(BROADCAST_DRAFT);
+  return svgText(300,67,'마지막 방송 시험',29)+
+    trace.map((step,i)=>svgText(300,130+i*49,(i+1)+'  ·  '+step,25,'#346c70')).join('')+
+    svgText(300,247,(trace.length+1)+'단계에서 멈춤',31,'#af403c')+
+    svgText(300,304,'멈췄을 때 상태  '+state,22);
+}
+
 function schoolClueSvg(id){
   const diagrams={
     resetOrder:[resetDiagram,'전원, 연결, 확인을 차례로 잇는 화살표'],
@@ -117,6 +163,12 @@ function schoolClueSvg(id){
       PRINT_RECORDS.filter(sample=>shouldPrint(sample)===printed).map(describePrintCard).join('. ')).join('. ')],
     ballLine:[()=>ballDiagram(BALLS),BALLS.join(' ')+' 순서로 놓인 공'],
     ballOrder:[()=>ballDiagram(BALL_PICKUP),BALL_PICKUP.join(', ')+' 순으로 회수'],
+    loanSlip:[()=>svgText(300,121,'찾을 책의 대출 번호',32)+svgText(300,256,LOAN_NUMBER,102,'#3459a4'),'찾을 책 번호 '+LOAN_NUMBER],
+    shelfGuide:[libraryExampleDiagram,'가운데 책을 보고 찾는 번호와 비교합니다. 번호가 작은 쪽이나 큰 쪽에 남은 책의 가운데부터 다시 확인합니다. 예시로 24를 찾을 때 49, 24 순으로 확인합니다.'],
+    waterCycle:[waterCycleDiagram,'물을 '+WATER_CYCLE.fill+'칸 넣고 '+WATER_CYCLE.drain+'칸 이상이면 '+WATER_CYCLE.drain+'칸을 뺍니다. 남은 물 높이를 적습니다. '+WATER_CYCLE.cycles+'회 반복합니다.'],
+    waterStart:[waterStartDiagram,'시작 물 높이 '+WATER_CYCLE.initial+'칸'],
+    broadcastRules:[broadcastRulesDiagram,Object.values(BROADCAST_COMMANDS).map(({label,before})=>before+'에서 '+label).join('. ')],
+    broadcastLog:[broadcastLogDiagram,'녹음 중 상태에서 3단계가 멈췄습니다.'],
     recordA:[signalsDiagram,'출입 신호 기록'],
     recordB:[branchingDiagram,'응답이 있으면 코드가 일치할 때 현관 전달, 불일치할 때 코드 확인입니다. 응답이 없으면 전원을 확인합니다. 전원이 켜진 쪽 결과는 빈칸이고, 꺼진 쪽은 전원 점검입니다.']
   };
@@ -159,8 +211,12 @@ function schoolLockArt(room,values){
     g.fillRect(x,54,stride-6,128);
     g.fillStyle='#30414a';
     g.font=puzzle.control==='dial'?'88px Georgia':(selected?'600 34px Arial':'600 53px Malgun Gothic,Arial,sans-serif');
-    const mark=selected?PRINT_SAMPLES[i].label:
-      puzzle.control==='dial'?(value??'0'):(RESET_GLYPHS[value]??(value?'✓':'·'));
+    let mark='·';
+    if(selected)mark=PRINT_SAMPLES[i].label;
+    else if(puzzle.control==='dial')mark=value??'0';
+    else if(puzzle.control==='debug')mark=String(i+1);
+    else if(puzzle.control==='sequence')mark=RESET_GLYPHS[value]??value??'·';
+    else if(value)mark='✓';
     g.fillText(mark,x+(stride-6)/2,122);
   }
   return canvas;

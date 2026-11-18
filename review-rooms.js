@@ -4,6 +4,9 @@ const REVIEW_ROOMS = [
   {n:203, place:'음악실', href:'music.html', kind:'music'},
   {n:207, place:'미술실', href:'art.html', kind:'art'},
   {n:208, place:'체육 준비실', href:'sports.html', kind:'sports'},
+  {n:205, place:'도서실', href:'library.html', kind:'library'},
+  {n:204, place:'과학실', href:'science.html', kind:'science'},
+  {n:206, place:'방송실', href:'broadcast.html', kind:'broadcast'},
   {n:209, place:'컴퓨터실', href:'computer.html', kind:'computer'}
 ];
 
@@ -18,10 +21,6 @@ function recoveryRoomLink(room, story) {
 
 function roomRestored(book, room) {
   return book.visits[room.n]?.restoration?.solved===true;
-}
-
-function firstUnrestoredRoom(book) {
-  return RECOVERY_ROOMS.find(room=>!roomRestored(book,room));
 }
 
 function readSchoolBook(key='paperhotel.explore.v1'){

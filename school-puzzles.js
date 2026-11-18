@@ -71,6 +71,51 @@ function routeSignal(input) {
   return rule;
 }
 
+const SHELF_NUMBERS = [12,24,37,49,61,74,86];
+const LOAN_NUMBER = 61;
+const SEARCH_EXAMPLE = 24;
+function bookSearch(numbers, wanted) {
+  const probes=[];
+  let low=0,high=numbers.length-1;
+  while(low<=high){
+    const middle=Math.floor((low+high)/2),found=numbers[middle];
+    probes.push(String(found));
+    if(found===wanted)break;
+    if(found<wanted)low=middle+1;
+    else high=middle-1;
+  }
+  return probes;
+}
+
+const WATER_CYCLE = {initial:1, fill:3, drain:5, cycles:4};
+function waterLevels({initial,fill,drain,cycles}) {
+  let water=initial;
+  return Array.from({length:cycles},()=>{
+    water+=fill;
+    if(water>=drain)water-=drain;
+    return String(water);
+  });
+}
+
+const BROADCAST_COMMANDS = {
+  mic:{label:'마이크 켜기',before:'대기',after:'마이크 켜짐'},
+  record:{label:'녹음 시작',before:'마이크 켜짐',after:'녹음 중'},
+  stop:{label:'녹음 끝내기',before:'녹음 중',after:'녹음 종료'},
+  save:{label:'파일 저장',before:'녹음 종료',after:'저장 완료'}
+};
+const BROADCAST_DRAFT = ['mic','record','save','save'];
+function broadcastTrace(program) {
+  let state='대기';
+  const trace=[];
+  for(const key of program){
+    const command=BROADCAST_COMMANDS[key];
+    if(command?.before!==state)return {passed:false,state,trace};
+    state=command.after;
+    trace.push(state);
+  }
+  return {passed:state==='저장 완료',state,trace};
+}
+
 const SCHOOL_PUZZLES = {
   classroom:{control:'sequence',title:'교실 복구 단말기',keys:['check','power','link'],answer:RESET_ORDER,
     hint:'칠판에서 화살표가 이어지는 방향대로 버튼을 누르세요.'},
@@ -80,7 +125,16 @@ const SCHOOL_PUZZLES = {
     answer:PRINT_SAMPLES.map(sample=>shouldPrint(sample)?'1':'0'),
     hint:'점 개수가 같은 두 기록을 비교해 테두리를 살펴보세요. 인쇄된 도안의 점을 두 개씩 짝지어 보세요.'},
   sports:{control:'dial',title:'문 다이얼',answer:countBallMoves(BALLS,BALL_PICKUP),
+    instructions:'차례마다 뺀 공을 제외하고 배열에서 움직인 공의 개수를 세어 네 칸에 순서대로 맞추세요.',
     hint:'뺀 공을 제외하고 이번에 한 칸씩 왼쪽으로 움직인 공의 개수를 세세요. 다음 공은 바뀐 배열에서 빼세요.'},
+  library:{control:'sequence',title:'도서 검색기',keys:SHELF_NUMBERS.map(String),answer:bookSearch(SHELF_NUMBERS,LOAN_NUMBER),
+    instructions:'대출 메모의 책을 찾으세요. 확인할 책 번호를 차례대로 누르세요.',
+    hint:'49번부터 확인하세요. 찾는 번호가 더 크면 오른쪽 세 권만 남겨 보세요.'},
+  science:{control:'dial',title:'실험 기록 잠금판',answer:waterLevels(WATER_CYCLE),
+    instructions:'급수와 배출을 한 번 마칠 때마다 남은 물의 칸 수를 맞추세요.',
+    hint:'물을 채운 다음 5칸 이상이면 5칸을 빼세요. 그때 남은 높이에서 다음 회차를 시작합니다.'},
+  broadcast:{control:'debug',title:'방송 제어판',answer:Object.keys(BROADCAST_COMMANDS),
+    hint:'테스트에서 멈춘 단계의 상태를 확인하세요. 녹음이 끝나야 파일을 저장할 수 있습니다.'},
   computer:{control:'routing',title:'출입 신호판',answer:NEW_SIGNALS.map(routeSignal),
     hint:'응답이 없는 기록에서 전원이 켜져 있던 신호를 찾아 분기표의 빈칸을 확인하세요.'}
 };

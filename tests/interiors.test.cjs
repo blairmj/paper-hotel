@@ -6,18 +6,25 @@ const vm=require('node:vm');
 const root=path.join(__dirname,'..');
 
 const layoutContext=vm.createContext({RECOVERY_ROOMS:[
- {n:502,kind:'classroom'},{n:203,kind:'music'},{n:207,kind:'art'},{n:208,kind:'sports'},{n:209,kind:'computer'}
+ {n:502,kind:'classroom'},{n:203,kind:'music'},{n:207,kind:'art'},{n:208,kind:'sports'},{n:209,kind:'computer'},
+ {n:205,kind:'library'},{n:204,kind:'science'},{n:206,kind:'broadcast'}
 ]});
+vm.runInContext(fs.readFileSync(path.join(root,'school-puzzles.js'),'utf8'),layoutContext);
 vm.runInContext(fs.readFileSync(path.join(root,'school-interiors.js'),'utf8')+'\nglobalThis.interior=SchoolInterior;',layoutContext);
 vm.runInContext(fs.readFileSync(path.join(root,'sports-computer-interiors.js'),'utf8')+
  '\nglobalThis.sportsComputer=SportsComputerInteriors;',layoutContext);
 vm.runInContext(fs.readFileSync(path.join(root,'classroom-interior.js'),'utf8')+
  '\nglobalThis.classroom=ClassroomInterior;',layoutContext);
-for(const kind of ['classroom','music','art','sports','computer'])test(kind+' has reachable clues',()=>{
+vm.runInContext(fs.readFileSync(path.join(root,'specialty-interiors.js'),'utf8')+
+ '\nglobalThis.specialty=SpecialtyInteriors;',layoutContext);
+for(const kind of ['classroom','music','art','sports','computer','library','science','broadcast'])test(kind+' has reachable clues',()=>{
  const interiors=kind==='classroom'?layoutContext.classroom:
-  ['sports','computer'].includes(kind)?layoutContext.sportsComputer:layoutContext.interior;
+  ['sports','computer'].includes(kind)?layoutContext.sportsComputer:
+  ['music','art'].includes(kind)?layoutContext.interior:layoutContext.specialty;
  const room=interiors.definition(kind),b=room.bounds;
- if(kind!=='classroom')assert.ok(Math.abs(room.wall.width*room.depth/(19*13.54)-.5)<1e-12);
+ if(['music','art','sports','computer'].includes(kind)){
+  assert.ok(Math.abs(room.wall.width*room.depth/(19*13.54)-.5)<1e-12);
+ }
  assert.equal(room.start[1],1.55);
  const open=(x,z)=>x>=b.left&&x<=b.right&&z>=b.front&&z<=b.back&&!room.obstacles.some(([l,r,f,k])=>x>l&&x<r&&z>f&&z<k);
  assert.ok(open(room.start[0],room.start[2]),'start must not be inside furniture or outside the walls');
@@ -121,19 +128,37 @@ test('a review room visit does not spend the story timer',()=>{
  h.load(false,'story');assert.equal(h.label,'1:25');
 });
 
-test('the first incomplete room determines the story continuation',()=>{
+test('shortest routes can pass through any chosen room and exclude the blocked passage',()=>{
  const ctx=vm.createContext({});
- vm.runInContext(fs.readFileSync(path.join(root,'review-rooms.js'),'utf8')+
-  '\nglobalThis.order=RECOVERY_ROOMS;',ctx);
- const progress={visits:{}};
- assert.equal(ctx.firstUnrestoredRoom(progress).kind,'classroom');
- for(const stage of ctx.order){
-  assert.equal(ctx.firstUnrestoredRoom(progress).kind,stage.kind);
-  progress.visits[stage.n]={restoration:{solved:true}};
+ vm.runInContext(fs.readFileSync(path.join(root,'school-routes.js'),'utf8'),ctx);
+ assert.equal(ctx.schoolRouteMinimum(null),4);
+ const north=['classroom','west','library','music','art','east','computer'];
+ const south=['classroom','west','broadcast','science','sports','east','computer'];
+ for(const room of ['library','music','art'])assert.equal(ctx.validSchoolPath(north,room),true);
+ for(const room of ['broadcast','science','sports'])assert.equal(ctx.validSchoolPath(south,room),true);
+ assert.equal(ctx.validSchoolPath(north,null),false,'a longer route should prompt a retry');
+ assert.equal(ctx.validSchoolPath(north,'science'),false,'the route must visit the selected room');
+ assert.equal(ctx.validSchoolPath(['classroom','west','center','music','art','east','computer'],'music'),false);
+ assert.equal(ctx.validSchoolPath(['classroom','west','center','science','sports','east','computer'],'science'),true,
+  'different paths of the same minimum length may be used');
+});
+
+test('the chosen room opens only at its corridor stop and computer access requires its puzzle',()=>{
+ const ctx=vm.createContext({});
+ for(const file of ['review-rooms.js','school-routes.js']){
+  vm.runInContext(fs.readFileSync(path.join(root,file),'utf8'),ctx);
  }
- assert.equal(ctx.firstUnrestoredRoom(progress),undefined);
- assert.equal(ctx.recoveryRoomLink(ctx.order[4],true),'computer.html?school=1');
- assert.equal(ctx.recoveryRoomLink(ctx.order[0],false),'index.html?review=1');
+ const progress={visits:{}};
+ assert.equal(ctx.canEnterSchoolRoom(progress,'computer'),false);
+ progress.route={stop:'library',path:['classroom','west','library','music','art','east','computer'],step:2};
+ assert.equal(ctx.canEnterSchoolRoom(progress,'library'),false);
+ progress.visits[502]={restoration:{solved:true}};
+ assert.equal(ctx.canEnterSchoolRoom(progress,'library'),true);
+ assert.equal(ctx.canEnterSchoolRoom(progress,'science'),false);
+ progress.route.step=6;
+ assert.equal(ctx.canEnterSchoolRoom(progress,'computer'),false);
+ progress.visits[205]={restoration:{solved:true}};
+ assert.equal(ctx.canEnterSchoolRoom(progress,'computer'),true);
 });
 
 test('the puzzle answers come from the displayed sequence, printing, queue and decision rules',()=>{
@@ -149,4 +174,10 @@ test('the puzzle answers come from the displayed sequence, printing, queue and d
  assert.equal(ctx.puzzles.sports.answer.join(''),'2331');
  assert.equal(ctx.routeSignal({reply:false,power:true,code:true}),'link');
  assert.equal(ctx.puzzles.computer.answer.join(','),'link,code,send');
+ assert.equal(ctx.puzzles.library.answer.join(','),'49,74,61');
+ assert.equal(ctx.puzzles.science.answer.join(''),'4203');
+ const broken=ctx.broadcastTrace(['mic','record','save','save']);
+ assert.equal(broken.passed,false);
+ assert.equal(broken.trace.length,2);
+ assert.equal(ctx.broadcastTrace(ctx.puzzles.broadcast.answer).passed,true);
 });

@@ -309,7 +309,7 @@ async function createMusicWorld({onInspect,onReadyToMove,room=paintedRoom,buildR
   movementButton('stepBack',()=>step(-1.2));
   new ResizeObserver(resize).observe(canvas);resize();
   return {
-    clearKeys, lookAtPiano(){inspectTarget('paper')},
+    clearKeys,walkTo,lookAtPiano(){inspectTarget('paper')},
     setDigits(digits){model.setDigits(digits);queue()},
     facingDoor(done){clearKeys();look(room.door,true,done)},
     showFinale(view,done){

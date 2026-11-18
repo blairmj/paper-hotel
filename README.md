@@ -2,7 +2,7 @@
 
 [학생용 게임 시작](https://blairmj.github.io/paper-hotel/)
 
-하교 종이 울린 직후 학교 출입 시스템의 연결이 끊깁니다. 5학년 2반에서 출발해 교실마다 단서를 읽고 문 옆 장치에 필요한 입력을 맞춥니다. 입력이 맞으면 문이 열리며 다음 교실로 이동할 수 있습니다. 마지막 컴퓨터실에서 출입 신호를 맞추면 현관이 열리고 하교가 완료됩니다.
+하교 종이 울린 직후 학교 출입 시스템의 연결이 끊깁니다. 먼저 안내도에서 들를 교실을 고르고 5학년 2반부터 컴퓨터실까지 통행할 수 있는 최단 경로를 연결합니다. 5학년 2반 장치를 복구하면 문이 열립니다. 표시한 복도를 따라 걸으면서 선택한 교실의 장치를 복구하고, 마지막 컴퓨터실에서 출입 신호를 맞추면 현관이 열립니다.
 
 | 교실 | 풀이 과정 |
 | --- | --- |
@@ -10,6 +10,9 @@
 | 음악실 | 보면대의 변환 기록을 악보에 적용해 같은 건반 번호가 이어지는 구간을 세어 봅니다. |
 | 미술실 | 게시판의 인쇄·보관 기록에서 선별 규칙을 찾아 오른쪽 공동 작업대의 새 판화 도안에 적용합니다. |
 | 체육 준비실 | 서로 다른 라커에서 공의 배열과 회수 순서를 확인하고, 공을 뺀 뒤의 배열을 추적합니다. |
+| 도서실 | 책 번호의 가운데 값부터 비교해 찾을 범위를 반으로 줄입니다. |
+| 과학실 | 급수와 배출을 반복하면서 회차마다 다음에 사용할 물의 높이를 기록합니다. |
+| 방송실 | 방송 시험의 중단 지점을 확인하고 명령을 고쳐 다시 실행합니다. |
 | 컴퓨터실 | 앞쪽의 신호 기록과 뒷줄의 분기표를 읽고 새로운 신호를 보낼 경로를 맞춥니다. |
 
 화면을 끌어 둘러보고 바닥을 클릭해 이동합니다. **↑ / ↓** 또는 W·A·S·D로도 걸을 수 있습니다. 살펴본 단서는 **찾은 단서**에서 다시 확인할 수 있습니다.
@@ -23,12 +26,15 @@
 - [음악실](https://blairmj.github.io/paper-hotel/music.html)
 - [미술실](https://blairmj.github.io/paper-hotel/art.html)
 - [체육 준비실](https://blairmj.github.io/paper-hotel/sports.html)
+- [도서실](https://blairmj.github.io/paper-hotel/library.html)
+- [과학실](https://blairmj.github.io/paper-hotel/science.html)
+- [방송실](https://blairmj.github.io/paper-hotel/broadcast.html)
 - [컴퓨터실](https://blairmj.github.io/paper-hotel/computer.html)
 
 ## 수정과 배포
 
 이 저장소의 main 브랜치 루트가 GitHub Pages의 게시 폴더입니다. 로컬에서는 이 폴더에서 `python -m http.server 8000`을 실행합니다. 3D 렌더링에는 [Three.js](./three-LICENSE.txt)를 사용합니다.
 
-`school-puzzles.js`는 퍼즐 자료와 풀이 규칙을 정의합니다. `school-room.js`는 퍼즐 조작과 교실 이동을 처리합니다. `review-rooms.js`는 교실 순서, 진행 기록과 타이머를 관리합니다. 출발 교실과 현관은 `classroom-interior.js`, 음악실과 미술실은 `school-interiors.js`, 체육 준비실과 컴퓨터실은 `sports-computer-interiors.js`에서 구성합니다. 이동과 충돌, 문 애니메이션은 `music-world.js`를 사용합니다.
+`school-routes.js`의 복도 연결 정보는 안내도, 실제 복도와 너비 우선 탐색 판정에 함께 쓰입니다. `school-puzzles.js`는 교실의 퍼즐 자료와 풀이 규칙을 정의하고, `school-room.js`는 입력과 교실 이동을 처리합니다. `review-rooms.js`는 교실 목록, 진행 기록과 타이머를 관리합니다. 도서실·과학실·방송실의 내부는 `specialty-interiors.js`에서 구성합니다.
 
 교실 동선, 퍼즐과 진행 기록, 제한 시간은 `node --test tests/interiors.test.cjs`로 검사합니다.

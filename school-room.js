@@ -13,7 +13,9 @@ const saved=book().visits[room.n]?.restoration;
 const outdated=saved?.revision!==puzzle.revision;
 
 function newRun(){
-  const entry=puzzle.control==='sequence'?[]:Array(puzzle.answer.length).fill(puzzle.control==='routing'?'':'0');
+  let entry=Array(puzzle.answer.length).fill(puzzle.control==='routing'?'':'0');
+  if(puzzle.control==='sequence')entry=[];
+  if(puzzle.control==='debug')entry=BROADCAST_DRAFT.slice();
   return {revision:puzzle.revision,found:[],entry,solved:false};
 }
 let run=newRun(),world,countdown,opening=false,finished=false;
@@ -26,6 +28,7 @@ if(saved&&!outdated){
       let valid;
       if(puzzle.control==='selection')valid=stored==='0'||stored==='1';
       else if(puzzle.control==='dial')valid=typeof stored==='string'&&/^\d$/.test(stored);
+      else if(puzzle.control==='debug')valid=Object.hasOwn(BROADCAST_COMMANDS,stored);
       else valid=Object.hasOwn(ROUTE_NAMES,stored);
       return valid?stored:value;
     });
@@ -63,8 +66,9 @@ function showFinish(){
   finished=true;
   roomHead.hidden=true;byId('spots').hidden=true;movement.hidden=true;
   byId('roomView').setAttribute('aria-label','학교 현관');
-  const preceding=RECOVERY_ROOMS.slice(0,-1);
-  const restored=preceding.filter(item=>roomRestored(book(),item)).length;
+  const progress=book(),plan=schoolRoute(progress);
+  const preceding=RECOVERY_ROOMS.filter(item=>['classroom',plan?.stop].includes(item.kind));
+  const restored=preceding.filter(item=>roomRestored(progress,item)).length;
   const panel=document.createElement('section');
   panel.className='finale-status';panel.setAttribute('aria-label','학교 출입 복구 결과');
   panel.innerHTML='<p role="status">교실 장치 '+restored+'/'+preceding.length+' 복구</p>';
@@ -82,12 +86,12 @@ function showFinish(){
 
 function showExit(){
   const next=RECOVERY_ROOMS[stage+1];
-  if(story&&!next){showFinish();return}
+  if(story&&room.kind==='computer'){showFinish();return}
   movement.hidden=true;byId('escape').hidden=false;
   byId('replay').hidden=story;
   const link=byId('nextRoom');
-  link.href=next?recoveryRoomLink(next,story):'./';
-  link.textContent=next?next.place+'로 이동':'우리 교실부터 시작';
+  link.href=story?'hallway.html':next?recoveryRoomLink(next,false):'./';
+  link.textContent=story?'복도로 나가기':next?next.place+'로 이동':'우리 교실부터 시작';
   link.focus({preventScroll:true});
 }
 function solve(){
@@ -167,20 +171,23 @@ function inventory(){
 }
 
 function sequencePanel(){
-  modal(puzzle.title,'<div class="sequence-output" id="sequenceOutput" aria-label="입력한 순서"></div>'+
-    '<div class="sequence-keys" id="sequenceKeys"></div><p class="readout" id="entryFeedback" role="status"></p>','lock');
+  const books=room.kind==='library';
+  const instruction=puzzle.instructions?'<p class="object-note">'+puzzle.instructions+'</p>':'';
+  modal(puzzle.title,instruction+'<div class="sequence-output" id="sequenceOutput" aria-label="입력한 순서"></div>'+
+    '<div class="sequence-keys'+(books?' book-keys':'')+'" id="sequenceKeys"></div><p class="readout" id="entryFeedback" role="status"></p>','lock');
   function draw(){
-    const steps=puzzle.answer.map((_,i)=>'<span>'+(RESET_GLYPHS[run.entry[i]]??'·')+'</span>');
+    const steps=puzzle.answer.map((_,i)=>'<span>'+(RESET_GLYPHS[run.entry[i]]??run.entry[i]??'·')+'</span>');
     byId('sequenceOutput').innerHTML=steps.join('');
     byId('entryFeedback').textContent=run.entry.length===puzzle.answer.length&&!correct()?'순서를 다시 확인해 보세요.':'';
   }
   for(const key of puzzle.keys){
-    const label=RESET_KEYS[key];
+    const label=books?key+'번 책':RESET_KEYS[key];
     const button=action(byId('sequenceKeys'),label,()=>{
       if(run.entry.length>=puzzle.answer.length)return;
       run.entry.push(key);draw();changed();
     });
-    button.innerHTML='<b aria-hidden="true">'+RESET_GLYPHS[key]+'</b><span>'+label+'</span>';
+    button.innerHTML=books?'<b aria-hidden="true">'+key+'</b>':'<b aria-hidden="true">'+RESET_GLYPHS[key]+'</b><span>'+label+'</span>';
+    if(books)button.setAttribute('aria-label',label);
   }
   action(actions(),'한 단계 지우기',()=>{run.entry.pop();draw();changed()});
   draw();
@@ -214,8 +221,8 @@ function dial(host,i) {
   action(wheel,'▼',()=>rotate(-1)).setAttribute('aria-label',(i+1)+'번째 숫자 내리기');
 }
 function dialPanel(){
-  if(room.kind==='sports'){
-    modal(puzzle.title,'<p class="object-note">차례마다 <strong>뺀 공을 제외하고 배열에서 움직인 공의 개수</strong>를 세어 네 칸에 순서대로 맞추세요.</p>'+
+  if(room.kind!=='music'){
+    modal(puzzle.title,'<p class="object-note">'+puzzle.instructions+'</p>'+
       '<div class="switches four-digits" id="wheels"></div>','lock');
     run.entry.forEach((_,i)=>dial(byId('wheels'),i));
     return;
@@ -253,19 +260,46 @@ function routingPanel(){
   }
   feedback();
 }
+
+function debugPanel(){
+  modal(puzzle.title,'<p class="object-note">방송이 멈춘 단계를 찾아 고쳐 보세요.</p>'+
+    '<div class="broadcast-steps" id="broadcastSteps"></div><p class="readout" id="entryFeedback" role="status"></p>','routing');
+  const steps=byId('broadcastSteps'),feedback=byId('entryFeedback');
+  const options=Object.entries(BROADCAST_COMMANDS).map(([key,command])=>
+    '<option value="'+key+'">'+command.label+'</option>').join('');
+  run.entry.forEach((key,i)=>{
+    const row=document.createElement('label');
+    row.append(document.createTextNode((i+1)+'단계'));
+    const select=document.createElement('select');
+    select.innerHTML=options;select.value=key;
+    select.onchange=()=>{
+      run.entry[i]=select.value;
+      for(const item of steps.children)delete item.dataset.result;
+      feedback.textContent='';world.setDigits(run.entry);save();
+    };
+    row.append(select);steps.append(row);
+  });
+  action(actions(),'방송 시험',()=>{
+    const results=broadcastTrace(run.entry);
+    if(results.passed){solve();return}
+    for(const [i,row] of Array.from(steps.children).entries()){
+      row.dataset.result=i<results.trace.length?'passed':i===results.trace.length?'failed':'';
+    }
+    feedback.textContent=(results.trace.length+1)+'단계에서 멈췄어요. 현재 상태는 '+results.state+'입니다.';
+  },true);
+}
+
 function inspectLock(){
   if(run.solved||!countdown||countdown.check())return;
-  const panels={sequence:sequencePanel,selection:selectionPanel,dial:dialPanel,routing:routingPanel};
+  const panels={sequence:sequencePanel,selection:selectionPanel,dial:dialPanel,routing:routingPanel,debug:debugPanel};
   panels[puzzle.control]();
   appendRoomTextHint(content,countdown,puzzle.hint);
 }
 
 function directory(){
   if(story){
-    const progress=book();
-    modal('학교 안내도','<ol class="route-list">'+RECOVERY_ROOMS.map(item=>'<li'+
-      (item.n===room.n?' aria-current="step"':'')+'><span>'+item.place+'</span><span>'+
-      (roomRestored(progress,item)?'복구':'대기')+'</span></li>').join('')+'</ol>','map');
+    modal('학교 안내도','','map');
+    renderSchoolMap(content,{plan:schoolRoute(book()),position:room.kind});
   }else{
     modal('학교 안내도','<div class="map-list">'+RECOVERY_ROOMS.map(item=>
       '<a href="'+recoveryRoomLink(item,false)+'">'+item.place+'</a>').join('')+'</div>','map');
@@ -284,20 +318,22 @@ function beginTimer(){
   }});
 }
 function intro(){
-  modal('하교 직전','<p>하교 종이 울렸습니다. 학교 출입 시스템의 연결이 끊겼습니다.</p>'+
-    '<p>교실 장치를 복구하고 컴퓨터실로 이동하세요.</p>','intro');
-  action(actions(),'복구 시작',()=>{
-    const progress=book();progress.started=true;writeSchoolBook(bookKey,progress);
-    close();beginTimer();
-  },true);
+  modal('하교 경로 고르기','<p>학교 출입 시스템이 멈췄어요. 컴퓨터실에서 복구할 수 있어요.</p>','intro');
+  renderSchoolMap(content,{onStart:plan=>{
+    const progress=book();progress.route=plan;writeSchoolBook(bookKey,progress);
+    close();beginTimer();if(run.solved)showExit();
+  }});
 }
 function mandatoryDialog(){return ['intro','timeout'].includes(dialog.dataset.panel)}
 
 function start(){
-  const progress=book(),next=firstUnrestoredRoom(progress)??RECOVERY_ROOMS.at(-1);
-  const nextStage=RECOVERY_ROOMS.indexOf(next);
-  if(story&&(stage>nextStage||(stage===0&&nextStage>0))){
-    location.replace(recoveryRoomLink(next,true));
+  const progress=book(),plan=schoolRoute(progress);
+  if(story&&room.kind!=='classroom'&&!canEnterSchoolRoom(progress,room.kind)){
+    location.replace(plan&&roomRestored(progress,RECOVERY_ROOMS[0])?'hallway.html':'./');
+    return;
+  }
+  if(story&&room.kind==='classroom'&&run.solved&&plan?.step>0){
+    location.replace('hallway.html');
     return;
   }
   if(outdated&&!run.solved){
@@ -319,7 +355,7 @@ function start(){
     onInspect:id=>{if(id==='lock')inspectLock();else inspectClue(id)}
   }).then(created=>{
     world=created;world.reset(run.solved,run.entry);byId('bag').hidden=!run.found.length;
-    if(story&&stage===0&&!progress.started&&!run.solved){intro();return}
+    if(story&&!plan){intro();return}
     beginTimer();
     if(run.solved)showExit();
   }).catch(error=>{
