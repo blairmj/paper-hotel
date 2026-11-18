@@ -3,10 +3,12 @@
 async function createMusicWorld({onInspect,onReadyToMove,room=paintedRoom,buildRoom=buildPaintedRoom}){
   // Each interior supplies the same metre-based limits as its geometry.
   const roomLimits = room.bounds ?? {left:-9.06, right:9.06, front:-7.54, back:4.94};
-  const seatBanks = room.obstacles ?? [[-3.96,-1.10,-4.96,-1.96],[1.10,3.96,-4.96,-1.96]];
+  const obstacles = room.obstacles ?? [[-3.96,-1.10,-4.96,-1.96],[1.10,3.96,-4.96,-1.96]];
+  const occluders = (room.occluders ?? []).map(([left,right,bottom,top,front,back]) =>
+    new THREE.Box3(new THREE.Vector3(left,bottom,front),new THREE.Vector3(right,top,back)));
   function onOpenFloor(x,z) {
     return x>=roomLimits.left && x<=roomLimits.right && z>=roomLimits.front && z<=roomLimits.back &&
-      !seatBanks.some(([l,r,f,b])=>x>l && x<r && z>f && z<b);
+      !obstacles.some(([l,r,f,b])=>x>l && x<r && z>f && z<b);
   }
   function clearSegment(a,b) {
     const steps=Math.max(1,Math.ceil(Math.hypot(b.x-a.x,b.z-a.z)/.11));
@@ -19,7 +21,7 @@ async function createMusicWorld({onInspect,onReadyToMove,room=paintedRoom,buildR
   function floorRoute(start,goal) {
     if(clearSegment(start,goal)) return [goal];
     const nodes=[start,goal];
-    for(const [l,r,f,b] of seatBanks) for(const x of [l-.09,r+.09]) for(const z of [f-.09,b+.09]) nodes.push({x,z});
+    for(const [l,r,f,b] of obstacles) for(const x of [l-.09,r+.09]) for(const z of [f-.09,b+.09]) nodes.push({x,z});
     const cost=nodes.map(()=>Infinity), prev=nodes.map(()=>-1), visited=new Set();cost[0]=0;
     for(let i=0;i<nodes.length;i++){
       let current=-1;
@@ -55,6 +57,15 @@ async function createMusicWorld({onInspect,onReadyToMove,room=paintedRoom,buildR
   }
   const eye=camera.position;
   const keys=new Set(),point=new THREE.Vector3(),corner=new THREE.Vector3();
+  const sight = new THREE.Ray(), hit = new THREE.Vector3();
+  function targetOccluded(target) {
+    if(!occluders.length)return false;
+    sight.origin.copy(eye);
+    sight.direction.subVectors(target.point,eye);
+    const distance = sight.direction.length();
+    sight.direction.divideScalar(distance);
+    return occluders.some(block => sight.intersectBox(block,hit) && hit.distanceToSquared(eye)<(distance-.01)**2);
+  }
   const targets=room.targets.map(o=>{
     const button=document.createElement('button'),label=document.createElement('span');
     button.hidden=true;
@@ -96,7 +107,8 @@ async function createMusicWorld({onInspect,onReadyToMove,room=paintedRoom,buildR
       const b=target.button;
       const viewNormal=new THREE.Vector3(Math.sin(target.rotationY||0),0,Math.cos(target.rotationY||0));
       const behindSurface=viewNormal.dot(new THREE.Vector3().subVectors(eye,target.point))<.025;
-      b.hidden=behindSurface||v.z<0||v.z>=1||px<20||px>width-20||py<55||py>height-56||!!journey||(openness===1&&target.id==='lock');
+      b.hidden=behindSurface||v.z<0||v.z>=1||px<20||px>width-20||py<55||py>height-56||!!journey||
+        (openness===1&&target.id==='lock')||targetOccluded(target);
       target.px=px;target.py=py;
       if(b.hidden)continue;
       let halfWidth=0,halfHeight=0;
@@ -164,18 +176,25 @@ async function createMusicWorld({onInspect,onReadyToMove,room=paintedRoom,buildR
   function walkToPixel(x,y){
     mousePoint.set(2*x/width-1,1-2*y/height);
     raycaster.setFromCamera(mousePoint,camera);
-    if(!raycaster.ray.intersectBox(roomBox,destination)||destination.y>=room.wall.height-.001)return;
+    if(!raycaster.ray.intersectBox(roomBox,destination))return;
+    for(const block of occluders){
+      if(raycaster.ray.intersectBox(block,hit)&&hit.distanceToSquared(eye)<destination.distanceToSquared(eye)){
+        destination.copy(hit);
+      }
+    }
+    if(destination.y>=room.wall.height-.001)return;
     let goal={
       x:clamp(destination.x,roomLimits.left,roomLimits.right),
       z:clamp(destination.z,roomLimits.front,roomLimits.back)
     };
-    for(const [left,right,front,back] of seatBanks){
+    for(const [left,right,front,back] of obstacles){
       if(goal.x<=left||goal.x>=right||goal.z<=front||goal.z>=back)continue;
       const approaches=[
         {x:left-.10,z:goal.z},{x:right+.10,z:goal.z},
         {x:goal.x,z:front-.10},{x:goal.x,z:back+.10}
-      ];
+      ].filter(({x,z})=>onOpenFloor(x,z));
       approaches.sort((a,b)=>Math.hypot(a.x-eye.x,a.z-eye.z)-Math.hypot(b.x-eye.x,b.z-eye.z));
+      if(!approaches.length)return;
       goal=approaches[0];
     }
     walkTo(goal);

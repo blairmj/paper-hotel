@@ -4,36 +4,7 @@ const COMPUTER_INPUTS = {recordA:'111010010',recordB:'131232030',target:'5253335
 const BALL_NAMES = {'🏀':'농구공','🎾':'테니스공','🏐':'배구공','🏈':'미식축구공'};
 
 function schoolRoomDefinition(kind){
-  if(kind==='art')return SchoolInterior.definition(kind);
-  const entry=REVIEW_ROOMS.find(room=>room.kind===kind);
-  const lock={center:[2.65,1.30,-8.10],width:1,height:.55};
-  const front=(id,name,xyz,width,height)=>({
-    id,name,xyz,surface:{width,height},approach:{x:xyz[0],z:-5.75}
-  });
-  const clues={
-    art:[
-      front('stamps','작업대 도장함',[-5.8,1.38,-8.10],1.65,.92),
-      {id:'printOrder',name:'인쇄 순서 카드',xyz:[0,1.75,5.36],surface:{width:1.65,height:1},
-        rotationY:Math.PI,approach:{x:0,z:2.85}}
-    ],
-    sports:[
-      front('photo','운동회 사진',[-6.6,1.8,-8.10],1.8,1.08),
-      {id:'ballOrder',name:'공 반납 순서',xyz:[9.43,1.65,0],surface:{width:1.7,height:1},
-        rotationY:-Math.PI/2,approach:{x:7.1,z:0}}
-    ],
-    computer:[
-      front('recordA','모니터 출력 기록',[-4.4,1.35,-8.10],1.18,.82),
-      {id:'recordB',name:'뒤쪽 화면 점검 기록',xyz:[0,1.84,5.36],surface:{width:3.5,height:1.45},
-        rotationY:Math.PI,approach:{x:0,z:2.85}}
-    ]
-  }[kind];
-  return {
-    ...entry,start:[0,1.55,1.1],wall:paintedRoom.wall,portal:paintedRoom.portal,door:paintedRoom.door,
-    lock,obstacles:[],clues,
-    targets:[{id:'lock',name:'문 잠금장치',xyz:lock.center,surface:lock,approach:{x:2.65,z:-5.75}},...clues],
-    firstView:[0,1.2,-8.1],portraitView:[1.6,1.4,-8.1],
-    stops:[[2.65,1.3,-8.1],[9.4,1.6,0],[0,1.6,5.3],[-9.4,1.6,0],clues[0].xyz]
-  };
+  return (kind==='art' ? SchoolInterior : SportsComputerInteriors).definition(kind);
 }
 
 function ballDrawing(symbol){
@@ -88,59 +59,45 @@ function schoolClueSvg(id){
 }
 
 async function clueBoardArt(clue){
-  const canvas=document.createElement('canvas');canvas.width=720;canvas.height=480;
+  const canvas=document.createElement('canvas');canvas.width=720;canvas.height=420;
   const g=canvas.getContext('2d');
-  g.fillStyle='#907b5a';g.fillRect(0,0,720,480);
-  g.fillStyle='#f6f4e8';g.fillRect(9,9,702,462);
-  g.fillStyle='#346451';g.fillRect(32,8,40,42);
-  g.font='600 30px Malgun Gothic,Arial,sans-serif';g.fillStyle='#3f5148';
-  g.fillText(clue.name,38,72);
+  g.fillStyle='#aaaead';g.fillRect(0,0,720,420);
+  g.fillStyle='#f1f1e9';g.fillRect(5,5,710,410);
+  g.fillStyle='#39474c';g.fillRect(30,31,660,3);
+  g.font='600 30px Malgun Gothic,Arial,sans-serif';g.fillStyle='#33444c';
+  g.fillText(clue.name,34,70);
   const image=new Image();
   image.src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(schoolClueSvg(clue.id));
-  await image.decode();g.drawImage(image,28,85,664,375);
+  await image.decode();g.drawImage(image,77,65,566,340);
   return canvas;
 }
 
 function schoolLockArt(room,values){
   const canvas=document.createElement('canvas');canvas.width=420;canvas.height=236;
   const g=canvas.getContext('2d');
-  g.fillStyle='#506858';g.fillRect(0,0,420,236);
-  g.strokeStyle='#c4af77';g.lineWidth=10;g.strokeRect(6,6,408,224);
-  g.fillStyle='#efeee3';g.fillRect(30,48,360,140);
+  const frame=g.createLinearGradient(0,0,420,236);
+  frame.addColorStop(0,'#78838d');frame.addColorStop(.46,'#45515c');frame.addColorStop(1,'#343b41');
+  g.fillStyle=frame;g.fillRect(0,0,420,236);
+  g.strokeStyle='#9aa4a7';g.lineWidth=4;g.strokeRect(5,5,410,226);
+  for(const x of [22,398])for(const y of [23,213]){
+    g.fillStyle='#b2b9ba';g.beginPath();g.arc(x,y,5,0,Math.PI*2);g.fill();
+  }
   if(room.kind==='computer'){
+    g.fillStyle='#29333d';g.fillRect(101,32,218,172);
     for(let i=0;i<9;i++){
-      g.fillStyle=values[i]?'#4d8d79':'#ccd5cc';
-      g.fillRect(123+(i%3)*60,49+Math.floor(i/3)*47,52,40);
+      g.fillStyle=values[i]?'#73bea6':'#d3dbdf';
+      g.fillRect(110+(i%3)*68,39+Math.floor(i/3)*54,64,49);
     }
   }else{
-    g.fillStyle='#34493d';g.font=(room.kind==='art'?'52':'72')+'px Georgia,serif';
-    g.textAlign='center';g.textBaseline='middle';g.fillText(values.join('')||'······',210,122);
+    g.font='86px Georgia,serif';g.textAlign='center';g.textBaseline='middle';
+    for(let i=0;i<4;i++){
+      g.fillStyle='#d6d7cb';g.fillRect(43+i*85,45,79,146);
+      g.fillStyle='#29343a';g.fillText(values[i]??0,82+i*85,122);
+    }
   }
   return canvas;
 }
 
-async function buildSchoolRoom(scene,room){
-  if(room.interior)return SchoolInterior.build(scene,room);
-  const load=async url=>{const image=new Image();image.src=url;await image.decode();return image};
-  const [front,back,left,right,door,corridor]=await Promise.all([
-    ...['front','back','left','right'].map(wall=>load('rooms/'+room.kind+'/'+wall+'.webp')),
-    load('rooms/music-art/door.webp'),studioImage('front')
-  ]);
-  const panel=(...args)=>placeRoomPanel(scene,...args);
-  const {width,height,z}=room.wall,depth=5.4-z,mid=(5.4+z)/2;
-  const setDoor=buildEntrance(scene,panel,front,door,room,corridor);
-  panel(imageMap(back),width,height,[0,height/2,5.4]).rotation.y=Math.PI;
-  panel(imageMap(left),depth,height,[-width/2,height/2,mid]).rotation.y=Math.PI/2;
-  panel(imageMap(right),depth,height,[width/2,height/2,mid]).rotation.y=-Math.PI/2;
-  panel(imageMap(studioFloor()),width+.02,depth+.01,[0,0,mid]).rotation.x=-Math.PI/2;
-  panel(imageMap(studioCeiling()),width,depth,[0,height,mid]).rotation.x=Math.PI/2;
-  for(const clue of room.clues){
-    const art=await clueBoardArt(clue);
-    panel(imageMap(art),clue.surface.width,clue.surface.height,clue.xyz).rotation.y=clue.rotationY||0;
-  }
-  const lock=panel(imageMap(schoolLockArt(room,[])),room.lock.width,room.lock.height,room.lock.center);
-  return {
-    setDoor,
-    setDigits(values){lock.material.map.image=schoolLockArt(room,values);lock.material.map.needsUpdate=true}
-  };
+function buildSchoolRoom(scene,room){
+  return (room.kind==='art' ? SchoolInterior : SportsComputerInteriors).build(scene,room);
 }

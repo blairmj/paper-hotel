@@ -5,10 +5,15 @@ const path=require('node:path');
 const vm=require('node:vm');
 const root=path.join(__dirname,'..');
 
-const layoutContext=vm.createContext({REVIEW_ROOMS:[{n:203,kind:'music'},{n:207,kind:'art'}]});
+const layoutContext=vm.createContext({REVIEW_ROOMS:[
+ {n:203,kind:'music'},{n:207,kind:'art'},{n:208,kind:'sports'},{n:209,kind:'computer'}
+]});
 vm.runInContext(fs.readFileSync(path.join(root,'school-interiors.js'),'utf8')+'\nglobalThis.interior=SchoolInterior;',layoutContext);
-for(const kind of ['music','art'])test(kind+' keeps half the original floor area and reachable clues',()=>{
- const room=layoutContext.interior.definition(kind),b=room.bounds;
+vm.runInContext(fs.readFileSync(path.join(root,'sports-computer-interiors.js'),'utf8')+
+ '\nglobalThis.sportsComputer=SportsComputerInteriors;',layoutContext);
+for(const kind of ['music','art','sports','computer'])test(kind+' keeps half the original floor area and reachable clues',()=>{
+ const interiors=['sports','computer'].includes(kind)?layoutContext.sportsComputer:layoutContext.interior;
+ const room=interiors.definition(kind),b=room.bounds;
  assert.ok(Math.abs(room.wall.width*room.depth/(19*13.54)-.5)<1e-12);
  assert.equal(room.start[1],1.55);
  const open=(x,z)=>x>=b.left&&x<=b.right&&z>=b.front&&z<=b.back&&!room.obstacles.some(([l,r,f,k])=>x>l&&x<r&&z>f&&z<k);
@@ -29,6 +34,21 @@ for(const kind of ['music','art'])test(kind+' keeps half the original floor area
   assert.ok(seen.has(x+','+z),target.id+' is reachable from the entrance');
  }
  if(kind==='music')assert.deepEqual(Object.values(room.finishes),Array(4).fill('black-acoustic'));
+ if(kind==='sports'){
+  const {banks,compartments}=room.layout;
+  assert.equal(banks.length,3);
+  assert.equal(new Set(compartments.map(slot=>slot.bank)).size,2);
+  for(const [i,slot] of compartments.entries()){
+   const {x,z}=room.clues[i].approach;
+   assert.ok(x>banks[slot.bank].x&&x<banks[slot.bank+1].x&&open(x,z),'find each clue in a different internal aisle');
+  }
+ }
+ if(kind==='computer'){
+  const {rows}=room.layout;
+  assert.equal(rows.length,4);
+  assert.ok(rows.every(row=>row.length===6&&row.filter(seat=>seat.x<0).length===3));
+  assert.ok(Array.from({length:40},(_,i)=>i*.20+1).every(z=>open(0,z)),'central aisle is unobstructed');
+ }
 });
 
 function timerHarness(){

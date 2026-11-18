@@ -159,17 +159,18 @@ const SchoolInterior = (() => {
     return mesh;
   }
 
-  function architecture(scene, room, artwork) {
-    const w = WIDTH, d = DEPTH, h = room.wall.height, low = room.ceilingMinimum;
-    const music = room.kind === 'music';
-    const left = DOOR.x - DOOR.width / 2, right = DOOR.x + DOOR.width / 2;
+  function enclosure(scene, room, artwork, trimColor) {
+    const {width: w, back: d, height: h} = room.wall;
+    const low = room.ceilingMinimum;
+    const door = room.entrance ?? DOOR;
+    const left = door.x - door.width / 2, right = door.x + door.width / 2;
     const roofAt = x => low + (x + w / 2) * (h - low) / w;
     const front = painted(artwork.surface('wall', w, h, 'front'));
     const frontSection = points => quad(scene, points.map(([x, y]) => [x, y, 0]), front,
       points.flatMap(([x, y]) => [(x + w / 2) / w, y / h]));
     frontSection([[-w / 2, 0], [left, 0], [left, roofAt(left)], [-w / 2, low]]);
     frontSection([[right, 0], [w / 2, 0], [w / 2, h], [right, roofAt(right)]]);
-    frontSection([[left, DOOR.height], [right, DOOR.height], [right, roofAt(right)], [left, roofAt(left)]]);
+    frontSection([[left, door.height], [right, door.height], [right, roofAt(right)], [left, roofAt(left)]]);
 
     const wall = (side, width, height) => painted(artwork.surface('wall', width, height, side));
     quad(scene, [[w/2, 0, d], [-w/2, 0, d], [-w/2, low, d], [w/2, h, d]], wall('back', w, h));
@@ -179,12 +180,19 @@ const SchoolInterior = (() => {
       painted(artwork.surface('ceiling', w, d)));
     flat(scene, w, d, 0, 0, d/2, artwork.surface('floor', w, d));
 
-    const trim = standard(music ? '#5c5552' : '#8b8175');
+    const trim = standard(trimColor);
     for (const x of [-w/2, w/2]) box(scene, .024, .075, d, x, .0375, d/2, trim);
     box(scene, w, .075, .024, 0, .0375, d, trim);
     box(scene, left + w/2, .075, .024, (left - w/2)/2, .0375, .013, trim);
     box(scene, w/2 - right, .075, .024, (right + w/2)/2, .0375, .013, trim);
+  }
 
+  function architecture(scene, room, artwork) {
+    const {width: w, back: d, height: h} = room.wall;
+    const low = room.ceilingMinimum;
+    const music = room.kind === 'music';
+    const roofAt = x => low + (x + w / 2) * (h - low) / w;
+    enclosure(scene, room, artwork, music ? '#5c5552' : '#8b8175');
     if (music) {
       const cornerTrim = standard('#625d5b', .8);
       for (const x of [-w/2 + .012, w/2 - .012]) {
@@ -246,14 +254,14 @@ const SchoolInterior = (() => {
   }
 
   function entrance(scene, room, artwork) {
-    const {x, width, height} = DOOR;
+    const {x, width, height, moldingColor, recessColor} = room.entrance ?? DOOR;
     const trim = .083;
     const music = room.kind === 'music';
     const finish = artwork.sample('door');
     const casing = faces(finish, .91, .78);
     const leafMaterial = faces(finish, .94, .79);
-    const molding = standard(music ? '#514747' : '#506b6e', .5);
-    const recess = standard(music ? '#262122' : '#283e40', .72);
+    const molding = standard(moldingColor ?? (music ? '#514747' : '#506b6e'), .5);
+    const recess = standard(recessColor ?? (music ? '#262122' : '#283e40'), .72);
     const metal = standard(music ? '#d2b9a0' : '#d0d3ce', .31, .45);
     for (const edge of [x-width/2, x+width/2]) {
       box(scene, trim+.038, height, .34, edge, height/2, -.044, casing);
@@ -281,7 +289,7 @@ const SchoolInterior = (() => {
     }
     box(scene,width+.12,.06,2.96,x,height+.019,-1.60,standard('#d9ddda'));
     box(scene,width+.11,height+.12,.10,x,height/2,-3.06,standard('#99aaa1'));
-    box(scene,.42,.022,.88,x,2.444,-1.39,new THREE.MeshBasicMaterial({color:'#fbfcf7'}));
+    box(scene,.42,.022,.88,x,height-.036,-1.39,new THREE.MeshBasicMaterial({color:'#fbfcf7'}));
     return amount => { hinge.rotation.y = 1.48 * amount; };
   }
 
@@ -698,7 +706,7 @@ const SchoolInterior = (() => {
     box(scene,.830,.046,.094,easelX,.688,easelZ+.076,wood);
   }
 
-  function addShadows(scene, music) {
+  function groundShadow(scene) {
     const falloff = InteriorArtwork.canvasMap(256,256,(g,w,h) => {
       const gradient = g.createRadialGradient(w/2,h/2,0,w/2,h/2,w/2);
       gradient.addColorStop(0,'#1d171681');
@@ -708,7 +716,7 @@ const SchoolInterior = (() => {
       g.fillStyle=gradient;
       g.fillRect(0,0,w,h);
     });
-    const shadow = (width,depth,x,z,y=.005,opacity=1) => {
+    return (width,depth,x,z,y=.005,opacity=1) => {
       const plane=patchPlane(scene,width,depth,x,y,z,falloff,true);
       plane.rotation.x=-Math.PI/2;
       plane.material.depthWrite=false;
@@ -716,6 +724,10 @@ const SchoolInterior = (() => {
       plane.material.alphaTest=.001;
       plane.renderOrder=2;
     };
+  }
+
+  function addShadows(scene, music) {
+    const shadow = groundShadow(scene);
     if (music) {
       shadow(3.98,2.72,0,4.88,.010,.9);
       shadow(1.16,1.06,0,5.87,.011,1);
@@ -818,5 +830,6 @@ const SchoolInterior = (() => {
     };
   }
 
-  return Object.freeze({definition,build});
+  const size = Object.freeze({width: WIDTH, depth: DEPTH});
+  return Object.freeze({definition,build,size,enclosure,entrance,box,rounded,patchPlane,flat,standard,rod,cylinder,groundShadow});
 })();

@@ -1,6 +1,6 @@
 'use strict';
 
-// Coordinates identify clean material samples in the two approved illustrations.
+// Coordinates identify clean material samples in the approved illustrations.
 // The source images are used as texture atlases. Furniture, controls and the
 // camera are independent from the artwork and keep their own depth in the room.
 const InteriorArtwork = (() => {
@@ -24,6 +24,21 @@ const InteriorArtwork = (() => {
         laminate: [559, 550, 72, 19], door: [1233, 340, 64, 150],
         cork: [233, 376, 76, 32], stool: [1155, 671, 65, 15],
         tile: [683, 423, 35, 37], cuttingMat: [224, 550, 49, 13]
+      }
+    },
+    sports: {
+      image: 'rooms/interiors/sports-approved.webp',
+      samples: {
+        wall: [780, 485, 34, 14], ceiling: [363, 87, 194, 63],
+        floor: [771, 626, 108, 129], door: [369, 92, 179, 58],
+        orange: [177, 425, 217, 298], blue: [1230, 406, 231, 287]
+      }
+    },
+    computer: {
+      image: 'rooms/interiors/computer-approved.webp',
+      samples: {
+        wall: [636, 340, 38, 86], ceiling: [890, 98, 51, 27],
+        floor: [783, 658, 123, 162], door: [1191, 356, 120, 71]
       }
     }
   };
@@ -114,6 +129,29 @@ const InteriorArtwork = (() => {
     }
   }
 
+  function masonry(g, image, sample, width, height) {
+    const blockWidth = 59, course = 29, joint = 1.5;
+    g.fillStyle = '#b2afaa';
+    g.fillRect(0, 0, width, height);
+    for (let row = 0; row * course < height; row++) {
+      for (let col = -1; col * blockWidth < width; col++) {
+        const x = (col + .5 * (row % 2)) * blockWidth, y = row * course;
+        g.drawImage(image, ...sample, x + joint, y + joint, blockWidth - joint, course - joint);
+        g.fillStyle = `rgba(64,61,57,${.018 * ((row * 7 + col * 5 + 17) % 5)})`;
+        g.fillRect(x + joint, y + joint, blockWidth - joint, course - joint);
+        g.fillStyle = '#ffffff36';
+        g.fillRect(x + joint, y + joint, blockWidth - joint, 1);
+      }
+    }
+  }
+
+  function panelSeams(g, width, height, ceiling) {
+    const spacing = ceiling ? 77 : 143;
+    g.fillStyle = ceiling ? '#7c87935e' : '#7c879348';
+    for (let x = 0; x < width; x += spacing) g.fillRect(x, 0, ceiling ? 2 : 1.4, height);
+    if (ceiling) for (let y = 0; y < height; y += spacing) g.fillRect(0, y, width, 2);
+  }
+
   async function load(kind) {
     const source = SOURCES[kind];
     const image = new Image();
@@ -155,6 +193,7 @@ const InteriorArtwork = (() => {
 
     function surface(name, metresWide, metresDeep, side = 'front') {
       const music = kind === 'music';
+      const sports = kind === 'sports', computer = kind === 'computer';
       const width = Math.ceil(128 * metresWide);
       const height = Math.ceil(128 * metresDeep);
       return canvasMap(width, height, (g, w, h) => {
@@ -165,7 +204,9 @@ const InteriorArtwork = (() => {
           rug: [136, 92],
           cloud: [160, 75]
         };
-        tile(g, name, w, h, ...repeats[name]);
+        if (sports && name === 'wall') masonry(g, image, source.samples.wall, w, h);
+        else tile(g, name, w, h, ...repeats[name]);
+        if (computer && (name === 'wall' || name === 'ceiling')) panelSeams(g, w, h, name === 'ceiling');
         if (name === 'wall') {
           if (music) {
             studioWall(g, w, h, side);
@@ -179,7 +220,7 @@ const InteriorArtwork = (() => {
           g.fillStyle = light;
           g.fillRect(0, 0, w, h);
           edgeShade(g, w, h, .09, .12);
-          if (side === 'left' || side === 'right') {
+          if (!sports && !computer && (side === 'left' || side === 'right')) {
             g.fillStyle = '#45626112';
             g.fillRect(0, 0, w, h);
           }
@@ -197,7 +238,7 @@ const InteriorArtwork = (() => {
         }
         if (name === 'floor') {
           edgeShade(g, w, h, .067, .24);
-          const floorLight = music ? '#ebc8a9' : '#f3f8f8';
+          const floorLight = music ? '#ebc8a9' : sports ? '#ece7e0' : '#f3f8f8';
           for (const x of [.18, .46, .73, .91]) {
             wash(g, w * x, h * .22, w * (music ? .07 : .19), h * .27, floorLight, music ? .25 : .24);
           }
