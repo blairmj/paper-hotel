@@ -3,9 +3,12 @@
 const SportsComputerInteriors = (() => {
   const {size: {width, depth}, enclosure, entrance, box, rounded, patchPlane, flat,
     standard, rod, cylinder, groundShadow} = SchoolInterior;
-  const LOCKER = {width: 1.08, height: 1.90, front: 1.46, column: .60, columns: 8, base: .11, cap: .05};
+  const LOCKER = {width: .90, height: 1.65, front: 1.75, column: .51, columns: 8, base: .09, cap: .044};
   const LOCKER_LENGTH = LOCKER.column * LOCKER.columns;
   const TIER_HEIGHT = (LOCKER.height - LOCKER.base - LOCKER.cap) / 2;
+  const BALL_RACK = {x: -1.56, z: .43, width: 2.12, depth: .63, height: 1.45};
+  const MATS = {x: -5.96, z: 3.17, width: 1.05, depth: 1.93, height: .55};
+  const BENCH = {x: 5.91, z: 6.30, width: .40, depth: 2.18, height: .49};
   const DESK = {width: 1.23, depth: .72};
   const SCREEN = {width: .525, height: .304, y: 1.056, z: -.103};
 
@@ -23,12 +26,15 @@ const SportsComputerInteriors = (() => {
     const compartments = [
       {bank: 0, column: 5, tier: 1, id: 'photo', name: '운동회 사진'},
       {bank: 1, column: 2, tier: 1, id: 'ballOrder', name: '공 반납 순서'}
-    ];
-    const clues = compartments.map(({bank, column, tier, id, name}) => {
-      const [x, y, z] = lockerPosition(banks[bank], column, tier);
-      return {id, name, xyz: [x + .035, y, z], rotationY: Math.PI / 2,
-        surface: {width: .54, height: .69}, approach: {x: banks[bank].x + 1.65, z: z+.25}};
+    ].map(slot => {
+      const position = lockerPosition(banks[slot.bank],slot.column,slot.tier);
+      const [x,,z] = position;
+      return {...slot,position,trigger:[x+.04,x+1.97,z-.88,z+.88]};
     });
+    const clues = compartments.map(({bank,id,name,position:[x,y,z]}) => ({
+      id,name,xyz:[x+.044,y,z],rotationY:Math.PI/2,
+      surface:{width:LOCKER.column-.055,height:TIER_HEIGHT-.074},approach:{x:banks[bank].x+1.65,z:z+.22}
+    }));
     const obstacles = banks.map(({x}, i) => [
       x - LOCKER.width/2 - .16,
       x + LOCKER.width/2 + (compartments.some(cell => cell.bank===i) ? .55 : .16),
@@ -37,7 +43,10 @@ const SportsComputerInteriors = (() => {
     const occluders = banks.map(({x}) => [
       x - LOCKER.width/2, x + LOCKER.width/2, 0, LOCKER.height, LOCKER.front, LOCKER.front + LOCKER_LENGTH
     ]);
-    obstacles.push([5.55,6.28,5.05,7.55]);
+    for (const {x,z,width:w,depth:d,height:h} of [BALL_RACK,MATS,BENCH]) {
+      obstacles.push([x-w/2-.16,x+w/2+.16,z-d/2-.16,z+d/2+.16]);
+      occluders.push([x-w/2,x+w/2,0,h,z-d/2,z+d/2]);
+    }
     return {banks, compartments, clues, obstacles, occluders};
   }
 
@@ -131,7 +140,7 @@ const SportsComputerInteriors = (() => {
     }
   }
 
-  function lockerDoorArt(context, x, y, w, h, number, enamel) {
+  function lockerDoorArt(context, x, y, w, h, number, enamel, worn = false) {
     const g = context;
     g.save();
     g.translate(x,y);
@@ -145,6 +154,13 @@ const SportsComputerInteriors = (() => {
     sheen.addColorStop(1,'#25272336');
     g.fillStyle = sheen;
     g.fillRect(2,2,146,224);
+    if (worn) {
+      const wear = g.createRadialGradient(112,124,4,112,124,55);
+      wear.addColorStop(0,'#e5e0c558');
+      wear.addColorStop(1,'#e5e0c500');
+      g.fillStyle = wear;
+      g.fillRect(3,3,144,222);
+    }
     g.strokeStyle = '#fffcf04d';
     g.strokeRect(4.5,4.5,141,219);
     g.strokeStyle = '#383c3d51';
@@ -183,6 +199,7 @@ const SportsComputerInteriors = (() => {
     const mid = front + LOCKER_LENGTH/2;
     const skirt = standard('#555c61',.69,.13), aluminum = standard('#a4adb2',.48,.35);
     const inside = standard('#777972',.82);
+    const leaves = [];
     const cards = new Map(await Promise.all(room.clues.map(async clue => [clue.id,imageMap(await clueBoardArt(clue))])));
     for (const [i,bank] of banks.entries()) {
       const {x,finish,color} = bank;
@@ -215,36 +232,168 @@ const SportsComputerInteriors = (() => {
         patchPlane(scene,LOCKER_LENGTH,2*TIER_HEIGHT,x+side*w/2,(h+base-cap)/2,mid,face,!!open)
           .rotation.y = side*Math.PI/2;
         if (!open) continue;
-        const [faceX,y,z] = lockerPosition(bank,open.column,open.tier);
+        const [faceX,y,z] = open.position;
         const compartment = new THREE.Group();
         compartment.position.set(faceX,y,z);
         compartment.rotation.y = Math.PI/2;
         scene.add(compartment);
-        box(compartment,.568,.846,.34,0,0,-.36,inside);
-        for (const yy of [-.418,.418]) box(compartment,.58,.019,.45,0,yy,-.231,aluminum);
-        for (const xx of [-.283,.283]) box(compartment,.016,.852,.46,xx,0,-.238,metal);
-        patchPlane(compartment,.474,.316,.028,-.028,-.072,cards.get(open.id));
+        const slotW=column-.019, slotH=TIER_HEIGHT-.016;
+        box(compartment,slotW-.02,slotH,.034,0,0,-.40,inside);
+        for (const yy of [-slotH/2,slotH/2]) box(compartment,slotW,.018,.41,0,yy,-.212,aluminum);
+        for (const xx of [-slotW/2,slotW/2]) box(compartment,.015,slotH,.41,xx,0,-.212,metal);
+        patchPlane(compartment,.40,.235,.012,-.025,-.115,cards.get(open.id));
         const flap = new THREE.Group();
-        flap.position.set(.281,0,.008);
-        flap.rotation.y = Math.PI/3.25;
+        const doorW=column-.023, doorH=TIER_HEIGHT-.025;
+        flap.position.set(doorW/2,0,.009);
         compartment.add(flap);
         const doorMap = InteriorArtwork.canvasMap(150,228,g => {
-          lockerDoorArt(g,0,0,150,228,numberAt(open.column,open.tier),enamel.image);
+          lockerDoorArt(g,0,0,150,228,numberAt(open.column,open.tier),enamel.image,true);
         });
-        box(flap,.551,.838,.022,-.2755,0,0,metal);
-        patchPlane(flap,.550,.837,-.2755,0,.012,doorMap);
-        patchPlane(flap,.525,.811,-.2755,0,-.012,enamel).rotation.y = Math.PI;
-        box(compartment,.024,.094,.024,.285,.267,.009,aluminum);
-        box(compartment,.024,.094,.024,.285,-.258,.009,aluminum);
+        box(flap,doorW,doorH,.018,-doorW/2,0,0,metal);
+        patchPlane(flap,doorW,doorH,-doorW/2,0,.010,doorMap);
+        patchPlane(flap,doorW-.024,doorH-.024,-doorW/2,0,-.010,enamel).rotation.y = Math.PI;
+        for (const hingeY of [-.22,.22]) box(compartment,.019,.067,.020,doorW/2,hingeY,.012,aluminum);
+        leaves.push({id:open.id,trigger:open.trigger,flap,requested:false,progress:0});
       }
     }
-    const slat = standard('#a08b6f',.75), frame = standard('#5a6266',.52,.32);
-    const x = 5.91, z = 6.30;
-    shadow(.79,2.73,x,z,.006,.83);
-    for (const dx of [-.137,0,.137]) rounded(scene,.118,.044,2.18,x+dx,.467,z,slat,.009);
+    return {
+      onWalk(fromX,fromZ,toX,toZ) {
+        for (const leaf of leaves) {
+          if (!leaf.requested && passesLocker(leaf.trigger,fromX,fromZ,toX,toZ)) leaf.requested=true;
+        }
+      },
+      animate(dt,reducedMotion) {
+        let opening=false;
+        for (const leaf of leaves) {
+          if (!leaf.requested || leaf.progress===1) continue;
+          leaf.progress=reducedMotion?1:Math.min(1,leaf.progress+dt/.22);
+          leaf.flap.rotation.y=1.58*(1-(1-leaf.progress)**3);
+          opening=opening||leaf.progress<1;
+        }
+        return opening;
+      },
+      canInspect(id) {
+        return !leaves.some(leaf => leaf.id===id && leaf.progress<1);
+      },
+      resetFurniture() {
+        for (const leaf of leaves) {
+          leaf.requested=false;
+          leaf.progress=0;
+          leaf.flap.rotation.y=0;
+        }
+      }
+    };
+  }
+
+  function passesLocker([left,right,front,back],fromX,fromZ,toX,toZ) {
+    // Test the route segment so a long click move also counts as walking past.
+    let enter=0, leave=1;
+    for (const [from,to,min,max] of [[fromX,toX,left,right],[fromZ,toZ,front,back]]) {
+      const distance=to-from;
+      if (distance===0) {
+        if (from<min || from>max) return false;
+        continue;
+      }
+      const first=(min-from)/distance, last=(max-from)/distance;
+      enter=Math.max(enter,Math.min(first,last));
+      leave=Math.min(leave,Math.max(first,last));
+    }
+    return enter<=leave;
+  }
+
+  function sportsEquipment(scene, shadow) {
+    const wood=standard('#ab8960',.70), steel=standard('#606568',.57,.28);
+    const {x,z,width:w,depth:d,height:h}=BALL_RACK;
+    shadow(w+.43,d+.42,x,z,.005,.91);
+    for (const dx of [-w/2+.033,w/2-.033]) {
+      for (const dz of [-d/2+.046,d/2-.046]) {
+        rounded(scene,.066,h,.064,x+dx,h/2,z+dz,wood,.009);
+      }
+    }
+    const shelves=[.105,.555,1.043];
+    for (const y of shelves) {
+      rounded(scene,w-.081,.056,d-.05,x,y,z,wood,.009);
+      box(scene,w-.12,.031,.027,x,y+.034,z+d/2-.046,wood);
+    }
+    box(scene,w-.057,.082,.045,x,h-.077,z-d/2+.048,wood);
+
+    const orange=InteriorArtwork.canvasMap(360,180,(g,w,h)=>{
+      g.fillStyle='#bc6c3c';
+      g.fillRect(0,0,w,h);
+      g.fillStyle='#78462670';
+      for (let i=0;i<3750;i++) g.fillRect((i*73.819)%w,(i*141.612)%h,1.5,1.3);
+      g.lineWidth=3.9;
+      g.strokeStyle='#4f3329';
+      g.beginPath();
+      g.moveTo(0,h*.50);
+      g.lineTo(w,h*.50);
+      for (const u of [w*.20,w*.70]) {
+        g.moveTo(u,0);
+        g.bezierCurveTo(u-w*.14,h*.34,u+w*.14,h*.66,u,h);
+      }
+      g.stroke();
+    });
+    const volleyball=InteriorArtwork.canvasMap(360,180,(g,w,h)=>{
+      g.fillStyle='#e5e1d5';
+      g.fillRect(0,0,w,h);
+      for (const [i,color] of ['#416c9a','#cca342','#487399','#d6ab45'].entries()) {
+        const u=i*w/4;
+        g.fillStyle=color;
+        g.beginPath();
+        g.moveTo(u,0);
+        g.quadraticCurveTo(u+w*.17,h*.56,u,h);
+        g.lineTo(u+w*.092,h);
+        g.quadraticCurveTo(u+w*.25,h*.56,u+w*.092,0);
+        g.closePath();
+        g.fill();
+      }
+    });
+    const ballMaterials=[orange,volleyball].map(map=>new THREE.MeshStandardMaterial({map,roughness:.83}));
+    const sphere=new THREE.SphereGeometry(1,28,18);
+    for (const [dx,shelf,r,type,turn] of [
+      [-.60,2,.122,0,.40],[-.31,2,.122,0,1.72],[.34,2,.108,1,1.14],[-.43,1,.105,1,2.07],[.45,1,.107,1,3.0]
+    ]) {
+      const ball=new THREE.Mesh(sphere,ballMaterials[type]);
+      ball.scale.setScalar(r);
+      ball.position.set(x+dx,shelves[shelf]+.028+r,z+.018);
+      ball.rotation.set(.12,turn,.16);
+      scene.add(ball);
+    }
+    const cones=standard('#c96a44',.72), markers=standard('#cbaa55',.79);
+    for (const dx of [.24,.54]) {
+      rounded(scene,.216,.029,.211,x+dx,.15,z+.05,cones,.008);
+      cylinder(scene,.017,.088,.222,x+dx,.272,z+.05,cones,28);
+    }
+    for (let i=0;i<3;i++) cylinder(scene,.067,.103,.025,x-.53,.148+i*.015,z+.032,markers,28);
+
+    shadow(MATS.width+.34,MATS.depth+.49,MATS.x,MATS.z,.006,.90);
+    const pads=['#536c86','#465f7a'].map(color=>standard(color,.82));
+    const straps=standard('#39485a',.91);
+    for (let i=0;i<4;i++) {
+      const y=.072+.132*i, shift=i%2*.016;
+      rounded(scene,MATS.width,.127,MATS.depth-.03,MATS.x,y,MATS.z+shift,pads[i%2],.034);
+      for (const dz of [-.295,.295]) {
+        box(scene,.017,.029,.22,MATS.x+MATS.width/2,y-.005,MATS.z+shift+dz,straps);
+      }
+    }
+    const hoopColors=['#ab604e','#c3a64b','#5e8069'];
+    for (const [i,color] of hoopColors.entries()) {
+      const z=4.73+i*.69, y=1.59, x=-width/2+.102;
+      const hoop=new THREE.Mesh(new THREE.TorusGeometry(.30,.014,10,48),standard(color,.53));
+      hoop.position.set(x,y,z);
+      hoop.rotation.y=Math.PI/2;
+      scene.add(hoop);
+      box(scene,.036,.087,.064,x-.032,y+.306,z,steel);
+      rod(scene,[x-.05,y+.303,z],[x+.025,y+.303,z],.019,steel);
+    }
+
+    shadow(BENCH.width+.39,BENCH.depth+.55,BENCH.x,BENCH.z,.006,.83);
+    for (const dx of [-.137,0,.137]) {
+      rounded(scene,.118,.044,BENCH.depth,BENCH.x+dx,.467,BENCH.z,wood,.009);
+    }
     for (const dz of [-.91,.91]) {
-      box(scene,.357,.039,.041,x,.426,z+dz,frame);
-      for (const dx of [-.153,.153]) box(scene,.038,.411,.041,x+dx,.215,z+dz,frame);
+      box(scene,.357,.039,.041,BENCH.x,.426,BENCH.z+dz,steel);
+      for (const dx of [-.153,.153]) box(scene,.038,.411,.041,BENCH.x+dx,.215,BENCH.z+dz,steel);
     }
   }
 
@@ -363,13 +512,19 @@ const SportsComputerInteriors = (() => {
     finishes(scene,room,artwork);
     const setDoor = entrance(scene,room,artwork);
     const shadow = groundShadow(scene);
-    await (sports ? lockers(scene,room,artwork,shadow) : computers(scene,room,shadow));
+    let furniture;
+    if (sports) {
+      sportsEquipment(scene,shadow);
+      furniture=await lockers(scene,room,artwork,shadow);
+    } else {
+      await computers(scene,room,shadow);
+    }
     box(scene,room.lock.width+.025,room.lock.height+.021,.052,room.lock.center[0],room.lock.center[1],.043,standard('#434c55',.47));
     const plate = patchPlane(scene,room.lock.width,room.lock.height,...room.lock.center,imageMap(schoolLockArt(room,[])));
     const canvas = document.getElementById('roomView');
     Object.assign(canvas.dataset,{interior:room.kind,width,depth,area:width*depth});
     return {
-      setDoor,
+      ...furniture,setDoor,
       setDigits(values) {
         plate.material.map.image = schoolLockArt(room,values);
         plate.material.map.needsUpdate = true;

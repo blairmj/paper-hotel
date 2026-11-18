@@ -56,6 +56,7 @@ async function createMusicWorld({onInspect,onReadyToMove,room=paintedRoom,buildR
     photos=paintedPhotoView(canvas,scene);
   }
   const eye=camera.position;
+  const reducedMotion=matchMedia('(prefers-reduced-motion: reduce)');
   const keys=new Set(),point=new THREE.Vector3(),corner=new THREE.Vector3();
   const sight = new THREE.Ray(), hit = new THREE.Vector3();
   function targetOccluded(target) {
@@ -108,7 +109,7 @@ async function createMusicWorld({onInspect,onReadyToMove,room=paintedRoom,buildR
       const viewNormal=new THREE.Vector3(Math.sin(target.rotationY||0),0,Math.cos(target.rotationY||0));
       const behindSurface=viewNormal.dot(new THREE.Vector3().subVectors(eye,target.point))<.025;
       b.hidden=behindSurface||v.z<0||v.z>=1||px<20||px>width-20||py<55||py>height-56||!!journey||
-        (openness===1&&target.id==='lock')||targetOccluded(target);
+        (openness===1&&target.id==='lock')||model.canInspect?.(target.id)===false||targetOccluded(target);
       target.px=px;target.py=py;
       if(b.hidden)continue;
       let halfWidth=0,halfHeight=0;
@@ -126,13 +127,19 @@ async function createMusicWorld({onInspect,onReadyToMove,room=paintedRoom,buildR
     }
   }
   function queue(){if(!raf)raf=requestAnimationFrame(frame)}
+  function moveEye(x,z){
+    if(x!==eye.x||z!==eye.z)model.onWalk?.(eye.x,eye.z,x,z);
+    eye.x=x;
+    eye.z=z;
+  }
   function move(front,side){
     const increments=Math.max(1,Math.ceil(Math.hypot(front,side)/.1));
     const dx=(Math.sin(yaw)*front+Math.cos(yaw)*side)/increments;
     const dz=(-Math.cos(yaw)*front+Math.sin(yaw)*side)/increments;
     for(let i=0;i<increments;i++){
-      if(onOpenFloor(eye.x+dx,eye.z)) eye.x+=dx;
-      if(onOpenFloor(eye.x,eye.z+dz)) eye.z+=dz;
+      const x=onOpenFloor(eye.x+dx,eye.z)?eye.x+dx:eye.x;
+      const z=onOpenFloor(x,eye.z+dz)?eye.z+dz:eye.z;
+      moveEye(x,z);
     }
   }
   function walkTo(goal, face=null, done=null) {
@@ -140,8 +147,8 @@ async function createMusicWorld({onInspect,onReadyToMove,room=paintedRoom,buildR
     const path=floorRoute(eye,goal);
     if(!path.length) return;
     journey=null;keys.clear();
-    if (matchMedia('(prefers-reduced-motion: reduce)').matches) {
-      eye.x=goal.x;eye.z=goal.z;
+    if (reducedMotion.matches) {
+      for(const point of path)moveEye(point.x,point.z);
       if(face){yaw=heading(face);pitch=tilt(face)}
       queue();done?.();return;
     }
@@ -150,7 +157,7 @@ async function createMusicWorld({onInspect,onReadyToMove,room=paintedRoom,buildR
   function advanceTrail(dt){
     const next=trail.path[0],dx=next.x-eye.x,dz=next.z-eye.z,dist=Math.hypot(dx,dz);
     const step=Math.min(dt*4.8,dist);
-    if(dist>0){eye.x+=dx*step/dist;eye.z+=dz*step/dist}
+    if(dist>0)moveEye(eye.x+dx*step/dist,eye.z+dz*step/dist);
     if(trail.face){
       yaw=wrap(yaw+wrap(heading(trail.face)-yaw)*Math.min(1,dt*9));
       pitch+=(tilt(trail.face)-pitch)*Math.min(1,dt*9);
@@ -163,6 +170,7 @@ async function createMusicWorld({onInspect,onReadyToMove,room=paintedRoom,buildR
     done?.();
   }
   function inspectTarget(id){
+    if(model.canInspect?.(id)===false)return;
     const object=targets.find(t=>t.id===id), [x,,z]=object.xyz;
     const approachX=id==='paper'?x+.65:x;
     const approach=object.approach || {x:clamp(approachX,-5.3,5.3),z:clamp(z+2.35,-6.2,-5.16)};
@@ -218,11 +226,12 @@ async function createMusicWorld({onInspect,onReadyToMove,room=paintedRoom,buildR
       pitch=clamp(pitch+(+keys.has('arrowup')-+keys.has('arrowdown'))*dt,-1.1,1.1);
       move((+keys.has('w')-+keys.has('s'))*dt*2.2,(+keys.has('d')-+keys.has('a'))*dt*2.2);
     }
-    draw();if(journey||trail||keys.size)queue();
+    const animating=model.animate?.(dt,reducedMotion.matches);
+    draw();if(journey||trail||keys.size||animating)queue();
   }
   function look(target,door=false,done){
     trail=null;
-    const reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const reduced=reducedMotion.matches;
     journey={from:yaw,p:pitch,to:heading(target),targetPitch:tilt(target),door,done,start:performance.now(),duration:reduced?1:door?1200:280};
     queue();
   }
@@ -288,6 +297,7 @@ async function createMusicWorld({onInspect,onReadyToMove,room=paintedRoom,buildR
       const initial=open?room.door:(width/height<.85?room.portraitView:room.firstView);
       yaw=heading(initial);pitch=tilt(initial);
       model?.setDoor(openness);model.setDigits(digits);
+      model.resetFurniture?.();
       canvas.dataset.ready='true';
       queue();
     }
