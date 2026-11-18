@@ -158,7 +158,8 @@ function inspectClue(id){
     case 'stamps':modal(clue.name,stampTray());break;
     case 'recordA':modal(clue.name,signalRecords());break;
     case 'ballLine':
-      modal(clue.name,'<p class="object-note">공을 빼면 오른쪽 공들이 빈자리를 채웁니다.</p>'+
+      modal(clue.name,'<p class="object-note">공을 하나 뺄 때마다 <strong>뺀 공을 제외하고 배열에서 움직인 공의 개수</strong>를 구하세요.</p>'+
+        '<p class="object-note">공을 눌러 빼면 오른쪽 공들이 한 칸씩 왼쪽으로 이동합니다.</p>'+
         '<div class="ball-tray" id="ballTray"></div><span class="sr-only" id="ballStatus" role="status"></span>');
       ballTray();break;
     default:modal(clue.name,'<div class="school-clue">'+schoolClueSvg(id)+'</div>');
@@ -206,7 +207,7 @@ function dial(host,i) {
 }
 function dialPanel(){
   if(room.kind==='sports'){
-    modal(puzzle.title,'<p class="object-note">회수할 때마다 움직인 공의 수를 맞추세요.</p>'+
+    modal(puzzle.title,'<p class="object-note">차례마다 <strong>뺀 공을 제외하고 배열에서 움직인 공의 개수</strong>를 세어 네 칸에 순서대로 맞추세요.</p>'+
       '<div class="switches four-digits" id="wheels"></div>','lock');
     run.entry.forEach((_,i)=>dial(byId('wheels'),i));
     return;

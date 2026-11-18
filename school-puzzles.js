@@ -68,7 +68,7 @@ const SCHOOL_PUZZLES = {
   art:{control:'sequence',title:'문 인쇄판',keys:['triangle','square','circle'],answer:PRINT_ORDER,
     hint:'두 모양이 겹친 곳에서는 나중에 찍은 도장 자국이 위에 보입니다.'},
   sports:{control:'dial',title:'문 다이얼',answer:countBallMoves(BALLS,BALL_PICKUP),
-    hint:'공을 하나 뺀 뒤 빈자리를 채우세요. 그 배열을 기준으로 다음 공을 빼야 합니다.'},
+    hint:'뺀 공을 제외하고 이번에 한 칸씩 왼쪽으로 움직인 공의 개수를 세세요. 다음 공은 바뀐 배열에서 빼세요.'},
   computer:{control:'routing',title:'출입 신호판',answer:NEW_SIGNALS.map(routeSignal),
     hint:'응답이 없는 기록에서 전원이 켜져 있던 신호를 찾아 분기표의 빈칸을 확인하세요.'}
 };
