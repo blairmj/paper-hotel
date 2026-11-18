@@ -163,7 +163,7 @@ const SchoolInterior = (() => {
     return mesh;
   }
 
-  function enclosure(scene, room, artwork, trimColor) {
+  function enclosure(scene, room, artwork, trimColor, rightWallMap) {
     const {width: w, back: d, height: h} = room.wall;
     const low = room.ceilingMinimum;
     const door = room.entrance ?? DOOR;
@@ -179,7 +179,8 @@ const SchoolInterior = (() => {
     const wall = (side, width, height) => painted(artwork.surface('wall', width, height, side));
     quad(scene, [[w/2, 0, d], [-w/2, 0, d], [-w/2, low, d], [w/2, h, d]], wall('back', w, h));
     quad(scene, [[-w/2, 0, d], [-w/2, 0, 0], [-w/2, low, 0], [-w/2, low, d]], wall('left', d, low));
-    quad(scene, [[w/2, 0, 0], [w/2, 0, d], [w/2, h, d], [w/2, h, 0]], wall('right', d, h));
+    quad(scene, [[w/2, 0, 0], [w/2, 0, d], [w/2, h, d], [w/2, h, 0]],
+      rightWallMap ? painted(rightWallMap) : wall('right', d, h));
     quad(scene, [[-w/2, low, d], [w/2, h, d], [w/2, h, 0], [-w/2, low, 0]],
       painted(artwork.surface('ceiling', w, d)));
     flat(scene, w, d, 0, 0, d/2, artwork.surface('floor', w, d));
@@ -191,12 +192,12 @@ const SchoolInterior = (() => {
     box(scene, w/2 - right, .075, .024, (right + w/2)/2, .0375, .013, trim);
   }
 
-  function architecture(scene, room, artwork) {
+  function architecture(scene, room, artwork, mural) {
     const {width: w, back: d, height: h} = room.wall;
     const low = room.ceilingMinimum;
     const music = room.kind === 'music';
     const roofAt = x => low + (x + w / 2) * (h - low) / w;
-    enclosure(scene, room, artwork, music ? '#5c5552' : '#8b8175');
+    enclosure(scene, room, artwork, music ? '#5c5552' : '#8b8175', mural);
     if (music) {
       const cornerTrim = standard('#625d5b', .8);
       for (const x of [-w/2 + .012, w/2 - .012]) {
@@ -756,20 +757,17 @@ const SchoolInterior = (() => {
     }
   }
 
-  async function loadArtMural(){
+  async function loadArtMural(width, height){
     const image=new Image();
-    image.src='rooms/interiors/art-mural.png';
+    image.src='rooms/interiors/art-wall-mural.png';
     await image.decode();
-    return image;
-  }
-
-  function paintArtWall(scene, image) {
-    const aspect=image.naturalWidth/image.naturalHeight;
-    const height=Math.min(2.51,6.44/aspect);
-    const mural=patchPlane(scene,height*aspect,height,WIDTH/2-.008,1.86,3.98,imageMap(image),true);
-    mural.rotation.y=-Math.PI/2;
-    mural.material.opacity=.94;
-    mural.material.depthWrite=false;
+    const wallAspect=width/height, imageAspect=image.naturalWidth/image.naturalHeight;
+    const map=imageMap(image);
+    // Cover the entire right wall, cropping the art to its aspect ratio.
+    map.repeat.set(Math.min(1,wallAspect/imageAspect),Math.min(1,imageAspect/wallAspect));
+    map.offset.set((1-map.repeat.x)/2,(1-map.repeat.y)/2);
+    map.anisotropy=8;
+    return map;
   }
 
   async function build(scene, room) {
@@ -777,7 +775,7 @@ const SchoolInterior = (() => {
     const cards=music?[room.clues[1]]:room.clues;
     const [artwork,clueArt,mural]=await Promise.all([
       InteriorArtwork.load(room.kind),Promise.all(cards.map(clueBoardArt)),
-      music?null:loadArtMural().catch(()=>null)
+      music?null:loadArtMural(room.depth,room.wall.height).catch(()=>null)
     ]);
     scene.add(new THREE.HemisphereLight(music ? '#fff1e3' : '#fbffff', music ? '#a18c80' : '#aebdbc', 2.72));
     const fill = new THREE.DirectionalLight(music ? '#ffe8d4' : '#fff9ee', 1.19);
@@ -787,7 +785,7 @@ const SchoolInterior = (() => {
     rim.position.set(3.6,2.75,-1.8);
     scene.add(rim);
 
-    architecture(scene,room,artwork);
+    architecture(scene,room,artwork,mural);
     const setDoor = entrance(scene,room,artwork);
     if (music) {
       musicPiano(scene,artwork);
@@ -795,7 +793,6 @@ const SchoolInterior = (() => {
       rehearsalFurniture(scene,artwork,imageMap(clueArt[0]));
     } else {
       artWorkshop(scene,artwork);
-      if(mural)paintArtWall(scene,mural);
       for(const [i,clue] of cards.entries()){
         const sheet=patchPlane(scene,clue.surface.width,clue.surface.height,...clue.xyz,imageMap(clueArt[i]));
         if(clue.id==='printSamples')sheet.rotation.x=PRINT_SHEET.tilt;
@@ -806,7 +803,7 @@ const SchoolInterior = (() => {
     const canvas = document.getElementById('roomView');
     Object.assign(canvas.dataset,{
       interior:'v7', artwork:'approved', width:WIDTH, depth:DEPTH, area:WIDTH*DEPTH,
-      wallFinish:music?'four-black-acoustic-walls':'celadon-plaster'
+      wallFinish:music?'four-black-acoustic-walls':mural?'right-wall-mural':'celadon-plaster'
     });
     return {
       setDoor,
