@@ -168,13 +168,22 @@ const SchoolInterior = (() => {
     const low = room.ceilingMinimum;
     const door = room.entrance ?? DOOR;
     const left = door.x - door.width / 2, right = door.x + door.width / 2;
+    const sideDoor = door.side === 'right';
     const roofAt = x => low + (x + w / 2) * (h - low) / w;
-    const front = painted(artwork.surface('wall', w, h, 'front'));
-    const frontSection = points => quad(scene, points.map(([x, y]) => [x, y, 0]), front,
-      points.flatMap(([x, y]) => [(x + w / 2) / w, y / h]));
-    frontSection([[-w / 2, 0], [left, 0], [left, roofAt(left)], [-w / 2, low]]);
-    frontSection([[right, 0], [w / 2, 0], [w / 2, h], [right, roofAt(right)]]);
-    frontSection([[left, door.height], [right, door.height], [right, roofAt(right)], [left, roofAt(left)]]);
+    function openingWall(side, span, heightAt, position, hasDoor) {
+      const material = painted(artwork.surface('wall', span, h, side));
+      const half = span / 2;
+      const section = (start, end, bottom) => {
+        const points = [[start,bottom],[end,bottom],[end,heightAt(end)],[start,heightAt(start)]];
+        quad(scene, points.map(([x,y]) => position(x,y)), material,
+          points.flatMap(([x,y]) => [(x+half)/span,y/h]));
+      };
+      if (!hasDoor) { section(-half,half,0); return; }
+      section(-half,left,0);
+      section(right,half,0);
+      section(left,right,door.height);
+    }
+    openingWall('front',w,roofAt,(x,y)=>[x,y,0],!sideDoor);
 
     function wall(side, width, height, points) {
       const material = painted(artwork.surface('wall', width, height, side));
@@ -184,16 +193,23 @@ const SchoolInterior = (() => {
     }
     wall('back', w, h, [[w/2, 0, d], [-w/2, 0, d], [-w/2, low, d], [w/2, h, d]]);
     wall('left', d, low, [[-w/2, 0, d], [-w/2, 0, 0], [-w/2, low, 0], [-w/2, low, d]]);
-    wall('right', d, h, [[w/2, 0, 0], [w/2, 0, d], [w/2, h, d], [w/2, h, 0]]);
+    openingWall('right',d,()=>h,(x,y)=>[w/2,y,x+d/2],sideDoor);
     quad(scene, [[-w/2, low, d], [w/2, h, d], [w/2, h, 0], [-w/2, low, 0]],
       painted(artwork.surface('ceiling', w, d)));
     flat(scene, w, d, 0, 0, d/2, artwork.surface('floor', w, d));
 
     const trim = standard(trimColor);
-    for (const x of [-w/2, w/2]) box(scene, .024, .075, d, x, .0375, d/2, trim);
+    box(scene, .024, .075, d, -w/2, .0375, d/2, trim);
     box(scene, w, .075, .024, 0, .0375, d, trim);
-    box(scene, left + w/2, .075, .024, (left - w/2)/2, .0375, .013, trim);
-    box(scene, w/2 - right, .075, .024, (right + w/2)/2, .0375, .013, trim);
+    if (sideDoor) {
+      box(scene,w,.075,.024,0,.0375,.013,trim);
+      box(scene,.024,.075,left+d/2,w/2,.0375,(left+d/2)/2,trim);
+      box(scene,.024,.075,d/2-right,w/2,.0375,(right+1.5*d)/2,trim);
+    } else {
+      box(scene,.024,.075,d,w/2,.0375,d/2,trim);
+      box(scene,left+w/2,.075,.024,(left-w/2)/2,.0375,.013,trim);
+      box(scene,w/2-right,.075,.024,(right+w/2)/2,.0375,.013,trim);
+    }
   }
 
   function architecture(scene, room, artwork) {
@@ -263,11 +279,11 @@ const SchoolInterior = (() => {
   }
 
   function entrance(scene, room, artwork) {
-    const {x, width, height, moldingColor, recessColor} = room.entrance ?? DOOR;
+    const {x, width, height, moldingColor, recessColor, casingColor, opensOut = false} = room.entrance ?? DOOR;
     const trim = .083;
     const music = room.kind === 'music';
     const finish = artwork.sample('door');
-    const casing = faces(finish, .91, .78);
+    const casing = casingColor ? standard(casingColor,.73) : faces(finish, .91, .78);
     const leafMaterial = faces(finish, .94, .79);
     const molding = standard(moldingColor ?? (music ? '#514747' : '#506b6e'), .5);
     const recess = standard(recessColor ?? (music ? '#262122' : '#283e40'), .72);
@@ -288,7 +304,7 @@ const SchoolInterior = (() => {
     rounded(hinge,.26,.044,.065,-leafW+.335,1.04,.085,metal,.012);
     for (const y of [.44,1.24,2.02]) box(hinge,.036,.105,.044,-.018,y,.065,metal);
 
-    // The door swings on a real hinge into the room. The recess is a small hall.
+    // The hinged door opens at the entrance to a small hall.
     const hall = standard('#c5c9c4');
     box(scene, width+.03, .06, 3.07, x, -.029, -1.51, standard('#aeb2ac'));
     for (const side of [-1, 1]) {
@@ -299,7 +315,7 @@ const SchoolInterior = (() => {
     box(scene,width+.12,.06,2.96,x,height+.019,-1.60,standard('#d9ddda'));
     box(scene,width+.11,height+.12,.10,x,height/2,-3.06,standard('#99aaa1'));
     box(scene,.42,.022,.88,x,height-.036,-1.39,new THREE.MeshBasicMaterial({color:'#fbfcf7'}));
-    return amount => { hinge.rotation.y = 1.48 * amount; };
+    return amount => { hinge.rotation.y = (opensOut ? -1.48 : 1.48) * amount; };
   }
 
   function musicScoreMap() {
@@ -810,5 +826,5 @@ const SchoolInterior = (() => {
   }
 
   const size = Object.freeze({width: WIDTH, depth: DEPTH});
-  return Object.freeze({definition,build,size,enclosure,entrance,box,rounded,patchPlane,flat,standard,rod,cylinder,groundShadow});
+  return Object.freeze({definition,build,size,enclosure,entrance,box,rounded,patchPlane,flat,standard,faces,rod,cylinder,tube,groundShadow});
 })();

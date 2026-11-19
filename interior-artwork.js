@@ -40,6 +40,32 @@ const InteriorArtwork = (() => {
         wall: [636, 340, 38, 86], ceiling: [890, 98, 51, 27],
         floor: [783, 658, 123, 162], door: [1191, 356, 120, 71]
       }
+    },
+    library: {
+      image: 'rooms/interiors/library-approved.webp',
+      specialty: true,
+      samples: {
+        wall:[1495,250,124,192], ceiling:[747,141,115,75], floor:[802,653,249,181],
+        door:[1295,326,76,92], wood:[41,852,55,63], fabric:[833,352,78,79], rug:[853,560,149,22]
+      }
+    },
+    science: {
+      image: 'rooms/interiors/science-approved.webp',
+      specialty: true,
+      samples: {
+        wall:[104,156,260,121], ceiling:[768,44,161,97], floor:[776,734,233,153],
+        door:[1396,246,92,136], blue:[138,744,114,126], worktop:[157,581,99,33],
+        ivory:[630,242,45,36], tile:[552,381,8,8]
+      }
+    },
+    broadcast: {
+      image: 'rooms/interiors/broadcast-approved.webp',
+      specialty: true,
+      samples: {
+        wall:[793,228,107,31], ceiling:[712,49,69,55], floor:[643,723,447,173],
+        door:[791,306,91,93], fabric:[1495,164,80,202], backdrop:[365,314,170,111],
+        wood:[1576,684,53,168], red:[422,566,153,58], preview:[1324,411,97,59]
+      }
     }
   };
 
@@ -191,12 +217,47 @@ const InteriorArtwork = (() => {
       }
     }
 
+    function ceramic(g,w,h,start=0) {
+      const cell=24, [x,y,sw,sh]=source.samples.tile;
+      g.fillStyle='#e5ebef';g.fillRect(0,start,w,h-start);
+      for(let v=start;v<h;v+=cell)for(let u=0;u<w;u+=cell){
+        g.drawImage(image,x,y,sw,sh,u+.7,v+.7,cell-1.4,cell-1.4);
+      }
+    }
+
+    function specialtySurface(g,name,w,h) {
+      if(name==='tile'){ceramic(g,w,h);return}
+      if(name==='floor'&&kind==='library'){
+        const wood=['#e8c8a4','#eccda7','#e5c6a1','#edcda9','#e8c9a6'];
+        for(let i=0;i*31<w;i++){
+          for(let j=-1;j*346<h;j++){
+            const x=i*31,y=j*346+(i%5)*62;
+            g.fillStyle=wood[(i*7+(j+1)*3)%wood.length];
+            g.fillRect(x,y,31,346);
+            g.fillStyle='#967b5e27';
+            g.fillRect(x,y,1,346);g.fillRect(x,y,31,1);
+          }
+        }
+        g.globalAlpha=.18;tile(g,'floor',w,h,411,242);g.globalAlpha=1;
+        wash(g,w*.54,h*.41,w*.78,h*.76,'#fff7e7',.33);
+      }else{
+        const repeat=name==='floor'?[386,244]:[281,241];
+        tile(g,name,w,h,...repeat);
+      }
+      if(kind==='science'&&name==='wall')ceramic(g,w,h,Math.round(h-1.14*128));
+      if(name==='wall'||name==='ceiling'){
+        wash(g,w*.52,h*.10,w*.66,h*.79,'#fffdf6',.33);
+      }
+      edgeShade(g,w,h,name==='floor'?.08:.105,.14);
+    }
+
     function surface(name, metresWide, metresDeep, side = 'front') {
       const music = kind === 'music';
       const sports = kind === 'sports', computer = kind === 'computer';
       const width = Math.ceil(128 * metresWide);
       const height = Math.ceil(128 * metresDeep);
       return canvasMap(width, height, (g, w, h) => {
+        if(source.specialty){specialtySurface(g,name,w,h);return}
         const repeats = {
           wall: music ? [112, 236] : [298, 154],
           ceiling: [233, 125],
