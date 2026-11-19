@@ -57,7 +57,7 @@ const SchoolInterior = (() => {
       ],
       finishes: music
         ? {front: 'black-acoustic', back: 'black-acoustic', left: 'black-acoustic', right: 'black-acoustic'}
-        : {walls: 'celadon-plaster', floor: 'cool-gray-matte'}
+        : {front:'chaekgeori', right:'chaekgeori', back:'chaekgeori', left:'chaekgeori', floor:'light-birch'}
     };
   }
 
@@ -163,7 +163,7 @@ const SchoolInterior = (() => {
     return mesh;
   }
 
-  function enclosure(scene, room, artwork, trimColor, rightWallMap) {
+  function enclosure(scene, room, artwork, trimColor) {
     const {width: w, back: d, height: h} = room.wall;
     const low = room.ceilingMinimum;
     const door = room.entrance ?? DOOR;
@@ -176,11 +176,15 @@ const SchoolInterior = (() => {
     frontSection([[right, 0], [w / 2, 0], [w / 2, h], [right, roofAt(right)]]);
     frontSection([[left, door.height], [right, door.height], [right, roofAt(right)], [left, roofAt(left)]]);
 
-    const wall = (side, width, height) => painted(artwork.surface('wall', width, height, side));
-    quad(scene, [[w/2, 0, d], [-w/2, 0, d], [-w/2, low, d], [w/2, h, d]], wall('back', w, h));
-    quad(scene, [[-w/2, 0, d], [-w/2, 0, 0], [-w/2, low, 0], [-w/2, low, d]], wall('left', d, low));
-    quad(scene, [[w/2, 0, 0], [w/2, 0, d], [w/2, h, d], [w/2, h, 0]],
-      rightWallMap ? painted(rightWallMap) : wall('right', d, h));
+    function wall(side, width, height, points) {
+      const material = painted(artwork.surface('wall', width, height, side));
+      // A wrapped mural uses the same real height on both sides of each corner.
+      const uv = artwork.wrapWalls ? [0,0,1,0,1,points[2][1]/h,0,points[3][1]/h] : undefined;
+      quad(scene, points, material, uv);
+    }
+    wall('back', w, h, [[w/2, 0, d], [-w/2, 0, d], [-w/2, low, d], [w/2, h, d]]);
+    wall('left', d, low, [[-w/2, 0, d], [-w/2, 0, 0], [-w/2, low, 0], [-w/2, low, d]]);
+    wall('right', d, h, [[w/2, 0, 0], [w/2, 0, d], [w/2, h, d], [w/2, h, 0]]);
     quad(scene, [[-w/2, low, d], [w/2, h, d], [w/2, h, 0], [-w/2, low, 0]],
       painted(artwork.surface('ceiling', w, d)));
     flat(scene, w, d, 0, 0, d/2, artwork.surface('floor', w, d));
@@ -192,12 +196,12 @@ const SchoolInterior = (() => {
     box(scene, w/2 - right, .075, .024, (right + w/2)/2, .0375, .013, trim);
   }
 
-  function architecture(scene, room, artwork, mural) {
+  function architecture(scene, room, artwork) {
     const {width: w, back: d, height: h} = room.wall;
     const low = room.ceilingMinimum;
     const music = room.kind === 'music';
     const roofAt = x => low + (x + w / 2) * (h - low) / w;
-    enclosure(scene, room, artwork, music ? '#5c5552' : '#8b8175', mural);
+    enclosure(scene, room, artwork, music ? '#5c5552' : '#bba17b');
     if (music) {
       const cornerTrim = standard('#625d5b', .8);
       for (const x of [-w/2 + .012, w/2 - .012]) {
@@ -757,25 +761,11 @@ const SchoolInterior = (() => {
     }
   }
 
-  async function loadArtMural(width, height){
-    const image=new Image();
-    image.src='rooms/interiors/art-wall-mural.png?v=chaekgeori28';
-    await image.decode();
-    const wallAspect=width/height, imageAspect=image.naturalWidth/image.naturalHeight;
-    const map=imageMap(image);
-    // Cover the entire right wall, cropping the art to its aspect ratio.
-    map.repeat.set(Math.min(1,wallAspect/imageAspect),Math.min(1,imageAspect/wallAspect));
-    map.offset.set((1-map.repeat.x)/2,(1-map.repeat.y)/2);
-    map.anisotropy=8;
-    return map;
-  }
-
   async function build(scene, room) {
     const music = room.kind === 'music';
     const cards=music?[room.clues[1]]:room.clues;
-    const [artwork,clueArt,mural]=await Promise.all([
-      InteriorArtwork.load(room.kind),Promise.all(cards.map(clueBoardArt)),
-      music?null:loadArtMural(room.depth,room.wall.height).catch(()=>null)
+    const [artwork,clueArt]=await Promise.all([
+      music?InteriorArtwork.load(room.kind):ArtRoomFinish.load(room),Promise.all(cards.map(clueBoardArt))
     ]);
     scene.add(new THREE.HemisphereLight(music ? '#fff1e3' : '#fbffff', music ? '#a18c80' : '#aebdbc', 2.72));
     const fill = new THREE.DirectionalLight(music ? '#ffe8d4' : '#fff9ee', 1.19);
@@ -785,7 +775,7 @@ const SchoolInterior = (() => {
     rim.position.set(3.6,2.75,-1.8);
     scene.add(rim);
 
-    architecture(scene,room,artwork,mural);
+    architecture(scene,room,artwork);
     const setDoor = entrance(scene,room,artwork);
     if (music) {
       musicPiano(scene,artwork);
@@ -799,11 +789,16 @@ const SchoolInterior = (() => {
       }
     }
     addShadows(scene,music);
+    if (!music) {
+      const [x,y,z] = room.lock.center;
+      rounded(scene, room.lock.width+.17, room.lock.height+.22, .033,
+        x-.049, y, z-.029, standard('#f5ebd9', .84), .017);
+    }
     const lock = patchPlane(scene,room.lock.width,room.lock.height,...room.lock.center,imageMap(schoolLockArt(room,[])));
     const canvas = document.getElementById('roomView');
     Object.assign(canvas.dataset,{
       interior:'v7', artwork:'approved', width:WIDTH, depth:DEPTH, area:WIDTH*DEPTH,
-      wallFinish:music?'four-black-acoustic-walls':mural?'right-wall-mural':'celadon-plaster'
+      wallFinish:music?'four-black-acoustic-walls':'four-wall-chaekgeori'
     });
     return {
       setDoor,
