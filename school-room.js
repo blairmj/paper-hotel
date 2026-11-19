@@ -13,9 +13,8 @@ const saved=book().visits[room.n]?.restoration;
 const outdated=saved?.revision!==puzzle.revision;
 
 function newRun(){
-  let entry=Array(puzzle.answer.length).fill(puzzle.control==='routing'?'':'0');
+  let entry=Array(puzzle.answer.length).fill(['routing','debug'].includes(puzzle.control)?'':'0');
   if(puzzle.control==='sequence')entry=[];
-  if(puzzle.control==='debug')entry=BROADCAST_DRAFT.slice();
   return {revision:puzzle.revision,found:[],entry,solved:false};
 }
 let run=newRun(),world,countdown,opening=false,finished=false;
@@ -261,37 +260,51 @@ function routingPanel(){
   feedback();
 }
 
-function debugPanel(){
-  modal(puzzle.title,'<p class="object-note">방송이 멈춘 단계를 찾아 고쳐 보세요.</p>'+
-    '<div class="broadcast-steps" id="broadcastSteps"></div><p class="readout" id="entryFeedback" role="status"></p>','routing');
-  const steps=byId('broadcastSteps'),feedback=byId('entryFeedback');
-  const options=Object.entries(BROADCAST_COMMANDS).map(([key,command])=>
-    '<option value="'+key+'">'+command.label+'</option>').join('');
-  run.entry.forEach((key,i)=>{
-    const row=document.createElement('label');
-    row.append(document.createTextNode((i+1)+'단계'));
-    const select=document.createElement('select');
-    select.innerHTML=options;select.value=key;
-    select.onchange=()=>{
-      run.entry[i]=select.value;
-      for(const item of steps.children)delete item.dataset.result;
-      feedback.textContent='';world.setDigits(run.entry);save();
-    };
-    row.append(select);steps.append(row);
+function mixerPanel(){
+  const result=()=>run.entry.every(Boolean)?broadcastTrace(run.entry):null;
+  const initial=result();
+  if(initial?.passed){solve();return}
+  modal(puzzle.title,'<p class="mixer-guide">명령 버튼을 눌러 순서를 맞추세요.</p>'+
+    '<div class="mixer-order" id="mixerOrder" role="group" aria-label="방송 순서"></div>'+
+    '<div class="mixer-pads" id="mixerPads" role="group" aria-label="방송 명령"></div>'+
+    '<p class="mixer-feedback" id="entryFeedback" role="status"></p>','mixer');
+  let selected=initial?.trace.length??run.entry.indexOf('');
+  const feedback=byId('entryFeedback');
+  const slots=run.entry.map((_,i)=>{
+    const slot=action(byId('mixerOrder'),String(i+1),()=>{selected=i;draw(result())});
+    slot.innerHTML='<small aria-hidden="true">'+(i+1)+'</small><span></span>';
+    return slot;
   });
-  action(actions(),'방송 시험',()=>{
-    const results=broadcastTrace(run.entry);
-    if(results.passed){solve();return}
-    for(const [i,row] of Array.from(steps.children).entries()){
-      row.dataset.result=i<results.trace.length?'passed':i===results.trace.length?'failed':'';
+  function draw(outcome){
+    const failed=outcome&&!outcome.passed?outcome.trace.length:-1;
+    for(const [i,slot] of slots.entries()){
+      const label=BROADCAST_COMMANDS[run.entry[i]]?.label;
+      slot.lastElementChild.textContent=label??'—';
+      slot.setAttribute('aria-label',(i+1)+'단계 '+(label??'비어 있음'));
+      slot.setAttribute('aria-pressed',String(i===selected));
+      slot.dataset.result=i===failed?'failed':i<failed?'passed':'';
     }
-    feedback.textContent=(results.trace.length+1)+'단계에서 멈췄어요. 현재 상태는 '+results.state+'입니다.';
-  },true);
+    feedback.textContent=failed<0?'':(failed+1)+'단계에서 멈췄어요. 현재 상태는 '+outcome.state+'입니다.';
+  }
+  for(const [key,{label}] of Object.entries(BROADCAST_COMMANDS)){
+    const pad=action(byId('mixerPads'),label,()=>{
+      if(countdown.check())return;
+      run.entry[selected]=key;
+      world.setDigits(run.entry);
+      const outcome=result();
+      if(outcome?.passed){solve();return}
+      const next=run.entry.findIndex((value,i)=>!value&&i>selected);
+      selected=outcome?.trace.length??(next<0?run.entry.indexOf(''):next);
+      save();draw(outcome);
+    });
+    pad.dataset.command=key;
+  }
+  draw(result());
 }
 
 function inspectLock(){
   if(run.solved||!countdown||countdown.check())return;
-  const panels={sequence:sequencePanel,selection:selectionPanel,dial:dialPanel,routing:routingPanel,debug:debugPanel};
+  const panels={sequence:sequencePanel,selection:selectionPanel,dial:dialPanel,routing:routingPanel,debug:mixerPanel};
   panels[puzzle.control]();
   appendRoomTextHint(content,countdown,puzzle.hint);
 }
@@ -346,13 +359,19 @@ function start(){
   dialog.addEventListener('click',event=>{
     if(event.target!==dialog||mandatoryDialog())return;
     const r=dialog.getBoundingClientRect();
-    if(event.clientX<r.left||event.clientX>r.right||event.clientY<r.top||event.clientY>r.bottom)close();
+    if(event.clientX>=r.left&&event.clientX<=r.right&&event.clientY>=r.top&&event.clientY<=r.bottom)return;
+    const command=dialog.dataset.panel==='mixer'&&world.commandAt?.(event.clientX,event.clientY);
+    if(command){
+      byId('mixerPads').querySelector('[data-command="'+command+'"]').click();
+      return;
+    }
+    close();
   });
   setupReviewNavigation(room.n,{rooms:RECOVERY_ROOMS,showJump:!story,urlFor:item=>recoveryRoomLink(item,false)});
   createMusicWorld({
     room,buildRoom:buildSchoolRoom,
     onReadyToMove:()=>!!countdown&&!dialog.open&&!opening&&!finished&&!countdown.expired,
-    onInspect:id=>{if(id==='lock')inspectLock();else inspectClue(id)}
+    onInspect:id=>{if(id===(room.lock?.id??'lock'))inspectLock();else inspectClue(id)}
   }).then(created=>{
     world=created;world.reset(run.solved,run.entry);byId('bag').hidden=!run.found.length;
     if(story&&!plan){intro();return}

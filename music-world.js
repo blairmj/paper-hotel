@@ -80,6 +80,7 @@ async function createMusicWorld({onInspect,onReadyToMove,room=paintedRoom,buildR
     return {...o,point:new THREE.Vector3(...o.xyz),surface,button};
   });
   const stopPoints=room.stops;
+  const puzzleTarget=room.lock?.id??'lock';
   let width=1,height=1,yaw=0,pitch=0,openness=0,journey,trail,drag,finale,raf=0,previousTime=0;
   const clamp=THREE.MathUtils.clamp, wrap=angle=>Math.atan2(Math.sin(angle),Math.cos(angle));
   function heading(position){return Math.atan2(position[0]-eye.x,eye.z-position[2])}
@@ -115,17 +116,19 @@ async function createMusicWorld({onInspect,onReadyToMove,room=paintedRoom,buildR
       point.copy(target.point);
       const v=point.project(camera),px=width*(1+v.x)/2,py=height*(1-v.y)/2;
       const b=target.button;
-      const viewNormal=new THREE.Vector3(Math.sin(target.rotationY||0),0,Math.cos(target.rotationY||0));
+      const sin=Math.sin(target.rotationY||0),cos=Math.cos(target.rotationY||0);
+      const viewNormal=new THREE.Vector3(sin,0,cos);
       const behindSurface=viewNormal.dot(new THREE.Vector3().subVectors(eye,target.point))<.025;
       b.hidden=behindSurface||v.z<0||v.z>=1||px<20||px>width-20||py<55||py>height-56||!!journey||
-        (openness===1&&target.id==='lock')||model.canInspect?.(target.id)===false||targetOccluded(target);
+        (openness===1&&target.id===puzzleTarget)||model.canInspect?.(target.id)===false||targetOccluded(target);
       target.px=px;target.py=py;
       if(b.hidden)continue;
       let halfWidth=0,halfHeight=0;
-      for(const dx of [-.5,.5])for(const dy of [-.5,.5]){
+      const depth=target.surface.depth??0,depthOffsets=depth?[-depth/2,depth/2]:[0];
+      for(const dx of [-.5,.5])for(const dy of [-.5,.5])for(const dz of depthOffsets){
         corner.copy(target.point);
-        corner.x+=dx*target.surface.width*Math.cos(target.rotationY||0);
-        corner.z-=dx*target.surface.width*Math.sin(target.rotationY||0);
+        corner.x+=dx*target.surface.width*cos+dz*sin;
+        corner.z+=dz*cos-dx*target.surface.width*sin;
         corner.y+=dy*target.surface.height;
         corner.project(camera);
         halfWidth=Math.max(halfWidth,Math.abs(width*(1+corner.x)/2-px));
@@ -183,16 +186,21 @@ async function createMusicWorld({onInspect,onReadyToMove,room=paintedRoom,buildR
     const object=targets.find(t=>t.id===id), [x,,z]=object.xyz;
     const approachX=id==='paper'?x+.65:x;
     const approach=object.approach || {x:clamp(approachX,-5.3,5.3),z:clamp(z+2.35,-6.2,-5.16)};
-    walkTo(approach,object.xyz,()=>onInspect(id));
+    const sideBySide=width>=800&&width/height>=1.25;
+    const inspectionView=sideBySide?object.inspectionView?.wide:object.inspectionView?.compact;
+    walkTo(approach,inspectionView??object.xyz,()=>onInspect(id));
   }
   const raycaster=new THREE.Raycaster(),mousePoint=new THREE.Vector2(),destination=new THREE.Vector3();
   const roomBox=new THREE.Box3(
     new THREE.Vector3(-room.wall.width/2,0,room.wall.z),
     new THREE.Vector3(room.wall.width/2,room.wall.height,room.wall.back??5.4)
   );
-  function walkToPixel(x,y){
+  function aimRay(x,y){
     mousePoint.set(2*x/width-1,1-2*y/height);
     raycaster.setFromCamera(mousePoint,camera);
+  }
+  function walkToPixel(x,y){
+    aimRay(x,y);
     if(!raycaster.ray.intersectBox(roomBox,destination))return;
     for(const block of occluders){
       if(raycaster.ray.intersectBox(block,hit)&&hit.distanceToSquared(eye)<destination.distanceToSquared(eye)){
@@ -215,6 +223,12 @@ async function createMusicWorld({onInspect,onReadyToMove,room=paintedRoom,buildR
       goal=approaches[0];
     }
     walkTo(goal);
+  }
+  function commandAt(clientX,clientY){
+    if(!model.commandPads)return null;
+    const rect=canvas.getBoundingClientRect();
+    aimRay(clientX-rect.left,clientY-rect.top);
+    return raycaster.intersectObjects(model.commandPads,false)[0]?.object.userData.command??null;
   }
   function frame(time){
     raf=0;const dt=Math.min(.06,(time-previousTime)/1000);previousTime=time;
@@ -310,7 +324,7 @@ async function createMusicWorld({onInspect,onReadyToMove,room=paintedRoom,buildR
   movementButton('stepBack',()=>step(-1.2));
   new ResizeObserver(resize).observe(canvas);resize();
   return {
-    clearKeys,walkTo,lookAtPiano(){inspectTarget('paper')},
+    clearKeys,walkTo,commandAt,lookAtPiano(){inspectTarget('paper')},
     setDigits(digits){model.setDigits(digits);queue()},
     facingDoor(done){clearKeys();look(room.door,true,done)},
     showFinale(view,done){

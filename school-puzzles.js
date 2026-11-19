@@ -98,10 +98,10 @@ function waterLevels({initial,fill,drain,cycles}) {
 }
 
 const BROADCAST_COMMANDS = {
-  mic:{label:'마이크 켜기',before:'대기',after:'마이크 켜짐'},
-  record:{label:'녹음 시작',before:'마이크 켜짐',after:'녹음 중'},
-  stop:{label:'녹음 끝내기',before:'녹음 중',after:'녹음 종료'},
-  save:{label:'파일 저장',before:'녹음 종료',after:'저장 완료'}
+  mic:{label:'마이크 켜기',display:'MIC',before:'대기',after:'마이크 켜짐'},
+  record:{label:'녹음 시작',display:'REC',before:'마이크 켜짐',after:'녹음 중'},
+  stop:{label:'녹음 끝내기',display:'STOP',before:'녹음 중',after:'녹음 종료'},
+  save:{label:'파일 저장',display:'SAVE',before:'녹음 종료',after:'저장 완료'}
 };
 const BROADCAST_DRAFT = ['mic','record','save','save'];
 function broadcastTrace(program) {
@@ -133,8 +133,8 @@ const SCHOOL_PUZZLES = {
   science:{control:'dial',title:'실험 기록 잠금판',answer:waterLevels(WATER_CYCLE),
     instructions:'급수와 배출을 한 번 마칠 때마다 남은 물의 칸 수를 맞추세요.',
     hint:'물을 채운 다음 5칸 이상이면 5칸을 빼세요. 그때 남은 높이에서 다음 회차를 시작합니다.'},
-  broadcast:{control:'debug',title:'방송 제어판',answer:Object.keys(BROADCAST_COMMANDS),
-    hint:'테스트에서 멈춘 단계의 상태를 확인하세요. 녹음이 끝나야 파일을 저장할 수 있습니다.'},
+  broadcast:{control:'debug',title:'방송 믹서',answer:Object.keys(BROADCAST_COMMANDS),
+    hint:'멈춘 단계의 상태를 확인하세요. 녹음이 끝나야 파일을 저장할 수 있습니다.'},
   computer:{control:'routing',title:'출입 신호판',answer:NEW_SIGNALS.map(routeSignal),
     hint:'응답이 없는 기록에서 전원이 켜져 있던 신호를 찾아 분기표의 빈칸을 확인하세요.'}
 };

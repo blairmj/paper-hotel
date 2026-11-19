@@ -14,6 +14,7 @@ const SpecialtyInteriors = (() => {
   const anchor = {x:-2.05,z:1.47,w:2.28,d:.80};
   const consoleDesk = {x:3.22,z:3.16,w:1.25,d:4.13};
   const deskReturn = {x:2.54,z:1.24,w:1.48,d:.79};
+  const studioMixer = {x:3.07,z:2.88,base:.929,width:1.238,depth:.606,angle:-1.33};
   const tripod = {x:-2.33,z:2.96};
   const studioSeat = {x:2.22,z:3.20};
   const drawerZ=4.93;
@@ -70,8 +71,10 @@ const SpecialtyInteriors = (() => {
     },
     broadcast:{
       size:[7.8,6.5,2.91], trim:'#515761',
-      entrance:{x:.00,width:1.31,height:2.22,moldingColor:'#7d838b',casingColor:'#666e79'},
-      lock:{center:[.98,1.27,.099],width:.47,height:.32,approach:{x:.98,z:1.37}},
+      entrance:{x:.00,width:1.31,height:2.22,moldingColor:'#7d838b',casingColor:'#666e79',opensOut:true},
+      lock:{id:'mixer',center:[studioMixer.x,1.067,studioMixer.z],width:studioMixer.width,height:.245,
+        depth:studioMixer.depth,rotationY:studioMixer.angle,approach:{x:1.63,z:2.85},
+        inspectionView:{wide:[studioMixer.x,.96,studioMixer.z+.46],compact:[studioMixer.x,.81,studioMixer.z+.22]}},
       start:[.17,1.55,6.21],view:[.54,1.31,.16],viewAngle:60,
       obstacles:[
         boundsOf(anchor),boundsOf({x:-2.04,z:.80,w:.56,d:.47},.09),
@@ -92,8 +95,8 @@ const SpecialtyInteriors = (() => {
     const design=designs[kind], {size:[width,depth,height],entrance,lock,clues,obstacles,start,view,viewAngle}=design;
     const door=entrance.side==='right'?[width/2-.05,1.30,depth/2+entrance.x]:[entrance.x,1.30,.05];
     const targets=[
-      {id:'lock',name:SCHOOL_PUZZLES[kind].title,xyz:lock.center,surface:lock,
-        rotationY:lock.rotationY,approach:lock.approach},
+      {id:lock.id??'lock',name:SCHOOL_PUZZLES[kind].title,xyz:lock.center,surface:lock,
+        rotationY:lock.rotationY,approach:lock.approach,inspectionView:lock.inspectionView},
       ...clues
     ];
     return {
@@ -646,19 +649,37 @@ const SpecialtyInteriors = (() => {
       g.fillStyle='#141a22';g.fillRect(master-88,16,175,h-32);
       g.fillStyle='#b9c5cc';g.font='bold 17px sans-serif';g.textAlign='center';
       g.fillText('MASTER',master,43);
-      g.fillStyle='#344957';g.fillRect(master-61,60,122,75);
-      g.fillStyle='#92dece';g.font='21px monospace';g.fillText('-12 dB',master,106);
       studioMeter(g,master-39,158,24,191,12);studioMeter(g,master+14,158,24,191,10);
       g.fillStyle='#656e77';g.fillRect(master-58,543,117,1);
     });
   }
 
-  function mixingBoard(scene,x,z,shell,edge){
-    const unit=positionGroup(scene,x,.929,z,-1.33);
+  function mixerOrderDisplay(panel){
+    const map=InteriorArtwork.canvasMap(420,180,()=>{});
+    patchPlane(panel,.162,.093,.458,.049,-.179,map).rotation.x=-quarterTurn;
+    const g=map.image.getContext('2d'),{width,height}=map.image;
+    function setProgram(program){
+      g.fillStyle='#101c20';g.fillRect(0,0,width,height);
+      g.fillStyle='#77bdaf';g.font='bold 28px sans-serif';g.textAlign='left';g.fillText('CUE ORDER',15,41);
+      g.font='bold 30px monospace';g.textAlign='center';
+      for(let i=0;i<4;i++){
+        const x=12+i*100, a=BROADCAST_COMMANDS[program[i]];
+        g.fillStyle=a?'#20443f':'#263235';g.fillRect(x,65,94,96);
+        g.fillStyle=a?'#b9f0de':'#88a8a5';g.fillText(a?.display??'—',x+47,124);
+      }
+      map.needsUpdate=true;
+    }
+    setProgram([]);
+    return setProgram;
+  }
+
+  function mixingBoard(scene,shell,edge){
+    const {x,z,base,angle,width,depth}=studioMixer;
+    const unit=positionGroup(scene,x,base,z,angle);
     rounded(unit,1.18,.060,.55,0,.057,-.038,shell,.017);
     const panel=positionGroup(unit,0,.121,0);
     panel.rotation.x=.218;
-    rounded(panel,1.238,.089,.606,0,0,0,shell,.021);
+    rounded(panel,width,.089,depth,0,0,0,shell,.021);
     const channels=Array.from({length:12},(_,i)=>-.535+i*.078);
     patchPlane(panel,1.18,.554,0,.047,0,mixerSurface(channels)).rotation.x=-quarterTurn;
     const dials=standard('#14191f',.49),faders=standard('#79838d',.44,.14);
@@ -672,11 +693,22 @@ const SpecialtyInteriors = (() => {
     }
     hardwareBatch(panel,new THREE.BoxGeometry(.030,.017,.032),faders,channels.map((x,i)=>[x,.056,levels[i]]));
     hardwareBatch(panel,new THREE.BoxGeometry(.028,.007,.020),lamp,channels.filter((_,i)=>i%3!==2).map(x=>[x,.051,.035]));
-    const record=new THREE.MeshBasicMaterial({color:'#e7695d'});
-    rounded(panel,.063,.02,.041,.420,.058,.205,record,.008);
-    rounded(panel,.048,.02,.041,.512,.058,.205,edge,.008);
-    cylinder(panel,.046,.046,.033,.466,.064,.149,edge,32);
+    const pilots=['#77c4df','#ed7c70','#bbcad0','#77d8b3'];
+    const commandPads=Object.entries(BROADCAST_COMMANDS).map(([command,{display}],i)=>{
+      const x=.417+(i%2)*.078,z=.139+Math.floor(i/2)*.068;
+      const pad=rounded(panel,.067,.016,.055,x,.054,z,edge,.006);
+      pad.userData.command=command;
+      const cap=InteriorArtwork.canvasMap(134,110,(g,w,h)=>{
+        g.fillStyle='#3c4752';g.fillRect(0,0,w,h);
+        g.fillStyle=pilots[i];g.fillRect(31,16,w-62,13);
+        g.font='bold 37px sans-serif';g.textAlign='center';g.fillStyle='#e6eff5';
+        g.fillText(display,w/2,82);
+      });
+      patchPlane(panel,.054,.042,x,.063,z,cap).rotation.x=-quarterTurn;
+      return pad;
+    });
     for(const x of [-.603,.603])box(panel,.014,.059,.535,x,.005,0,edge);
+    return {commandPads,setProgram:mixerOrderDisplay(panel)};
   }
 
   function equipmentRack(scene,x,z,shell,edge){
@@ -774,12 +806,21 @@ const SpecialtyInteriors = (() => {
     studioMonitor(scene,3.51,.929,2.36,levels,shell);
     nearfield(scene,3.69,2.81,shell,edge);
     studioChair(scene,studioSeat.x,studioSeat.z,-quarterTurn,upholstered,frame);
-    mixingBoard(scene,3.07,2.88,shell,edge);
+    const mixer=mixingBoard(scene,shell,edge);
     headphones(scene,3.56,3.52,shell,edge);
     tripodCamera(scene,recording);
     shadow(.78,.83,tripod.x,tripod.z,.005,.49);
     shadow(.79,.79,studioSeat.x,studioSeat.z,.005,.55);
     shadow(1.91,4.63,3.01,consoleDesk.z,.005,.57);
+    return mixer;
+  }
+
+  function broadcastDoorStatus(scene){
+    const base=positionGroup(scene,.927,1.274,.093);
+    rounded(base,.134,.167,.037,0,0,0,standard('#3b424a',.56),.012);
+    const indicator=new THREE.MeshBasicMaterial({color:'#f38d72'});
+    cylinder(base,.025,.026,.01,0,0,.024,indicator,28).rotation.x=quarterTurn;
+    return open=>indicator.color.set(open?'#74d5a9':'#f38d72');
   }
 
   function ceilingLights(scene,room){
@@ -881,11 +922,11 @@ const SpecialtyInteriors = (() => {
     enclosure(scene,room,art,design.trim,(map,surface)=>architectureMaterial(art,room,map,surface));
     const doorParent=room.entrance.side==='right'?positionGroup(scene,room.wall.width/2,0,room.depth/2,-quarterTurn):scene;
     const doorFinish=room.kind==='broadcast'?studioFinish(art,'door',[49,54,61],.50):materialFrom(art,'door',.54);
-    const setDoor=entrance(doorParent,room,art,doorFinish);
+    const swingDoor=entrance(doorParent,room,art,doorFinish);
     ceilingLights(scene,room);
     if(room.kind==='broadcast')acousticPanels(scene,room,art);
     const furniture=positionGroup(scene,0,0,0);
-    design.build(furniture,room,art,groundShadow(scene));
+    const mixer=design.build(furniture,room,art,groundShadow(scene));
     for(const [i,clue] of cards.entries())addCard(furniture,clue,cardImages[i]);
     furniture.traverse(mesh=>{
       if(mesh.isMesh && mesh.material.isMeshStandardMaterial && !mesh.material.transparent)mesh.castShadow=true;
@@ -893,14 +934,21 @@ const SpecialtyInteriors = (() => {
     scene.traverse(mesh=>{
       if(mesh.isMesh && mesh.material.isMeshStandardMaterial)mesh.receiveShadow=true;
     });
+    const canvas=document.getElementById('roomView');
+    Object.assign(canvas.dataset,{interior:room.kind,artwork:room.kind==='broadcast'?'studio-v34':'approved-v31'});
+    if(room.kind==='broadcast'){
+      const updateDoorStatus=broadcastDoorStatus(scene);
+      return {
+        setDoor(amount){swingDoor(amount);updateDoorStatus(amount>0)},
+        setDigits:mixer.setProgram,
+        commandPads:mixer.commandPads
+      };
+    }
     const [x,y,z]=room.lock.center;
     const lock=patchPlane(scene,room.lock.width,room.lock.height,x,y,z,imageMap(schoolLockArt(room,[])));
     lock.rotation.y=room.lock.rotationY??0;
-    Object.assign(document.getElementById('roomView').dataset,{
-      interior:room.kind,artwork:room.kind==='broadcast'?'studio-v33':'approved-v31'
-    });
     return {
-      setDoor,
+      setDoor:swingDoor,
       setDigits(values){
         lock.material.map.image=schoolLockArt(room,values);
         lock.material.map.needsUpdate=true;
