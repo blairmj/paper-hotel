@@ -38,6 +38,10 @@ function shouldPrint({frame,dots}){return frame&&dots%2===0}
 const BALLS = ['A','B','C','D','E','F'];
 const BALL_COLORS = ['#b76744','#527e9d','#6d8c62','#a97a45','#86678f','#5c9b91'];
 const BALL_PICKUP = ['D','B','A','E'];
+function ballRowAfter(picked){
+  const removed=BALL_PICKUP.slice(0,picked);
+  return BALLS.filter(ball=>!removed.includes(ball));
+}
 function countBallMoves(first, removal) {
   const row = first.slice();
   return removal.map(ball=>{
@@ -125,8 +129,8 @@ const SCHOOL_PUZZLES = {
   art:{control:'selection',title:'문 인쇄판',revision:3,
     answer:PRINT_SAMPLES.map(sample=>shouldPrint(sample)?'1':'0'),
     hint:'점 개수가 같은 두 기록을 비교해 테두리를 살펴보세요. 인쇄된 도안의 점을 두 개씩 짝지어 보세요.'},
-  sports:{control:'dial',title:'문 다이얼',answer:countBallMoves(BALLS,BALL_PICKUP),
-    instructions:'차례마다 뺀 공을 제외하고 배열에서 움직인 공의 개수를 세어 네 칸에 순서대로 맞추세요.',
+  sports:{control:'balls',title:'공 라커',keys:BALLS.map((_,i)=>String(i)),answer:countBallMoves(BALLS,BALL_PICKUP),
+    instructions:'단서 순서대로 공을 빼고, 남은 공 중 자리가 바뀐 개수를 입력하세요.',
     hint:'뺀 공을 제외하고 이번에 한 칸씩 왼쪽으로 움직인 공의 개수를 세세요. 다음 공은 바뀐 배열에서 빼세요.'},
   library:{control:'sequence',title:'곡선 서가',keys:SHELF_NUMBERS.map(String),answer:bookSearch(SHELF_NUMBERS,LOAN_NUMBER),
     instructions:'찾기 표지와 대출 메모를 보고, 확인할 책을 차례로 누르세요.',

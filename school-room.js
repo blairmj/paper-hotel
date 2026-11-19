@@ -14,14 +14,23 @@ const outdated=saved?.revision!==puzzle.revision;
 
 function newRun(){
   let entry=Array(puzzle.answer.length).fill(['routing','debug','water'].includes(puzzle.control)?'':'0');
-  if(puzzle.control==='sequence')entry=[];
-  return {revision:puzzle.revision,found:[],entry,solved:false};
+  if(['sequence','balls'].includes(puzzle.control))entry=[];
+  const restoration={revision:puzzle.revision,found:[],entry,solved:false};
+  if(puzzle.control==='balls')restoration.awaitingCount=false;
+  return restoration;
 }
 let run=newRun(),world,countdown,opening=false,finished=false;
 if(saved&&!outdated){
   run.found=Array.isArray(saved.found)?saved.found.filter(id=>room.clues.some(clue=>clue.id===id)):[];
   if(Array.isArray(saved.entry)){
     if(puzzle.control==='sequence')run.entry=saved.entry.filter(key=>puzzle.keys.includes(key)).slice(0,puzzle.answer.length);
+    else if(puzzle.control==='balls'){
+      for(const [i,value] of saved.entry.slice(0,puzzle.answer.length).entries()){
+        if(value!==puzzle.answer[i])break;
+        run.entry.push(value);
+      }
+      run.awaitingCount=saved.awaitingCount===true&&run.entry.length<puzzle.answer.length;
+    }
     else run.entry=run.entry.map((value,i)=>{
       const stored=saved.entry[i];
       let valid;
@@ -35,7 +44,10 @@ if(saved&&!outdated){
   }
 }
 run.solved=saved?.solved===true&&(!outdated||story);
-if(run.solved)run.entry=puzzle.answer.slice();
+if(run.solved){
+  run.entry=puzzle.answer.slice();
+  if(puzzle.control==='balls')run.awaitingCount=false;
+}
 
 function save(){
   const next=book(),visit=next.visits[room.n];
@@ -122,31 +134,6 @@ function signalRecords(){
       fields.map(field=>'<td>'+signalValue(signal,field)+'</td>').join('')+
       '<td>'+ROUTE_NAMES[routeSignal(signal)]+'</td></tr>').join('')+'</tbody></table>';
 }
-function ballTray(){
-  let row=BALLS.slice();
-  const tray=byId('ballTray'),status=byId('ballStatus');
-  const reset=action(actions(),'처음 배열',()=>{row=BALLS.slice();draw()});
-  function draw(from=-1){
-    tray.replaceChildren();
-    row.forEach((label,i)=>{
-      const ball=action(tray,label,()=>{
-        row.splice(i,1);
-        draw(i);
-        const next=tray.children[i]?.matches('button')?tray.children[i]:reset;
-        next.focus({preventScroll:true});
-      });
-      ball.className=i>=from&&from>=0?'tray-ball shifted':'tray-ball';
-      ball.setAttribute('aria-label',label+' 공 빼기');
-      ball.style.setProperty('--ball',BALL_COLORS[BALLS.indexOf(label)]);
-    });
-    for(let i=row.length;i<BALLS.length;i++){
-      const space=document.createElement('span');space.className='tray-empty';tray.append(space);
-    }
-    status.textContent='남은 공 '+row.join(' ');
-  }
-  draw();
-}
-
 function collectClue(id){
   if(!run.found.includes(id)){run.found.push(id);save()}
   byId('bag').hidden=false;
@@ -159,11 +146,6 @@ function inspectClue(id){
   switch(id){
     case 'paper':modal(clue.name,scoreSheet());break;
     case 'recordA':modal(clue.name,signalRecords());break;
-    case 'ballLine':
-      modal(clue.name,'<p class="object-note">공을 하나 뺄 때마다 <strong>뺀 공을 제외하고 배열에서 움직인 공의 개수</strong>를 구하세요.</p>'+
-        '<p class="object-note">공을 눌러 빼면 오른쪽 공들이 한 칸씩 왼쪽으로 이동합니다.</p>'+
-        '<div class="ball-tray" id="ballTray"></div><span class="sr-only" id="ballStatus" role="status"></span>');
-      ballTray();break;
     default:modal(clue.name,'<div class="school-clue">'+schoolClueSvg(id)+'</div>');
   }
 }
@@ -379,9 +361,87 @@ function waterPanel(){
   previewRound();draw();
 }
 
+function ballLockerPanel(){
+  collectClue('ballLine');
+  if(correct()){solve();return}
+  modal(puzzle.title,'<p class="ball-guide">'+puzzle.instructions+'</p>'+
+    '<div class="ball-record" id="ballRecord" role="group" aria-label="회차별 기록"></div>'+
+    '<p class="ball-task" id="ballTask"></p>'+
+    '<div class="ball-row-label" id="ballBeforeBox" hidden>빼기 전<div class="ball-row" id="ballBefore"></div></div>'+
+    '<div class="ball-row-label">현재 배열<div class="ball-row" id="ballCurrent" role="group" aria-label="남은 공"></div></div>'+
+    '<div class="ball-counts" id="ballCounts" role="group" aria-label="움직인 공의 개수" hidden></div>'+
+    '<p class="ball-feedback" id="entryFeedback" role="status"></p>','ball-locker');
+  const tray=byId('ballCurrent'),before=byId('ballBefore'),counts=byId('ballCounts');
+  const feedback=byId('entryFeedback');
+  const pickers=new Map(BALLS.map((label,i)=>{
+    const button=action(tray,label,()=>pick(label));
+    button.className='locker-ball';
+    button.dataset.command=label;
+    button.setAttribute('aria-label',label+' 공 빼기');
+    button.style.setProperty('--ball',BALL_COLORS[i]);
+    return [label,button];
+  }));
+  for(const value of puzzle.keys)action(counts,value+'개',()=>record(value));
+  function fillRow(host,row,interactive){
+    host.replaceChildren();
+    for(const label of row){
+      const chip=interactive?pickers.get(label):document.createElement('span');
+      if(interactive)chip.disabled=run.awaitingCount;
+      else{
+        chip.className='locker-ball';
+        chip.textContent=label;
+        chip.style.setProperty('--ball',BALL_COLORS[BALLS.indexOf(label)]);
+      }
+      host.append(chip);
+    }
+    for(let i=row.length;i<BALLS.length;i++){
+      const gap=document.createElement('span');
+      gap.className='ball-empty';
+      host.append(gap);
+    }
+  }
+  function draw(){
+    const round=run.entry.length,waiting=run.awaitingCount;
+    byId('ballRecord').innerHTML=puzzle.answer.map((_,i)=>
+      '<div data-active="'+(i===round)+'"><small>'+(i+1)+'회</small><b>'+
+      (run.entry[i]===undefined?'—':run.entry[i]+'개')+'</b></div>').join('');
+    byId('ballTask').textContent=waiting?BALL_PICKUP[round]+' 공을 뺐어요. 움직인 공은 몇 개인가요?':'회수 순서에 맞춰 공을 고르세요.';
+    byId('ballBeforeBox').hidden=!waiting;
+    counts.hidden=!waiting;
+    if(waiting)fillRow(before,ballRowAfter(round),false);
+    fillRow(tray,ballRowAfter(round+Number(waiting)),true);
+    feedback.textContent='';
+  }
+  function pick(label){
+    if(countdown.check()||run.awaitingCount)return;
+    if(label!==BALL_PICKUP[run.entry.length]){
+      feedback.textContent='회수 순서 단서를 다시 확인해 보세요.';
+      return;
+    }
+    run.awaitingCount=true;
+    world.setDigits(run.entry,{pending:true,animate:true});
+    save();draw();
+    counts.firstElementChild.focus({preventScroll:true});
+  }
+  function record(value){
+    if(countdown.check()||!run.awaitingCount)return;
+    if(value!==puzzle.answer[run.entry.length]){
+      feedback.textContent='남은 공 중 자리가 바뀐 공만 다시 세어 보세요.';
+      return;
+    }
+    run.entry.push(value);
+    run.awaitingCount=false;
+    if(correct()){solve();return}
+    save();draw();
+    tray.querySelector('button')?.focus({preventScroll:true});
+  }
+  draw();
+}
+
 function inspectLock(){
   if(run.solved||!countdown||countdown.check())return;
-  const panels={sequence:sequencePanel,selection:selectionPanel,dial:dialPanel,routing:routingPanel,debug:mixerPanel,water:waterPanel};
+  const panels={sequence:sequencePanel,selection:selectionPanel,dial:dialPanel,routing:routingPanel,debug:mixerPanel,
+    water:waterPanel,balls:ballLockerPanel};
   panels[puzzle.control]();
   appendRoomTextHint(content,countdown,puzzle.hint);
 }
@@ -437,7 +497,7 @@ function start(){
     if(event.target!==dialog||mandatoryDialog())return;
     const r=dialog.getBoundingClientRect();
     if(event.clientX>=r.left&&event.clientX<=r.right&&event.clientY>=r.top&&event.clientY<=r.bottom)return;
-    const command=['mixer','water','shelf'].includes(dialog.dataset.panel)&&world.commandAt?.(event.clientX,event.clientY);
+    const command=['mixer','water','shelf','ball-locker'].includes(dialog.dataset.panel)&&world.commandAt?.(event.clientX,event.clientY);
     if(command){
       content.querySelector('[data-command="'+command+'"]')?.click();
       return;
@@ -451,6 +511,7 @@ function start(){
     onInspect:id=>{if(id===(room.lock?.id??'lock'))inspectLock();else inspectClue(id)}
   }).then(created=>{
     world=created;world.reset(run.solved,run.entry);byId('bag').hidden=!run.found.length;
+    if(run.awaitingCount)world.setDigits(run.entry,{pending:true});
     if(story&&!plan){intro();return}
     beginTimer();
     if(run.solved)showExit();

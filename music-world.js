@@ -154,17 +154,18 @@ async function createMusicWorld({onInspect,onReadyToMove,room=paintedRoom,buildR
       moveEye(x,z);
     }
   }
-  function walkTo(goal, face=null, done=null) {
-    if(!onOpenFloor(goal.x,goal.z)) return;
+  function walkTo(goal, face=null, done=null, automatic=false) {
+    if(!onOpenFloor(goal.x,goal.z)) return false;
     const path=floorRoute(eye,goal);
-    if(!path.length) return;
+    if(!path.length) return false;
     journey=null;keys.clear();
     if (reducedMotion.matches) {
       for(const point of path)moveEye(point.x,point.z);
       if(face){yaw=heading(face);pitch=tilt(face)}
-      queue();done?.();return;
+      queue();done?.();return true;
     }
-    trail={path,face,done};previousTime=performance.now();queue();
+    trail={path,face,done,automatic};previousTime=performance.now();queue();
+    return true;
   }
   function advanceTrail(dt){
     const next=trail.path[0],dx=next.x-eye.x,dz=next.z-eye.z,dist=Math.hypot(dx,dz);
@@ -188,7 +189,7 @@ async function createMusicWorld({onInspect,onReadyToMove,room=paintedRoom,buildR
     const approach=object.approach || {x:clamp(approachX,-5.3,5.3),z:clamp(z+2.35,-6.2,-5.16)};
     const sideBySide=width>=800&&width/height>=1.25;
     const inspectionView=sideBySide?object.inspectionView?.wide:object.inspectionView?.compact;
-    walkTo(approach,inspectionView??object.xyz,()=>onInspect(id));
+    walkTo(approach,inspectionView??object.xyz,()=>{model.onInspect?.(id);onInspect(id)});
   }
   const raycaster=new THREE.Raycaster(),mousePoint=new THREE.Vector2(),destination=new THREE.Vector3();
   const roomBox=new THREE.Box3(
@@ -228,7 +229,7 @@ async function createMusicWorld({onInspect,onReadyToMove,room=paintedRoom,buildR
     if(!model.commandPads)return null;
     const rect=canvas.getBoundingClientRect();
     aimRay(clientX-rect.left,clientY-rect.top);
-    return raycaster.intersectObjects(model.commandPads,false)[0]?.object.userData.command??null;
+    return raycaster.intersectObjects(model.commandPads.filter(pad=>pad.visible),false)[0]?.object.userData.command??null;
   }
   function frame(time){
     raf=0;const dt=Math.min(.06,(time-previousTime)/1000);previousTime=time;
@@ -255,7 +256,7 @@ async function createMusicWorld({onInspect,onReadyToMove,room=paintedRoom,buildR
         model?.setDoor(openness);
       }
       if(t===1){journey=null;j.done?.()}
-    }else if(trail && onReadyToMove()){
+    }else if(trail && (trail.automatic||onReadyToMove())){
       advanceTrail(dt);
     }else if(keys.size&&onReadyToMove()){
       yaw=wrap(yaw+(+keys.has('arrowright')-+keys.has('arrowleft'))*1.4*dt);
@@ -278,7 +279,7 @@ async function createMusicWorld({onInspect,onReadyToMove,room=paintedRoom,buildR
       .filter(stop=>stop.angle>.07).sort((a,b)=>a.angle-b.angle);
     if(ordered.length)look(ordered[0].target);
   }
-  const clearKeys=()=>{keys.clear();drag=null;trail=null};
+  const clearKeys=()=>{keys.clear();drag=null;if(!trail?.automatic)trail=null};
   function startPointer(e,objectId=null){
     if(!e.isPrimary||e.button!==0||!onReadyToMove()||journey?.door)return;
     journey=null;trail=null;
@@ -326,14 +327,19 @@ async function createMusicWorld({onInspect,onReadyToMove,room=paintedRoom,buildR
   return {
     clearKeys,walkTo,commandAt,lookAtPiano(){inspectTarget('paper')},
     setDigits(digits,level){model.setDigits(digits,level);queue()},
-    facingDoor(done){clearKeys();look(room.door,true,done)},
+    facingDoor(done){
+      clearKeys();
+      const open=()=>look(room.door,true,done);
+      if(room.doorReveal&&walkTo(room.doorReveal,room.door,open,true))return;
+      open();
+    },
     showFinale(view,done){
       clearKeys();journey=null;
       finale={...view,done,start:performance.now(),duration:reducedMotion.matches?1:1320};
       queue();
     },
     reset(open=false,digits=[0,0]){
-      clearKeys();journey=null;finale=null;
+      clearKeys();journey=null;trail=null;finale=null;
       eye.fromArray(room.start);openness=open?1:0;
       const initial=open?room.door:(width/height<.85?room.portraitView:room.firstView);
       yaw=heading(initial);pitch=tilt(initial);

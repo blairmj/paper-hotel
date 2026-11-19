@@ -6,15 +6,16 @@ const SportsComputerInteriors = (() => {
   const LOCKER = {width: .90, height: 1.65, front: 1.75, column: .51, columns: 8, base: .09, cap: .044};
   const LOCKER_LENGTH = LOCKER.column * LOCKER.columns;
   const TIER_HEIGHT = (LOCKER.height - LOCKER.base - LOCKER.cap) / 2;
+  const BALL_LOCKER_ID = 'ballLocker';
   const BALL_RACK = {x: -1.56, z: .43, width: 2.12, depth: .63, height: 1.45};
   const MATS = {x: -5.96, z: 3.17, width: 1.05, depth: 1.93, height: .55};
   const BENCH = {x: 5.91, z: 6.30, width: .40, depth: 2.18, height: .49};
   const DESK = {width: 1.23, depth: .72};
   const SCREEN = {width: .525, height: .304, y: 1.056, z: -.103};
 
-  function lockerPosition(bank, column, tier) {
+  function lockerPosition(bank, column, tier, span) {
     return [bank.x + LOCKER.width / 2, LOCKER.base + (tier + .5) * TIER_HEIGHT,
-      LOCKER.front + (column + .5) * LOCKER.column];
+      LOCKER.front + (column + span / 2) * LOCKER.column];
   }
 
   function sportsLayout() {
@@ -24,17 +25,21 @@ const SportsComputerInteriors = (() => {
       {x: 3.3, finish: 'orange', color: '#c47b36'}
     ];
     const compartments = [
-      {bank: 0, column: 5, tier: 1, id: 'ballLine', name: '공 선반 배열'},
-      {bank: 1, column: 2, tier: 1, id: 'ballOrder', name: '공 회수 순서'}
+      {bank: 0, column: 5, span: 2, tier: 1, id: 'ballLine', name: '공 선반 배열'},
+      {bank: 1, column: 2, span: 1, tier: 1, id: 'ballOrder', name: '공 회수 순서'}
     ].map(slot => {
-      const position = lockerPosition(banks[slot.bank],slot.column,slot.tier);
+      const position = lockerPosition(banks[slot.bank],slot.column,slot.tier,slot.span);
       const [x,,z] = position;
       return {...slot,position,trigger:[x+.04,x+1.97,z-.88,z+.88]};
     });
-    const clues = compartments.map(({bank,id,name,position:[x,y,z]}) => ({
+    const clues = compartments.map(({bank,id,name,span,position:[x,y,z]}) => ({
       id,name,xyz:[x+.044,y,z],rotationY:Math.PI/2,
-      surface:{width:LOCKER.column-.055,height:TIER_HEIGHT-.074},approach:{x:banks[bank].x+1.65,z:z+.22}
+      surface:{width:LOCKER.column*span-.055,height:TIER_HEIGHT-.074},approach:{x:banks[bank].x+1.65,z:z+.22}
     }));
+    const [faceX,faceY,faceZ]=compartments[0].position;
+    const lock={id:BALL_LOCKER_ID,center:clues[0].xyz,rotationY:Math.PI/2,
+      ...clues[0].surface,approach:{x:faceX+1.53,z:faceZ},
+      inspectionView:{wide:[faceX-.10,faceY-.07,faceZ-.46],compact:[faceX-.12,faceY-.53,faceZ]}};
     const obstacles = banks.map(({x}, i) => [
       x - LOCKER.width/2 - .16,
       x + LOCKER.width/2 + (compartments.some(cell => cell.bank===i) ? .55 : .16),
@@ -47,7 +52,7 @@ const SportsComputerInteriors = (() => {
       obstacles.push([x-w/2-.16,x+w/2+.16,z-d/2-.16,z+d/2+.16]);
       occluders.push([x-w/2,x+w/2,0,h,z-d/2,z+d/2]);
     }
-    return {banks, compartments, clues, obstacles, occluders};
+    return {banks, compartments, clues, obstacles, occluders, lock};
   }
 
   function computerLayout() {
@@ -81,19 +86,22 @@ const SportsComputerInteriors = (() => {
     const doorway = sports
       ? {x:4.20,width:1.27,height:2.24,moldingColor:'#747b7d',recessColor:'#363d41'}
       : {x:4.20,width:1.42,height:2.27,moldingColor:'#224875',recessColor:'#152c49'};
-    const lock = {center:[doorway.x-doorway.width/2-.52,1.28,.073],
-      width:sports?.75:.53,height:sports?.35:.53};
+    const lock = sports ? layout.lock : {center:[doorway.x-doorway.width/2-.52,1.28,.073],width:.53,height:.53};
+    const targets=[{id:lock.id??'lock',name:sports?SCHOOL_PUZZLES.sports.title:'문 잠금장치',
+      xyz:lock.center,surface:lock,rotationY:lock.rotationY,inspectionView:lock.inspectionView,
+      approach:lock.approach??{x:lock.center[0],z:.99}},...clues.filter(clue=>clue.id!=='ballLine')];
     const startX = sports ? -1.54 : 0;
     return {
       ...RECOVERY_ROOMS.find(item => item.kind === kind),
       interior:true, kind, wall:{width,height,z:0,back:depth}, depth, ceilingMinimum:height,
       bounds:{left:-width/2+.27,right:width/2-.27,front:.29,back:depth-.27},
       entrance:doorway, door:[doorway.x,doorway.height/2,.05], lock, layout,
+      doorReveal:sports?{x:4.32,z:2.79}:undefined,
       obstacles, occluders, clues,
-      targets:[{id:'lock',name:'문 잠금장치',xyz:lock.center,surface:lock,approach:{x:lock.center[0],z:.99}}, ...clues],
+      targets,
       start:[startX,1.55,depth-.32], firstView:[sports?-1.03:0,1.27,0],
       portraitView:[startX,1.31,0],
-      stops:[...clues.map(clue => clue.xyz),lock.center,[width/2,1.42,depth/2],
+      stops:[...targets.map(target=>target.xyz),[width/2,1.42,depth/2],
         [0,1.42,depth],[-width/2,1.42,depth/2]]
     };
   }
@@ -193,6 +201,57 @@ const SportsComputerInteriors = (() => {
     g.restore();
   }
 
+  function ballRackDevice(compartment,width) {
+    const radius=.066, pitch=.151, y=-.066, z=-.148;
+    const tray=standard('#576568',.61,.20);
+    box(compartment,width-.065,.026,.30,0,-.145,-.213,tray);
+    box(compartment,width-.089,.021,.023,0,-.123,-.071,tray);
+    const geometry=new THREE.SphereGeometry(radius,36,24);
+    const balls=BALLS.map((label,i)=>{
+      const map=InteriorArtwork.canvasMap(512,256,(g,w,h)=>{
+        g.fillStyle=BALL_COLORS[i];g.fillRect(0,0,w,h);
+        g.strokeStyle='#25242a55';g.lineWidth=3;
+        g.beginPath();g.moveTo(0,h/2);g.lineTo(w,h/2);g.stroke();
+        for(const x of [.10,.41,.62,.89]){
+          g.beginPath();g.moveTo(w*x,0);
+          g.bezierCurveTo(w*x-24,h*.42,w*x+24,h*.58,w*x,h);g.stroke();
+        }
+        g.fillStyle='#f2ecd9';g.beginPath();g.arc(w*.25,h/2,45,0,Math.PI*2);g.fill();
+        g.fillStyle='#26303a';g.font='bold 60px sans-serif';g.textAlign='center';g.textBaseline='middle';
+        g.fillText(label,w*.25,h/2+3);
+      });
+      const mesh=new THREE.Mesh(geometry,new THREE.MeshStandardMaterial({map,roughness:.63}));
+      mesh.userData.command=label;
+      mesh.position.set(0,y,z);
+      compartment.add(mesh);
+      return {label,mesh,from:0,to:0};
+    });
+    let progress=1;
+    function setDigits(counts,{pending=false,animate=false}={}){
+      const row=ballRowAfter(counts.length+Number(pending));
+      for(const ball of balls){
+        const index=row.indexOf(ball.label);
+        ball.mesh.visible=index>=0;
+        if(index<0)continue;
+        ball.from=ball.mesh.position.x;
+        ball.to=(index-(BALLS.length-1)/2)*pitch;
+        if(!animate)ball.mesh.position.x=ball.to;
+      }
+      progress=animate?0:1;
+    }
+    setDigits([]);
+    return {
+      commandPads:balls.map(ball=>ball.mesh),setDigits,
+      animate(dt,reducedMotion){
+        if(progress===1)return false;
+        progress=reducedMotion?1:Math.min(1,progress+dt/.46);
+        const t=progress*progress*(3-2*progress);
+        for(const {mesh,from,to} of balls)if(mesh.visible)mesh.position.x=THREE.MathUtils.lerp(from,to,t);
+        return progress<1;
+      }
+    };
+  }
+
   async function lockers(scene, room, artwork, shadow) {
     const {banks,compartments} = room.layout;
     const {width:w,height:h,front,column,columns,base,cap} = LOCKER;
@@ -200,7 +259,8 @@ const SportsComputerInteriors = (() => {
     const skirt = standard('#555c61',.69,.13), aluminum = standard('#a4adb2',.48,.35);
     const inside = standard('#777972',.82);
     const leaves = [];
-    const cards = new Map(await Promise.all(room.clues.map(async clue => [clue.id,imageMap(await clueBoardArt(clue))])));
+    const orderCard=imageMap(await clueBoardArt(room.clues.find(clue=>clue.id==='ballOrder')));
+    let ballDevice;
     for (const [i,bank] of banks.entries()) {
       const {x,finish,color} = bank;
       const slot = compartments.find(cell => cell.bank === i);
@@ -225,9 +285,9 @@ const SportsComputerInteriors = (() => {
             for (let tier = 0; tier < 2; tier++) {
               const x = (side===1 ? columns-1-col : col)*150, y = (1-tier)*228;
               lockerDoorArt(g,x,y,150,228,numberAt(col,tier),enamel.image);
-              if (open?.column===col && open.tier===tier) g.clearRect(x+4,y+4,142,220);
             }
           }
+          if(open)g.clearRect((columns-open.column-open.span)*150+4,(1-open.tier)*228+4,open.span*150-8,220);
         });
         patchPlane(scene,LOCKER_LENGTH,2*TIER_HEIGHT,x+side*w/2,(h+base-cap)/2,mid,face,!!open)
           .rotation.y = side*Math.PI/2;
@@ -237,40 +297,58 @@ const SportsComputerInteriors = (() => {
         compartment.position.set(faceX,y,z);
         compartment.rotation.y = Math.PI/2;
         scene.add(compartment);
-        const slotW=column-.019, slotH=TIER_HEIGHT-.016;
+        const slotW=column*open.span-.019, slotH=TIER_HEIGHT-.016;
         box(compartment,slotW-.02,slotH,.034,0,0,-.40,inside);
         for (const yy of [-slotH/2,slotH/2]) box(compartment,slotW,.018,.41,0,yy,-.212,aluminum);
         for (const xx of [-slotW/2,slotW/2]) box(compartment,.015,slotH,.41,xx,0,-.212,metal);
-        patchPlane(compartment,.40,.235,.012,-.025,-.115,cards.get(open.id));
-        const flap = new THREE.Group();
+        if(open.id==='ballLine')ballDevice=ballRackDevice(compartment,slotW);
+        else patchPlane(compartment,.40,.235,.012,-.025,-.115,orderCard);
         const doorW=column-.023, doorH=TIER_HEIGHT-.025;
-        flap.position.set(doorW/2,0,.009);
-        compartment.add(flap);
-        const doorMap = InteriorArtwork.canvasMap(150,228,g => {
-          lockerDoorArt(g,0,0,150,228,numberAt(open.column,open.tier),enamel.image,true);
-        });
-        box(flap,doorW,doorH,.018,-doorW/2,0,0,metal);
-        patchPlane(flap,doorW,doorH,-doorW/2,0,.010,doorMap);
-        patchPlane(flap,doorW-.024,doorH-.024,-doorW/2,0,-.010,enamel).rotation.y = Math.PI;
-        for (const hingeY of [-.22,.22]) box(compartment,.019,.067,.020,doorW/2,hingeY,.012,aluminum);
-        leaves.push({id:open.id,trigger:open.trigger,flap,requested:false,progress:0});
+        const flaps=[];
+        for(let offset=0;offset<open.span;offset++){
+          const hinge=open.span===2&&offset===0?-1:1;
+          const flap=new THREE.Group();
+          flap.position.set((offset-(open.span-1)/2)*column+hinge*doorW/2,0,.009);
+          compartment.add(flap);
+          const panelX=-hinge*doorW/2, doorNumber=numberAt(open.column+open.span-1-offset,open.tier);
+          const doorMap=InteriorArtwork.canvasMap(150,228,g=>lockerDoorArt(g,0,0,150,228,doorNumber,enamel.image,true));
+          box(flap,doorW,doorH,.018,panelX,0,0,metal);
+          patchPlane(flap,doorW,doorH,panelX,0,.010,doorMap);
+          patchPlane(flap,doorW-.024,doorH-.024,panelX,0,-.010,enamel).rotation.y=Math.PI;
+          for(const hingeY of [-.22,.22])box(compartment,.019,.067,.020,flap.position.x,hingeY,.012,aluminum);
+          if(open.id==='ballLine'&&offset===0){
+            const tag=InteriorArtwork.canvasMap(192,64,(g,w,h)=>{
+              g.fillStyle='#e7dfc7';g.fillRect(0,0,w,h);
+              g.fillStyle='#3e4039';g.font='bold 38px sans-serif';g.textAlign='center';g.textBaseline='middle';
+              g.fillText('공 라커',w/2,h/2+2);
+            });
+            patchPlane(flap,.22,.067,panelX,.05,.012,tag);
+          }
+          flaps.push({flap,hinge});
+        }
+        leaves.push({id:open.id,trigger:open.trigger,flaps,requested:false,progress:0});
       }
     }
     return {
+      commandPads:ballDevice.commandPads,
+      setDigits:ballDevice.setDigits,
       onWalk(fromX,fromZ,toX,toZ) {
         for (const leaf of leaves) {
           if (!leaf.requested && passesLocker(leaf.trigger,fromX,fromZ,toX,toZ)) leaf.requested=true;
         }
       },
+      onInspect(id){
+        if(id===BALL_LOCKER_ID)leaves.find(leaf=>leaf.id==='ballLine').requested=true;
+      },
       animate(dt,reducedMotion) {
-        let opening=false;
+        let moving=ballDevice.animate(dt,reducedMotion);
         for (const leaf of leaves) {
           if (!leaf.requested || leaf.progress===1) continue;
           leaf.progress=reducedMotion?1:Math.min(1,leaf.progress+dt/.22);
-          leaf.flap.rotation.y=1.58*(1-(1-leaf.progress)**3);
-          opening=opening||leaf.progress<1;
+          for(const {flap,hinge} of leaf.flaps)flap.rotation.y=hinge*1.58*(1-(1-leaf.progress)**3);
+          moving=moving||leaf.progress<1;
         }
-        return opening;
+        return moving;
       },
       canInspect(id) {
         return !leaves.some(leaf => leaf.id===id && leaf.progress<1);
@@ -279,7 +357,7 @@ const SportsComputerInteriors = (() => {
         for (const leaf of leaves) {
           leaf.requested=false;
           leaf.progress=0;
-          leaf.flap.rotation.y=0;
+          for(const {flap} of leaf.flaps)flap.rotation.y=0;
         }
       }
     };
@@ -510,21 +588,31 @@ const SportsComputerInteriors = (() => {
     back.position.set(4,3.2,-.4);
     scene.add(back);
     finishes(scene,room,artwork);
-    const setDoor = entrance(scene,room,artwork);
+    const swingDoor = entrance(scene,room,artwork);
     const shadow = groundShadow(scene);
-    let furniture;
-    if (sports) {
-      sportsEquipment(scene,shadow);
-      furniture=await lockers(scene,room,artwork,shadow);
-    } else {
-      await computers(scene,room,shadow);
-    }
-    box(scene,room.lock.width+.025,room.lock.height+.021,.052,room.lock.center[0],room.lock.center[1],.043,standard('#434c55',.47));
-    const plate = patchPlane(scene,room.lock.width,room.lock.height,...room.lock.center,imageMap(schoolLockArt(room,[])));
     const canvas = document.getElementById('roomView');
     Object.assign(canvas.dataset,{interior:room.kind,width,depth,area:width*depth});
+    if (sports) {
+      sportsEquipment(scene,shadow);
+      const furniture=await lockers(scene,room,artwork,shadow);
+      const x=room.entrance.x-room.entrance.width/2-.53;
+      rounded(scene,.137,.168,.044,x,1.28,.048,standard('#434c55',.52),.009);
+      const indicator=new THREE.MeshBasicMaterial({color:'#f38d72'});
+      cylinder(scene,.026,.026,.011,x,1.28,.075,indicator,24).rotation.x=Math.PI/2;
+      canvas.dataset.artwork='balls-v37';
+      return {
+        ...furniture,
+        setDoor(amount){
+          swingDoor(amount);
+          indicator.color.set(amount>0?'#74d5a9':'#f38d72');
+        }
+      };
+    }
+    await computers(scene,room,shadow);
+    box(scene,room.lock.width+.025,room.lock.height+.021,.052,room.lock.center[0],room.lock.center[1],.043,standard('#434c55',.47));
+    const plate = patchPlane(scene,room.lock.width,room.lock.height,...room.lock.center,imageMap(schoolLockArt(room,[])));
     return {
-      ...furniture,setDoor,
+      setDoor:swingDoor,
       setDigits(values) {
         plate.material.map.image = schoolLockArt(room,values);
         plate.material.map.needsUpdate = true;
