@@ -13,7 +13,7 @@ const saved=book().visits[room.n]?.restoration;
 const outdated=saved?.revision!==puzzle.revision;
 
 function newRun(){
-  let entry=Array(puzzle.answer.length).fill(['routing','debug'].includes(puzzle.control)?'':'0');
+  let entry=Array(puzzle.answer.length).fill(['routing','debug','water'].includes(puzzle.control)?'':'0');
   if(puzzle.control==='sequence')entry=[];
   return {revision:puzzle.revision,found:[],entry,solved:false};
 }
@@ -28,6 +28,7 @@ if(saved&&!outdated){
       if(puzzle.control==='selection')valid=stored==='0'||stored==='1';
       else if(puzzle.control==='dial')valid=typeof stored==='string'&&/^\d$/.test(stored);
       else if(puzzle.control==='debug')valid=Object.hasOwn(BROADCAST_COMMANDS,stored);
+      else if(puzzle.control==='water')valid=puzzle.keys.includes(stored);
       else valid=Object.hasOwn(ROUTE_NAMES,stored);
       return valid?stored:value;
     });
@@ -146,11 +147,15 @@ function ballTray(){
   draw();
 }
 
+function collectClue(id){
+  if(!run.found.includes(id)){run.found.push(id);save()}
+  byId('bag').hidden=false;
+}
+
 function inspectClue(id){
   const clue=room.clues.find(item=>item.id===id);
   if(!clue)return;
-  if(!run.found.includes(id)){run.found.push(id);save()}
-  byId('bag').hidden=false;
+  collectClue(id);
   switch(id){
     case 'paper':modal(clue.name,scoreSheet());break;
     case 'recordA':modal(clue.name,signalRecords());break;
@@ -302,9 +307,63 @@ function mixerPanel(){
   draw(result());
 }
 
+function waterPanel(){
+  collectClue('waterStart');
+  if(correct()){solve();return}
+  modal(puzzle.title,'<p class="water-guide">'+puzzle.instructions+'</p>'+
+    '<div class="water-readings"><span>시작 눈금 <b>'+WATER_CYCLE.initial+'칸</b></span>'+
+    '<span>현재 눈금 <b id="waterReading" aria-live="polite"></b></span></div>'+
+    '<div class="water-order" id="waterOrder" role="group" aria-label="회차별 물 높이"></div>'+
+    '<div class="water-levels" id="waterLevels" role="group" aria-label="물 높이 조절"></div>'+
+    '<p class="water-feedback" id="entryFeedback" role="status"></p>','water');
+  const firstIncorrect=()=>run.entry.every(Boolean)?run.entry.findIndex((level,i)=>level!==puzzle.answer[i]):-1;
+  let round=run.entry.indexOf('');
+  if(round<0)round=firstIncorrect();
+  const feedback=byId('entryFeedback'),reading=byId('waterReading');
+  const rounds=run.entry.map((_,i)=>{
+    const slot=action(byId('waterOrder'),(i+1)+'회차',()=>{
+      round=i;previewRound();draw();
+    });
+    slot.innerHTML='<small aria-hidden="true">'+(i+1)+'회차</small><span></span>';
+    return slot;
+  });
+  function preview(level){
+    world.setDigits(run.entry,level);
+    reading.textContent=level+'칸';
+  }
+  function previewRound(){
+    preview(run.entry[round]||run.entry[round-1]||String(WATER_CYCLE.initial));
+  }
+  function draw(){
+    const incorrect=firstIncorrect();
+    for(const [i,slot] of rounds.entries()){
+      const level=run.entry[i];
+      slot.lastElementChild.textContent=level?level+'칸':'—';
+      slot.setAttribute('aria-label',(i+1)+'회차 '+(level?level+'칸':'비어 있음'));
+      slot.setAttribute('aria-pressed',String(i===round));
+      slot.dataset.result=i===incorrect?'failed':'';
+    }
+    feedback.textContent=incorrect<0?'':(incorrect+1)+'회차 물 높이를 다시 확인해 보세요.';
+  }
+  for(const level of puzzle.keys){
+    const key=action(byId('waterLevels'),level+'칸',()=>{
+      if(countdown.check())return;
+      run.entry[round]=level;preview(level);
+      if(correct()){solve();return}
+      const next=run.entry.findIndex((value,i)=>!value&&i>round);
+      const incorrect=firstIncorrect();
+      round=incorrect<0?(next<0?run.entry.indexOf(''):next):incorrect;
+      if(incorrect>=0)previewRound();
+      save();draw();
+    });
+    key.dataset.command=level;
+  }
+  previewRound();draw();
+}
+
 function inspectLock(){
   if(run.solved||!countdown||countdown.check())return;
-  const panels={sequence:sequencePanel,selection:selectionPanel,dial:dialPanel,routing:routingPanel,debug:mixerPanel};
+  const panels={sequence:sequencePanel,selection:selectionPanel,dial:dialPanel,routing:routingPanel,debug:mixerPanel,water:waterPanel};
   panels[puzzle.control]();
   appendRoomTextHint(content,countdown,puzzle.hint);
 }
@@ -360,9 +419,9 @@ function start(){
     if(event.target!==dialog||mandatoryDialog())return;
     const r=dialog.getBoundingClientRect();
     if(event.clientX>=r.left&&event.clientX<=r.right&&event.clientY>=r.top&&event.clientY<=r.bottom)return;
-    const command=dialog.dataset.panel==='mixer'&&world.commandAt?.(event.clientX,event.clientY);
+    const command=['mixer','water'].includes(dialog.dataset.panel)&&world.commandAt?.(event.clientX,event.clientY);
     if(command){
-      byId('mixerPads').querySelector('[data-command="'+command+'"]').click();
+      content.querySelector('[data-command="'+command+'"]')?.click();
       return;
     }
     close();

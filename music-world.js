@@ -325,7 +325,7 @@ async function createMusicWorld({onInspect,onReadyToMove,room=paintedRoom,buildR
   new ResizeObserver(resize).observe(canvas);resize();
   return {
     clearKeys,walkTo,commandAt,lookAtPiano(){inspectTarget('paper')},
-    setDigits(digits){model.setDigits(digits);queue()},
+    setDigits(digits,level){model.setDigits(digits,level);queue()},
     facingDoor(done){clearKeys();look(room.door,true,done)},
     showFinale(view,done){
       clearKeys();journey=null;

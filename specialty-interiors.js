@@ -54,7 +54,9 @@ const SpecialtyInteriors = (() => {
     science:{
       size:[9.1,7.9,3.48], trim:'#2c5a9e',
       entrance:{side:'right',x:-1.82,width:1.34,height:2.30,moldingColor:'#2a5187',opensOut:true},
-      lock:{center:[4.45,1.29,3.21],width:.57,height:.33,rotationY:-quarterTurn,approach:{x:3.10,z:3.21}},
+      lock:{id:'waterTank',center:[tank.x,tank.bottom+tank.h/2,tank.z],width:tank.w,height:tank.h,depth:tank.d,
+        approach:{x:-1.20,z:5.17},inspectionView:{wide:[tank.x+.35,1.14,tank.z+.05],compact:[tank.x-.15,1.03,tank.z+.22]}},
+      statusLamp:{xyz:[4.45,1.29,3.21],angle:-quarterTurn},
       start:[-.15,1.55,7.59],view:[-.075,1.26,1.38],viewAngle:58,
       obstacles:[
         ...lab.map(table=>boundsOf(table)),
@@ -75,6 +77,7 @@ const SpecialtyInteriors = (() => {
       lock:{id:'mixer',center:[studioMixer.x,1.067,studioMixer.z],width:studioMixer.width,height:.245,
         depth:studioMixer.depth,rotationY:studioMixer.angle,approach:{x:1.63,z:2.85},
         inspectionView:{wide:[studioMixer.x,.96,studioMixer.z+.46],compact:[studioMixer.x,.81,studioMixer.z+.22]}},
+      statusLamp:{xyz:[.927,1.274,.093]},
       start:[.17,1.55,6.21],view:[.54,1.31,.16],viewAngle:60,
       obstacles:[
         boundsOf(anchor),boundsOf({x:-2.04,z:.80,w:.56,d:.47},.09),
@@ -97,7 +100,7 @@ const SpecialtyInteriors = (() => {
     const targets=[
       {id:lock.id??'lock',name:SCHOOL_PUZZLES[kind].title,xyz:lock.center,surface:lock,
         rotationY:lock.rotationY,approach:lock.approach,inspectionView:lock.inspectionView},
-      ...clues
+      ...clues.filter(clue=>clue.placement!=='instrument')
     ];
     return {
       ...RECOVERY_ROOMS.find(room=>room.kind===kind),depth,interior:true,
@@ -364,16 +367,16 @@ const SpecialtyInteriors = (() => {
       color:'#c9e1ec',transparent:true,opacity:.13,roughness:.11,clearcoat:.57,
       clearcoatRoughness:.13,depthWrite:false
     });
-    const edge=standard('#b8d6df',.22,.18),ticks=standard('#283d46',.63);
+    const edge=standard('#b8d6df',.22,.18);
     const liquid=new THREE.MeshPhysicalMaterial({
       color:'#139ac5',roughness:.18,clearcoat:.46,transparent:true,opacity:.69
     });
     const meniscus=new THREE.MeshPhysicalMaterial({
       color:'#66c9e2',roughness:.13,clearcoat:.89,transparent:true,opacity:.83
     });
-    const level=(h-.082)*(WATER_CYCLE.initial/WATER_CYCLE.drain),base=bottom+.023;
+    const step=(h-.082)/WATER_CYCLE.drain,base=bottom+.023;
     box(scene,w,.019,d,x,bottom+.009,z,edge);
-    box(scene,w-.030,level,d-.032,x,base+level/2,z,[liquid,liquid,meniscus,liquid,liquid,liquid]);
+    const water=box(scene,w-.030,1,d-.032,x,base,z,[liquid,liquid,meniscus,liquid,liquid,liquid]);
     for(const side of [-1,1]){
       const outerZ=z+side*d/2;
       box(scene,w,h,.009,x,bottom+h/2,outerZ,glass);
@@ -384,9 +387,38 @@ const SpecialtyInteriors = (() => {
         rod(scene,[x+side*w/2,bottom,z+dz],[x+side*w/2,bottom+h,z+dz],.007,edge);
       }
     }
-    for(let i=1;i<=WATER_CYCLE.drain;i++){
-      box(scene,.103,.012,.008,x-w*.32,base+i*(h-.082)/WATER_CYCLE.drain,z+d/2+.004,ticks);
+    const ruler=positionGroup(scene,x-w*.345,0,z+d/2+.022);
+    const scaleFrame=standard('#355777',.57),ticks=standard('#284d6a',.64);
+    const neutral=standard('#e4edf5',.59),selected=standard('#9ac8ed',.54);
+    const top=base+WATER_CYCLE.drain*step;
+    rounded(ruler,.146,top-base+.057,.031,0,(base+top)/2+.01,0,scaleFrame,.012);
+    const commandPads=WATER_HEIGHTS.map((level,i)=>{
+      const mark=base+i*step,y=i===0?mark+.023:mark;
+      const pad=rounded(ruler,.119,.069,.024,0,y,.024,neutral,.008);
+      pad.userData.command=level;
+      const number=InteriorArtwork.canvasMap(104,66,(g,w,h)=>{
+        g.fillStyle='#274b6b';g.font='bold 49px sans-serif';g.textAlign='center';g.textBaseline='middle';
+        g.fillText(level,w/2,h/2+3);
+      });
+      patchPlane(ruler,.102,.059,0,y,.037,number,true);
+      box(ruler,.081,.008,.012,.113,mark,.007,ticks);
+      return pad;
+    });
+    const startMark=InteriorArtwork.canvasMap(144,51,(g,w,h)=>{
+      g.fillStyle='#e6f2fb';g.fillRect(0,0,w,h);
+      g.fillStyle='#285986';g.font='bold 31px sans-serif';g.textAlign='center';g.textBaseline='middle';
+      g.fillText('시작',w/2,h/2+1);
+    });
+    patchPlane(ruler,.123,.043,.207,base+WATER_CYCLE.initial*step,.019,startMark);
+    function setDigits(_values,level=String(WATER_CYCLE.initial)){
+      const height=Number(level)*step;
+      water.visible=height>0;
+      water.scale.y=height;
+      water.position.y=base+height/2;
+      for(const pad of commandPads)pad.material=pad.userData.command===level?selected:neutral;
     }
+    setDigits();
+    return {commandPads,setDigits};
   }
 
   function microscope(parent,x,z,cream,dark,steel){
@@ -416,7 +448,7 @@ const SpecialtyInteriors = (() => {
       stool(scene,x,z,stoolYellow,legs);
       shadow(.63,.63,x,z,.006,.57);
     }
-    waterTank(scene);
+    const tankDevice=waterTank(scene);
     microscope(scene,2.11,lab[1].z+.18,enamel,dark,steel);
     const measureGlass=new THREE.MeshPhysicalMaterial({
       color:'#c6e7f2',roughness:.13,clearcoat:.58,transparent:true,opacity:.29,depthWrite:false
@@ -452,6 +484,7 @@ const SpecialtyInteriors = (() => {
     const tiles=new THREE.Mesh(new THREE.PlaneGeometry(7.14,1.40),
       new THREE.MeshStandardMaterial({map:art.surface('tile',7.14,1.40),roughness:.48,envMapIntensity:.55}));
     tiles.position.set(0,1.570,.013);scene.add(tiles);
+    return tankDevice;
   }
 
   function studioFinish(art,name,levels,roughness){
@@ -708,7 +741,7 @@ const SpecialtyInteriors = (() => {
       return pad;
     });
     for(const x of [-.603,.603])box(panel,.014,.059,.535,x,.005,0,edge);
-    return {commandPads,setProgram:mixerOrderDisplay(panel)};
+    return {commandPads,setDigits:mixerOrderDisplay(panel)};
   }
 
   function equipmentRack(scene,x,z,shell,edge){
@@ -815,8 +848,8 @@ const SpecialtyInteriors = (() => {
     return mixer;
   }
 
-  function broadcastDoorStatus(scene){
-    const base=positionGroup(scene,.927,1.274,.093);
+  function statusLamp(scene,{xyz,angle}){
+    const base=positionGroup(scene,...xyz,angle);
     rounded(base,.134,.167,.037,0,0,0,standard('#3b424a',.56),.012);
     const indicator=new THREE.MeshBasicMaterial({color:'#f38d72'});
     cylinder(base,.025,.026,.01,0,0,.024,indicator,28).rotation.x=quarterTurn;
@@ -926,7 +959,7 @@ const SpecialtyInteriors = (() => {
     ceilingLights(scene,room);
     if(room.kind==='broadcast')acousticPanels(scene,room,art);
     const furniture=positionGroup(scene,0,0,0);
-    const mixer=design.build(furniture,room,art,groundShadow(scene));
+    const device=design.build(furniture,room,art,groundShadow(scene));
     for(const [i,clue] of cards.entries())addCard(furniture,clue,cardImages[i]);
     furniture.traverse(mesh=>{
       if(mesh.isMesh && mesh.material.isMeshStandardMaterial && !mesh.material.transparent)mesh.castShadow=true;
@@ -935,13 +968,13 @@ const SpecialtyInteriors = (() => {
       if(mesh.isMesh && mesh.material.isMeshStandardMaterial)mesh.receiveShadow=true;
     });
     const canvas=document.getElementById('roomView');
-    Object.assign(canvas.dataset,{interior:room.kind,artwork:room.kind==='broadcast'?'studio-v34':'approved-v31'});
-    if(room.kind==='broadcast'){
-      const updateDoorStatus=broadcastDoorStatus(scene);
+    const version={library:'approved-v31',science:'water-v35',broadcast:'studio-v34'}[room.kind];
+    Object.assign(canvas.dataset,{interior:room.kind,artwork:version});
+    if(device){
+      const updateDoorStatus=statusLamp(scene,design.statusLamp);
       return {
+        ...device,
         setDoor(amount){swingDoor(amount);updateDoorStatus(amount>0)},
-        setDigits:mixer.setProgram,
-        commandPads:mixer.commandPads
       };
     }
     const [x,y,z]=room.lock.center;

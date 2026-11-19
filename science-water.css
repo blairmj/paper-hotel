@@ -1,0 +1,83 @@
+#inspect[data-panel=water]{
+  --panel-padding:16px;
+  position:fixed;
+  inset:auto 0 max(12px,env(safe-area-inset-bottom));
+  margin:0 auto;
+  width:min(450px,calc(100vw - 24px));
+  background:#f5f8fb;
+  color:#24344b;
+  border-color:#9badc1;
+  border-radius:7px;
+  box-shadow:0 10px 32px #28384942;
+}
+
+@media(min-width:800px) and (min-aspect-ratio:5/4){
+  #inspect[data-panel=water]{
+    inset:0 clamp(12px,2vw,28px) 0 auto;
+    margin:auto 0;
+    width:clamp(330px,35vw,438px);
+  }
+}
+
+#inspect[data-panel=water]::backdrop{background:#17283d17}
+#inspect[data-panel=water] .panel-top{padding-bottom:5px}
+#inspect[data-panel=water] #dismiss:hover{background:#e4edf5}
+.spot[data-object=waterTank]{touch-action:none}
+.water-guide{margin:0 0 12px;color:#485c72;font-size:14px}
+.water-readings{
+  display:flex;
+  justify-content:space-between;
+  gap:8px;
+  margin-bottom:12px;
+  padding:7px 9px;
+  border:1px solid #bdcedf;
+  border-radius:4px;
+  background:#e8f1f8;
+  color:#405976;
+  font-size:13px;
+}
+.water-readings b{margin-left:3px;color:#224b72;font-size:15px}
+.water-order,.water-levels{display:grid;gap:7px}
+.water-order{grid-template-columns:repeat(4,minmax(0,1fr));margin-bottom:13px}
+.water-levels{grid-template-columns:repeat(6,minmax(0,1fr));gap:5px}
+@media(max-width:365px){
+  .water-levels{grid-template-columns:repeat(3,minmax(0,1fr))}
+}
+.water-order button,.water-levels button{min-width:0;word-break:keep-all}
+.water-order button{
+  display:grid;
+  grid-template-rows:auto 1fr;
+  justify-items:start;
+  align-items:center;
+  gap:4px;
+  min-height:62px;
+  padding:7px;
+  border-color:#9fb4cb;
+  background:#fff;
+  color:#244669;
+  text-align:left;
+  font-size:17px;
+  font-weight:650;
+}
+.water-order small{color:#506983;font-size:12px;font-weight:600;line-height:1.2}
+.water-order button:hover{background:#eaf2fb}
+.water-order button[aria-pressed=true]{border-color:#316cb1;box-shadow:0 0 0 1px #316cb1 inset}
+.water-order button[data-result=failed]{background:#fcebe8;border-color:#ae6253;box-shadow:0 0 0 1px #ae6253 inset}
+.water-levels button{
+  display:grid;
+  place-items:center;
+  min-height:46px;
+  padding:5px 3px;
+  background:#eaf2fa;
+  color:#244b72;
+  border-color:#9bb6d0;
+  border-bottom:3px solid #668bb3;
+  font-size:15px;
+  font-weight:650;
+}
+.water-levels button:hover{background:#d7e9fb}
+.water-levels button:active{transform:translateY(1px);border-bottom-width:1px}
+.water-feedback{margin:11px 0 0;color:#9c3b2e;font-size:14px;font-weight:600}
+.water-feedback:empty{display:none}
+#inspect[data-panel=water] .hint{margin-top:12px;padding-top:8px;border-color:#bccddd}
+#inspect[data-panel=water] .hint p{color:#324b68;font-size:14px}

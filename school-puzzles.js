@@ -88,6 +88,7 @@ function bookSearch(numbers, wanted) {
 }
 
 const WATER_CYCLE = {initial:1, fill:3, drain:5, cycles:4};
+const WATER_HEIGHTS = Array.from({length:WATER_CYCLE.drain+1},(_,i)=>String(i));
 function waterLevels({initial,fill,drain,cycles}) {
   let water=initial;
   return Array.from({length:cycles},()=>{
@@ -130,8 +131,8 @@ const SCHOOL_PUZZLES = {
   library:{control:'sequence',title:'도서 검색기',keys:SHELF_NUMBERS.map(String),answer:bookSearch(SHELF_NUMBERS,LOAN_NUMBER),
     instructions:'대출 메모의 책을 찾으세요. 확인할 책 번호를 차례대로 누르세요.',
     hint:'49번부터 확인하세요. 찾는 번호가 더 크면 오른쪽 세 권만 남겨 보세요.'},
-  science:{control:'dial',title:'실험 기록 잠금판',answer:waterLevels(WATER_CYCLE),
-    instructions:'급수와 배출을 한 번 마칠 때마다 남은 물의 칸 수를 맞추세요.',
+  science:{control:'water',title:'실험 물통',keys:WATER_HEIGHTS,answer:waterLevels(WATER_CYCLE),
+    instructions:'급수와 배출을 마친 뒤 남은 물 높이를 맞추세요.',
     hint:'물을 채운 다음 5칸 이상이면 5칸을 빼세요. 그때 남은 높이에서 다음 회차를 시작합니다.'},
   broadcast:{control:'debug',title:'방송 믹서',answer:Object.keys(BROADCAST_COMMANDS),
     hint:'멈춘 단계의 상태를 확인하세요. 녹음이 끝나야 파일을 저장할 수 있습니다.'},
