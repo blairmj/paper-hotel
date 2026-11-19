@@ -163,15 +163,16 @@ const SchoolInterior = (() => {
     return mesh;
   }
 
-  function enclosure(scene, room, artwork, trimColor) {
+  function enclosure(scene, room, artwork, trimColor, surfaceMaterial = painted) {
     const {width: w, back: d, height: h} = room.wall;
     const low = room.ceilingMinimum;
     const door = room.entrance ?? DOOR;
     const left = door.x - door.width / 2, right = door.x + door.width / 2;
     const sideDoor = door.side === 'right';
     const roofAt = x => low + (x + w / 2) * (h - low) / w;
+    const surface = (name,width,height,side) => surfaceMaterial(artwork.surface(name,width,height,side),name);
     function openingWall(side, span, heightAt, position, hasDoor) {
-      const material = painted(artwork.surface('wall', span, h, side));
+      const material = surface('wall',span,h,side);
       const half = span / 2;
       const section = (start, end, bottom) => {
         const points = [[start,bottom],[end,bottom],[end,heightAt(end)],[start,heightAt(start)]];
@@ -186,7 +187,7 @@ const SchoolInterior = (() => {
     openingWall('front',w,roofAt,(x,y)=>[x,y,0],!sideDoor);
 
     function wall(side, width, height, points) {
-      const material = painted(artwork.surface('wall', width, height, side));
+      const material = surface('wall',width,height,side);
       // A wrapped mural uses the same real height on both sides of each corner.
       const uv = artwork.wrapWalls ? [0,0,1,0,1,points[2][1]/h,0,points[3][1]/h] : undefined;
       quad(scene, points, material, uv);
@@ -195,8 +196,8 @@ const SchoolInterior = (() => {
     wall('left', d, low, [[-w/2, 0, d], [-w/2, 0, 0], [-w/2, low, 0], [-w/2, low, d]]);
     openingWall('right',d,()=>h,(x,y)=>[w/2,y,x+d/2],sideDoor);
     quad(scene, [[-w/2, low, d], [w/2, h, d], [w/2, h, 0], [-w/2, low, 0]],
-      painted(artwork.surface('ceiling', w, d)));
-    flat(scene, w, d, 0, 0, d/2, artwork.surface('floor', w, d));
+      surface('ceiling',w,d));
+    quad(scene,[[-w/2,0,d],[w/2,0,d],[w/2,0,0],[-w/2,0,0]],surface('floor',w,d));
 
     const trim = standard(trimColor);
     box(scene, .024, .075, d, -w/2, .0375, d/2, trim);
@@ -278,13 +279,13 @@ const SchoolInterior = (() => {
     }
   }
 
-  function entrance(scene, room, artwork) {
+  function entrance(scene, room, artwork, doorFinish) {
     const {x, width, height, moldingColor, recessColor, casingColor, opensOut = false} = room.entrance ?? DOOR;
     const trim = .083;
     const music = room.kind === 'music';
     const finish = artwork.sample('door');
-    const casing = casingColor ? standard(casingColor,.73) : faces(finish, .91, .78);
-    const leafMaterial = faces(finish, .94, .79);
+    const casing = casingColor ? standard(casingColor,.73) : doorFinish ?? faces(finish, .91, .78);
+    const leafMaterial = doorFinish ?? faces(finish, .94, .79);
     const molding = standard(moldingColor ?? (music ? '#514747' : '#506b6e'), .5);
     const recess = standard(recessColor ?? (music ? '#262122' : '#283e40'), .72);
     const metal = standard(music ? '#d2b9a0' : '#d0d3ce', .31, .45);

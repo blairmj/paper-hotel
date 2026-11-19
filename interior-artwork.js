@@ -46,7 +46,7 @@ const InteriorArtwork = (() => {
       specialty: true,
       samples: {
         wall:[1495,250,124,192], ceiling:[747,141,115,75], floor:[802,653,249,181],
-        door:[1295,326,76,92], wood:[41,852,55,63], fabric:[833,352,78,79], rug:[853,560,149,22]
+        door:[1295,326,76,92], wood:[730,268,380,18], fabric:[833,352,78,79], rug:[853,560,149,22]
       }
     },
     science: {
@@ -63,7 +63,7 @@ const InteriorArtwork = (() => {
       specialty: true,
       samples: {
         wall:[793,228,107,31], ceiling:[712,49,69,55], floor:[643,723,447,173],
-        door:[791,306,91,93], fabric:[1495,164,80,202], backdrop:[365,314,170,111],
+        door:[791,306,91,93], fabric:[1557,142,57,235], backdrop:[365,314,170,111],
         wood:[1576,684,53,168], red:[422,566,153,58], preview:[1324,411,97,59]
       }
     }
@@ -178,6 +178,26 @@ const InteriorArtwork = (() => {
     if (ceiling) for (let y = 0; y < height; y += spacing) g.fillRect(0, y, width, 2);
   }
 
+  function materialRelief(pattern) {
+    let seed = 1217;
+    const map = canvasMap(256,256,(g,w,h)=>{
+      const image = g.createImageData(w,h);
+      for(let y=0;y<h;y++)for(let x=0;x<w;x++){
+        seed = (Math.imul(seed,1664525)+1013904223) >>> 0;
+        const grain = (seed>>>24)/255-.5;
+        let shade = 128 + grain*48;
+        if(pattern==='cloth')shade+=Math.cos(x*Math.PI/3)*Math.cos(y*Math.PI/3)*16;
+        if(pattern==='wood')shade+=13*Math.sin(y*.86+1.4*Math.sin(x*.034))+8*Math.sin(y*.23+x*.027);
+        const offset=(y*w+x)*4;
+        image.data[offset]=image.data[offset+1]=image.data[offset+2]=shade;
+        image.data[offset+3]=255;
+      }
+      g.putImageData(image,0,0);
+    });
+    map.colorSpace=THREE.NoColorSpace;
+    return map;
+  }
+
   async function load(kind) {
     const source = SOURCES[kind];
     const image = new Image();
@@ -185,7 +205,7 @@ const InteriorArtwork = (() => {
     await image.decode();
     const atlas = imageMap(image);
     atlas.anisotropy = 8;
-    const samples = new Map();
+    const samples = new Map(), reliefs = new Map();
 
     function patch(region, clip) {
       const [x, y, width, height] = typeof region === 'string' ? source.samples[region] : region;
@@ -204,6 +224,11 @@ const InteriorArtwork = (() => {
       return samples.get(name);
     }
 
+    function relief(pattern) {
+      if(!reliefs.has(pattern))reliefs.set(pattern,materialRelief(pattern));
+      return reliefs.get(pattern);
+    }
+
     function tile(g, name, width, height, tileWidth, tileHeight) {
       const [x, y, sw, sh] = source.samples[name];
       for (let row = 0; row * tileHeight < height; row++) {
@@ -219,36 +244,53 @@ const InteriorArtwork = (() => {
 
     function ceramic(g,w,h,start=0) {
       const cell=24, [x,y,sw,sh]=source.samples.tile;
-      g.fillStyle='#e5ebef';g.fillRect(0,start,w,h-start);
-      for(let v=start;v<h;v+=cell)for(let u=0;u<w;u+=cell){
-        g.drawImage(image,x,y,sw,sh,u+.7,v+.7,cell-1.4,cell-1.4);
+      g.fillStyle='#dfe5e8';g.fillRect(0,start,w,h-start);
+      const glaze=g.createLinearGradient(0,0,0,cell);
+      glaze.addColorStop(0,'#ffffff53');
+      glaze.addColorStop(.16,'#ffffff10');
+      glaze.addColorStop(.83,'#6a819400');
+      glaze.addColorStop(1,'#6a819441');
+      for(let row=0,v=start;v<h;v+=cell,row++)for(let col=0,u=0;u<w;u+=cell,col++){
+        g.save();g.translate(u+.65,v+.65);
+        g.drawImage(image,x,y,sw,sh,0,0,cell-1.3,cell-1.3);
+        g.fillStyle='rgba(72,105,129,'+((col*7+row*9)%11)*.006+')';
+        g.fillRect(0,0,cell-1.3,cell-1.3);
+        g.fillStyle=glaze;g.fillRect(0,0,cell-1.3,cell-1.3);
+        g.restore();
       }
+    }
+
+    function libraryPlanks(g,w,h) {
+      const shades = ['#d7aa7c','#e7be94','#dbb087','#edc49b','#dcb48f','#e7c09e','#deb087'];
+      const plank=33, length=204;
+      for(let i=0;i*plank<w;i++)for(let j=-1;j*length<h;j++){
+        const x=i*plank, y=j*length+(i*79)%length;
+        g.fillStyle=shades[(i*11+(j+1)*3)%shades.length];
+        g.fillRect(x,y,plank,length);
+        g.globalAlpha=.36;
+        g.drawImage(image,804+(i%3)*18,657+(i%5)*7,27,147,x,y,plank,length);
+        g.globalAlpha=1;
+        g.fillStyle='#78553849';g.fillRect(x,y,.8,length);g.fillRect(x,y,plank,.8);
+        g.fillStyle='#fff2d456';g.fillRect(x+1,y+1,.7,length-1);
+      }
+      wash(g,w*.49,h*.54,w*.78,h*.78,'#fff4dc',.21);
     }
 
     function specialtySurface(g,name,w,h) {
       if(name==='tile'){ceramic(g,w,h);return}
-      if(name==='floor'&&kind==='library'){
-        const wood=['#e8c8a4','#eccda7','#e5c6a1','#edcda9','#e8c9a6'];
-        for(let i=0;i*31<w;i++){
-          for(let j=-1;j*346<h;j++){
-            const x=i*31,y=j*346+(i%5)*62;
-            g.fillStyle=wood[(i*7+(j+1)*3)%wood.length];
-            g.fillRect(x,y,31,346);
-            g.fillStyle='#967b5e27';
-            g.fillRect(x,y,1,346);g.fillRect(x,y,31,1);
-          }
-        }
-        g.globalAlpha=.18;tile(g,'floor',w,h,411,242);g.globalAlpha=1;
-        wash(g,w*.54,h*.41,w*.78,h*.76,'#fff7e7',.33);
-      }else{
-        const repeat=name==='floor'?[386,244]:[281,241];
-        tile(g,name,w,h,...repeat);
-      }
+      if(name==='floor'&&kind==='library')libraryPlanks(g,w,h);
+      else tile(g,name,w,h,...(name==='floor'?[235,146]:[412,305]));
       if(kind==='science'&&name==='wall')ceramic(g,w,h,Math.round(h-1.14*128));
-      if(name==='wall'||name==='ceiling'){
-        wash(g,w*.52,h*.10,w*.66,h*.79,'#fffdf6',.33);
+      if(name==='wall'){
+        const light=kind==='library'?'#fff2d2':'#fff9ef';
+        for(const x of [.26,.75])wash(g,w*x,h*.22,w*.37,h*.58,light,.26);
       }
-      edgeShade(g,w,h,name==='floor'?.08:.105,.14);
+      if(name==='ceiling'){
+        for(const x of [.25,.75])for(const y of [.19,.49,.79]){
+          wash(g,w*x,h*y,w*.29,h*.28,kind==='library'?'#fff0d8':'#fffaf3',.27);
+        }
+      }
+      edgeShade(g,w,h,name==='floor'?.12:.108,name==='floor'?.21:.22);
     }
 
     function surface(name, metresWide, metresDeep, side = 'front') {
@@ -319,7 +361,7 @@ const InteriorArtwork = (() => {
       return new THREE.Mesh(geo, new THREE.MeshBasicMaterial({map:atlas, side:THREE.DoubleSide}));
     }
 
-    return {patch, sample, surface, facePixels};
+    return {patch, sample, surface, facePixels, relief};
   }
 
   return {load, canvasMap};

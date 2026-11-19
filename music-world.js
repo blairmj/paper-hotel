@@ -41,7 +41,8 @@ async function createMusicWorld({onInspect,onReadyToMove,room=paintedRoom,buildR
 
   const canvas=document.getElementById('roomView'),scene=new THREE.Scene();
   scene.background=new THREE.Color(0xe6ebef);
-  const camera=new THREE.PerspectiveCamera(55,1,.04,42);
+  const viewAngle=room.viewAngle??55;
+  const camera=new THREE.PerspectiveCamera(viewAngle,1,.04,42);
   camera.rotation.order='YXZ';
   let renderer,model,photos;
   try {
@@ -90,8 +91,8 @@ async function createMusicWorld({onInspect,onReadyToMove,room=paintedRoom,buildR
     // Keep furniture at the same relative height across landscape screens.
     // Portrait screens get a wider vertical view within a comfortable limit.
     camera.fov=clamp(THREE.MathUtils.radToDeg(
-      2*Math.atan(Math.tan(55*Math.PI/360)/Math.min(camera.aspect,1))
-    ),55,74);
+      2*Math.atan(Math.tan(viewAngle*Math.PI/360)/Math.min(camera.aspect,1))
+    ),viewAngle,74);
     camera.updateProjectionMatrix();queue();
   }
   function draw(){
