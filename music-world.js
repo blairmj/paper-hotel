@@ -118,7 +118,7 @@ async function createMusicWorld({onInspect,onReadyToMove,room=paintedRoom,buildR
       const b=target.button;
       const sin=Math.sin(target.rotationY||0),cos=Math.cos(target.rotationY||0);
       const viewNormal=new THREE.Vector3(sin,0,cos);
-      const behindSurface=viewNormal.dot(new THREE.Vector3().subVectors(eye,target.point))<.025;
+      const behindSurface=!target.inspectFromAnySide&&viewNormal.dot(new THREE.Vector3().subVectors(eye,target.point))<.025;
       b.hidden=behindSurface||v.z<0||v.z>=1||px<20||px>width-20||py<55||py>height-56||!!journey||
         (openness===1&&target.id===puzzleTarget)||model.canInspect?.(target.id)===false||targetOccluded(target);
       target.px=px;target.py=py;

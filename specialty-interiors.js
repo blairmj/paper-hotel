@@ -28,6 +28,8 @@ const SpecialtyInteriors = (() => {
       z:bookArc.z+radius*Math.sin(angle)
     };
   }
+  const numberedBay={left:bookArc.to,right:bookArc.to-(bookArc.to-bookArc.from)/4,radius:bookArc.outer-.114};
+  const numberedFront=arcPoint(bookArc.outer,(numberedBay.left+numberedBay.right)/2);
   const arcObstacles = Array.from({length:8},(_,i)=>{
     const point=arcPoint((bookArc.inner+bookArc.outer)/2,bookArc.from+(bookArc.to-bookArc.from)*i/7);
     return boundsOf({...point,w:.51,d:.51},.11);
@@ -37,7 +39,10 @@ const SpecialtyInteriors = (() => {
     library:{
       size:[8.6,7.2,3.14], trim:'#b59365',
       entrance:{x:3.34,width:1.30,height:2.22,moldingColor:'#d6a333'},
-      lock:{center:[2.43,1.27,.10],width:.43,height:.31,approach:{x:2.36,z:1.30}},
+      lock:{id:'bookShelf',center:[-.68,.54,2.90],width:1.80,height:.92,depth:1.94,inspectFromAnySide:true,
+        approach:{x:numberedFront.x,z:5.13},
+        inspectionView:{wide:[numberedFront.x+.39,.76,numberedFront.z],compact:[numberedFront.x,.53,numberedFront.z]}},
+      statusLamp:{xyz:[2.43,1.27,.10]},
       start:[.08,1.55,6.80],view:[.12,1.30,.15],viewAngle:58,
       obstacles:[
         ...arcObstacles,boundsOf(counter),
@@ -99,7 +104,8 @@ const SpecialtyInteriors = (() => {
     const door=entrance.side==='right'?[width/2-.05,1.30,depth/2+entrance.x]:[entrance.x,1.30,.05];
     const targets=[
       {id:lock.id??'lock',name:SCHOOL_PUZZLES[kind].title,xyz:lock.center,surface:lock,
-        rotationY:lock.rotationY,approach:lock.approach,inspectionView:lock.inspectionView},
+        rotationY:lock.rotationY,approach:lock.approach,inspectionView:lock.inspectionView,
+        inspectFromAnySide:lock.inspectFromAnySide},
       ...clues.filter(clue=>clue.placement!=='instrument')
     ];
     return {
@@ -264,12 +270,55 @@ const SpecialtyInteriors = (() => {
       for(let i=0;i<37;i++){
         if((i+row*4)%9===7)continue;
         const angle=bookArc.from+.058+(bookArc.to-bookArc.from-.116)*i/36;
+        if(row===1&&angle>numberedBay.right)continue;
         const point=arcPoint(bookArc.outer-.162-(i%3)*.014,angle);
         books.push({...point,y,w:.054+(i%4)*.005,h:.22+(i*5%9)*.011,d:.235,
           angle:quarterTurn-angle,color:bookColors[(i+3*row)%bookColors.length]});
       }
     }
     packedBooks(scene,books,cover);
+    return numberedBooks(scene,cover);
+  }
+
+  function numberedBooks(scene,cover){
+    const order=SCHOOL_PUZZLES.library.keys;
+    const paper=standard('#e7ddc8',.91);
+    const bindings=['#3b6a95','#cc8f42','#9f584e','#36587d','#5e897e','#b2835a','#746889'];
+    const depth=.181,margin=.078;
+    const commandPads=[];
+    const volumes=order.map((number,i)=>{
+      const angle=numberedBay.left-margin-(numberedBay.left-numberedBay.right-2*margin)*i/(order.length-1);
+      const {x,z}=arcPoint(numberedBay.radius,angle);
+      const unit=positionGroup(scene,x,.568,z,quarterTurn-angle);
+      const width=.076+(i%3)*.004,height=.268+(i*5%7)*.005;
+      const binding=cover.clone();
+      binding.color.set(bindings[i]);
+      const spine=rounded(unit,width,height,.026,0,height/2,depth/2-.013,binding,.007);
+      const pages=box(unit,width-.014,height-.017,depth-.025,0,height/2,-.007,paper);
+      const covers=[-.5,.5].map(side=>box(unit,.006,height,depth,side*(width-.006),height/2,0,binding));
+      for(const mesh of [spine,pages,...covers]){
+        mesh.userData.command=number;
+        commandPads.push(mesh);
+      }
+      const label=InteriorArtwork.canvasMap(124,108,(g,w,h)=>{
+        g.fillStyle='#f4eddc';g.fillRect(0,0,w,h);
+        g.strokeStyle='#b8ac95';g.lineWidth=2;g.strokeRect(4,4,w-8,h-8);
+        g.fillStyle='#243b54';g.font='bold 76px sans-serif';
+        g.textAlign='center';g.textBaseline='middle';g.fillText(number,w/2,h/2+2);
+      });
+      patchPlane(unit,width*.91,.063,0,height*.52,depth/2+.002,label);
+      return {number,unit,x,z,angle};
+    });
+    return {
+      commandPads,
+      setDigits(values){
+        for(const {number,unit,x,z,angle} of volumes){
+          const pull=values.includes(number)?.047:0;
+          unit.position.x=x+Math.cos(angle)*pull;
+          unit.position.z=z+Math.sin(angle)*pull;
+        }
+      }
+    };
   }
 
   function library(scene,room,art,shadow){
@@ -282,7 +331,7 @@ const SpecialtyInteriors = (() => {
     shelves(scene,-3.985,3.60,6.72,quarterTurn,wood,gold,cover);
     shelves(scene,-2.91,.285,1.87,0,wood,gold,cover);
     shelves(scene,1.69,.285,.99,0,wood,gold,cover);
-    curvedShelves(scene,wood,gold,cover);
+    const shelfDevice=curvedShelves(scene,wood,gold,cover);
     shadow(1.94,3.14,bookArc.x+.31,bookArc.z+.38,.005,.61);
     shadow(.99,6.78,-3.77,3.62,.005,.48);
 
@@ -329,6 +378,7 @@ const SpecialtyInteriors = (() => {
     slab(scene,{x,z,w:w-.12,d:d-.12},.094,wood,.076,.16);
     slab(scene,counter,.94,wood,.105,.18);
     shadow(w+.46,d+.44,x,z,.004,.64);
+    return shelfDevice;
   }
 
   function stool(parent,x,z,seat,frame){
@@ -968,24 +1018,12 @@ const SpecialtyInteriors = (() => {
       if(mesh.isMesh && mesh.material.isMeshStandardMaterial)mesh.receiveShadow=true;
     });
     const canvas=document.getElementById('roomView');
-    const version={library:'approved-v31',science:'water-v35',broadcast:'studio-v34'}[room.kind];
+    const version={library:'shelf-v36',science:'water-v35',broadcast:'studio-v34'}[room.kind];
     Object.assign(canvas.dataset,{interior:room.kind,artwork:version});
-    if(device){
-      const updateDoorStatus=statusLamp(scene,design.statusLamp);
-      return {
-        ...device,
-        setDoor(amount){swingDoor(amount);updateDoorStatus(amount>0)},
-      };
-    }
-    const [x,y,z]=room.lock.center;
-    const lock=patchPlane(scene,room.lock.width,room.lock.height,x,y,z,imageMap(schoolLockArt(room,[])));
-    lock.rotation.y=room.lock.rotationY??0;
+    const updateDoorStatus=statusLamp(scene,design.statusLamp);
     return {
-      setDoor:swingDoor,
-      setDigits(values){
-        lock.material.map.image=schoolLockArt(room,values);
-        lock.material.map.needsUpdate=true;
-      }
+      ...device,
+      setDoor(amount){swingDoor(amount);updateDoorStatus(amount>0)}
     };
   }
 

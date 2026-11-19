@@ -1,0 +1,66 @@
+#inspect[data-panel=shelf]{
+  --panel-padding:16px;
+  position:fixed;
+  inset:auto 0 max(12px,env(safe-area-inset-bottom));
+  margin:0 auto;
+  width:min(450px,calc(100vw - 24px));
+  background:#fdfbf6;
+  color:#253950;
+  border-color:#b7aa92;
+  border-radius:7px;
+  box-shadow:0 10px 32px #38302640;
+}
+
+@media(min-width:800px) and (min-aspect-ratio:5/4){
+  #inspect[data-panel=shelf]{
+    inset:0 clamp(12px,2vw,28px) 0 auto;
+    margin:auto 0;
+    width:clamp(330px,35vw,438px);
+  }
+}
+
+#inspect[data-panel=shelf]::backdrop{background:#30281517}
+#inspect[data-panel=shelf] .panel-top{padding-bottom:5px}
+#inspect[data-panel=shelf] #dismiss:hover{background:#f0eae0}
+#inspect[data-panel=shelf] .object-note{margin:0 0 12px;font-size:14px;color:#46566a}
+.spot[data-object=bookShelf]{touch-action:none}
+
+#inspect[data-panel=shelf] .sequence-output>span{
+  min-height:54px;
+  background:#f1eee6;
+  color:#294761;
+  border-color:#bdaf96;
+  font-size:28px;
+  font-weight:650;
+}
+#inspect[data-panel=shelf] .sequence-output>span[data-next=true]{
+  background:#eaf2fa;
+  border-color:#5c84ab;
+  box-shadow:inset 0 0 0 1px #5c84ab;
+}
+#inspect[data-panel=shelf] .sequence-output[data-invalid=true]>span{
+  background:#f8ebe7;
+  border-color:#c28374;
+}
+#inspect[data-panel=shelf] .book-keys{grid-template-columns:repeat(7,minmax(0,1fr));gap:5px}
+@media(max-width:500px){
+  #inspect[data-panel=shelf] .book-keys{grid-template-columns:repeat(4,minmax(0,1fr))}
+}
+#inspect[data-panel=shelf] .book-keys button{
+  min-width:0;
+  min-height:46px;
+  padding:4px 2px;
+  background:#f7f0e2;
+  border-color:#c9b99f;
+  border-bottom:3px solid #ad9a7b;
+}
+#inspect[data-panel=shelf] .book-keys b{font-size:18px;color:#29435d}
+#inspect[data-panel=shelf] .book-keys button:hover{background:#e5eff9;border-color:#9eb8cf}
+#inspect[data-panel=shelf] .book-keys button:active{transform:translateY(1px);border-bottom-width:1px}
+#inspect[data-panel=shelf] .actions{flex-flow:row wrap;justify-content:flex-start}
+#inspect[data-panel=shelf] .actions button,#inspect[data-panel=shelf] .hint button{
+  width:auto;min-height:44px;padding:7px 11px;font-size:13px;font-weight:600
+}
+#inspect[data-panel=shelf] .readout{margin:9px 0 0;font-size:14px;color:#943b2d}
+#inspect[data-panel=shelf] .hint{margin-top:11px;padding-top:8px;border-color:#d4c8b5}
+#inspect[data-panel=shelf] .hint p{font-size:14px}

@@ -178,22 +178,40 @@ function sequencePanel(){
   const books=room.kind==='library';
   const instruction=puzzle.instructions?'<p class="object-note">'+puzzle.instructions+'</p>':'';
   modal(puzzle.title,instruction+'<div class="sequence-output" id="sequenceOutput" aria-label="입력한 순서"></div>'+
-    '<div class="sequence-keys'+(books?' book-keys':'')+'" id="sequenceKeys"></div><p class="readout" id="entryFeedback" role="status"></p>','lock');
+    '<div class="sequence-keys'+(books?' book-keys':'')+'" id="sequenceKeys"></div><p class="readout" id="entryFeedback" role="status"></p>',
+    books?'shelf':'lock');
   function draw(){
-    const steps=puzzle.answer.map((_,i)=>'<span>'+(RESET_GLYPHS[run.entry[i]]??run.entry[i]??'·')+'</span>');
-    byId('sequenceOutput').innerHTML=steps.join('');
-    byId('entryFeedback').textContent=run.entry.length===puzzle.answer.length&&!correct()?'순서를 다시 확인해 보세요.':'';
+    const steps=puzzle.answer.map((_,i)=>'<span data-next="'+(i===run.entry.length)+'">'+
+      (RESET_GLYPHS[run.entry[i]]??run.entry[i]??'·')+'</span>');
+    const failed=run.entry.length===puzzle.answer.length&&!correct();
+    const output=byId('sequenceOutput');
+    output.innerHTML=steps.join('');
+    output.dataset.invalid=String(failed);
+    byId('entryFeedback').textContent=failed?'순서를 다시 확인해 보세요.':'';
+    undo.disabled=!run.entry.length;
+    if(retry)retry.hidden=!failed;
   }
   for(const key of puzzle.keys){
     const label=books?key+'번 책':RESET_KEYS[key];
     const button=action(byId('sequenceKeys'),label,()=>{
-      if(run.entry.length>=puzzle.answer.length)return;
+      if(countdown.check()||run.entry.length>=puzzle.answer.length)return;
       run.entry.push(key);draw();changed();
     });
     button.innerHTML=books?'<b aria-hidden="true">'+key+'</b>':'<b aria-hidden="true">'+RESET_GLYPHS[key]+'</b><span>'+label+'</span>';
-    if(books)button.setAttribute('aria-label',label);
+    if(books){
+      button.setAttribute('aria-label',label);
+      button.dataset.command=key;
+    }
   }
-  action(actions(),'한 단계 지우기',()=>{run.entry.pop();draw();changed()});
+  const tools=actions();
+  const undo=action(tools,books?'한 권 지우기':'한 단계 지우기',()=>{
+    if(countdown.check())return;
+    run.entry.pop();draw();changed();
+  });
+  const retry=books?action(tools,'다시 입력',()=>{
+    if(countdown.check())return;
+    run.entry=[];draw();changed();
+  }):null;
   draw();
 }
 
@@ -419,7 +437,7 @@ function start(){
     if(event.target!==dialog||mandatoryDialog())return;
     const r=dialog.getBoundingClientRect();
     if(event.clientX>=r.left&&event.clientX<=r.right&&event.clientY>=r.top&&event.clientY<=r.bottom)return;
-    const command=['mixer','water'].includes(dialog.dataset.panel)&&world.commandAt?.(event.clientX,event.clientY);
+    const command=['mixer','water','shelf'].includes(dialog.dataset.panel)&&world.commandAt?.(event.clientX,event.clientY);
     if(command){
       content.querySelector('[data-command="'+command+'"]')?.click();
       return;
