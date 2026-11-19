@@ -67,6 +67,17 @@ for(const kind of ['classroom','music','art','sports','computer','library','scie
  }
 });
 
+test('the default enclosure preserves the colors of painted textures',()=>{
+ const THREE=require('../three.min.js');
+ layoutContext.THREE=THREE;
+ const scene=new THREE.Scene();
+ const artwork=new THREE.Texture();
+ layoutContext.interior.enclosure(scene,layoutContext.interior.definition('art'),{surface:()=>artwork},'#cab797');
+ const paintedSurfaces=scene.children.filter(object=>object.material?.map===artwork);
+ assert.equal(paintedSurfaces.length,8);
+ for(const {material} of paintedSurfaces)assert.deepEqual(material.color.toArray(),[1,1,1]);
+});
+
 function timerHarness(){
  let now=1_000_000,expires=0;
  const values=new Map(),events={},labels=[],jobs=[],badges=[];

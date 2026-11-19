@@ -163,7 +163,7 @@ const SchoolInterior = (() => {
     return mesh;
   }
 
-  function enclosure(scene, room, artwork, trimColor, surfaceMaterial = painted) {
+  function enclosure(scene, room, artwork, trimColor, surfaceMaterial = map => painted(map)) {
     const {width: w, back: d, height: h} = room.wall;
     const low = room.ceilingMinimum;
     const door = room.entrance ?? DOOR;
