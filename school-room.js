@@ -100,28 +100,39 @@ function showFinish(){
 
 function showExit(){
   if(countdown.check())return;
+  if(story){
+    if(room.kind==='computer')showFinish();
+    else location.replace(recoveryRoomLink(schoolRoomToPlay(book()),true));
+    return;
+  }
   const next=RECOVERY_ROOMS[stage+1];
-  if(story&&room.kind==='computer'){showFinish();return}
   movement.hidden=true;byId('escape').hidden=false;
-  byId('replay').hidden=story;
   const link=byId('nextRoom');
-  link.href=story?'hallway.html':next?recoveryRoomLink(next,false):'./';
-  link.textContent=story?'복도로 나가기':next?next.place+'로 이동':'우리 반 교실부터 시작';
+  link.href=next?recoveryRoomLink(next,false):'./';
+  link.textContent=next?next.place+'로 이동':'우리 반 교실부터 시작';
   link.onclick=event=>{if(countdown.check())event.preventDefault()};
   link.focus({preventScroll:true});
 }
 function solve(){
   if(run.solved||opening||!countdown||countdown.check())return;
-  if(story&&room.kind==='computer'&&!canEnterSchoolRoom(book(),'computer'))return;
+  if(story){
+    const destination=schoolRoomToPlay(book());
+    if(destination.kind!==room.kind){
+      location.replace(recoveryRoomLink(destination,true));
+      return;
+    }
+  }
   run.solved=true;
   const saved=story&&room.kind!=='computer'?save():countdown.stop(recordRestoration);
   if(!saved){run.solved=false;return}
   close();opening=true;
   byId('spots').inert=true;roomHead.inert=true;
   world.facingDoor(()=>{
-    opening=false;
     if(countdown.check())return;
-    byId('spots').inert=false;roomHead.inert=false;
+    if(!story){
+      opening=false;
+      byId('spots').inert=false;roomHead.inert=false;
+    }
     showExit();
   });
 }
@@ -496,18 +507,24 @@ function mandatoryDialog(){return ['intro','timeout'].includes(dialog.dataset.pa
 
 function start(){
   const progress=book(),plan=schoolEscapeTimer(progress)&&schoolRoute(progress);
-  if(story&&room.kind!=='classroom'&&!canEnterSchoolRoom(progress,room.kind)){
-    location.replace(plan&&roomRestored(progress,RECOVERY_ROOMS[0])?'hallway.html':'./');
-    return;
-  }
-  if(story&&room.kind==='classroom'&&run.solved&&plan?.step>0){
-    location.replace('hallway.html');
-    return;
+  let updated=false;
+  if(story){
+    const destination=schoolRoomToPlay(progress,plan);
+    if(destination.kind!==room.kind){
+      location.replace(recoveryRoomLink(destination,true));
+      return;
+    }
+    if(plan&&plan.path[plan.step]!==room.kind){
+      progress.route={...plan,step:plan.path.indexOf(room.kind)};
+      progress.room=room.n;
+      updated=true;
+    }
   }
   if(outdated&&!run.solved&&(!story||plan)){
     progress.visits[room.n]={restoration:run};
-    writeSchoolBook(bookKey,progress);
+    updated=true;
   }
+  if(updated)writeSchoolBook(bookKey,progress);
   byId('dismiss').onclick=close;byId('bag').onclick=inventory;byId('map').onclick=directory;
   byId('replay').onclick=restart;
   dialog.addEventListener('cancel',event=>{if(mandatoryDialog())event.preventDefault()});

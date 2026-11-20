@@ -119,14 +119,3 @@ dialog p.floorplan-notice{
 }
 .broadcast-steps label[data-result=passed]{border-color:#298778;background:#e4f6ee}
 .broadcast-steps label[data-result=failed]{border-color:#d84d43;background:#fff0ec}
-.hall-control{
-  position:absolute;z-index:2;bottom:clamp(14px,2.2vw,29px);left:clamp(14px,2.2vw,29px);
-  display:flex;align-items:center;gap:8px;padding:5px 5px 5px 10px;
-  background:#fcfdfff2;border:1px solid #bdcce3;border-radius:6px;color:#354b6a;font-size:13px;
-  font-variant-numeric:tabular-nums;
-}
-.hall-control button{min-height:37px}
-.hall-control button:disabled{cursor:default;opacity:.7}
-@media(max-width:600px){
-  .hall-control{left:50%;bottom:68px;transform:translateX(-50%);white-space:nowrap}
-}

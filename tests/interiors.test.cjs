@@ -187,28 +187,46 @@ test('every supported selection creates a route through at least three distinct 
  assert.equal(ctx.schoolRoute({route:blocked}),null);
 });
 
-test('each selected room requires a stop and computer access requires all selected puzzles',()=>{
+test('direct transitions follow the confirmed visits from any saved corridor step',()=>{
  const ctx=vm.createContext({});
  for(const file of ['review-rooms.js','school-routes.js']){
   vm.runInContext(fs.readFileSync(path.join(root,file),'utf8'),ctx);
  }
  const progress={visits:{}};
- assert.equal(ctx.canEnterSchoolRoom(progress,'computer'),false);
- progress.route=ctx.planSchoolRoute(['library','music','art']);progress.route.step=2;
- assert.equal(ctx.canEnterSchoolRoom(progress,'library'),false);
- progress.visits[502]={restoration:{solved:true}};
- assert.equal(ctx.canEnterSchoolRoom(progress,'library'),true);
- assert.equal(ctx.canEnterSchoolRoom(progress,'science'),false);
- assert.equal(ctx.schoolStopPending(progress,progress.route,'library'),true);
- progress.visits[205]={restoration:{solved:true}};
- assert.equal(ctx.schoolStopPending(progress,progress.route,'library'),false);
- assert.equal(ctx.schoolStopPending(progress,progress.route,'music'),true);
- progress.route.step=6;
- assert.equal(ctx.canEnterSchoolRoom(progress,'computer'),false);
- progress.visits[203]={restoration:{solved:true}};
- assert.equal(ctx.canEnterSchoolRoom(progress,'computer'),false);
- progress.visits[207]={restoration:{solved:true}};
- assert.equal(ctx.canEnterSchoolRoom(progress,'computer'),true);
+ assert.equal(ctx.schoolRoomToPlay(progress).kind,'classroom');
+ progress.route=ctx.planSchoolRoute(['sports','art','music']);
+ assert.deepEqual([...progress.route.stops],['music','art','sports']);
+ assert.ok(progress.route.path.includes('library'),'the diagram passes a classroom that was not selected');
+ for(const [kind,n] of [['classroom',502],['music',203],['art',207],['sports',208]]){
+  for(let step=0;step<progress.route.path.length;step++){
+   progress.route.step=step;
+   assert.equal(ctx.schoolRoomToPlay(progress).kind,kind);
+  }
+  progress.visits[n]={restoration:{solved:true}};
+ }
+ assert.equal(ctx.schoolRoomToPlay(progress).kind,'computer');
+ progress.visits[209]={restoration:{solved:true}};
+ assert.equal(ctx.schoolRoomToPlay(progress).kind,'computer','a completed attempt can reopen its ending');
+});
+
+test('a saved hallway link resumes the current selected classroom',()=>{
+ let saved=null,destination;
+ const ctx=vm.createContext({
+  localStorage:{getItem:()=>saved},
+  location:{replace:url=>{destination=url}}
+ });
+ for(const file of ['review-rooms.js','school-routes.js']){
+  vm.runInContext(fs.readFileSync(path.join(root,file),'utf8'),ctx);
+ }
+ const redirect=fs.readFileSync(path.join(root,'school-hallway.js'),'utf8');
+ vm.runInContext('{'+redirect+'}',ctx);
+ assert.equal(destination,'./');
+ const route=ctx.planSchoolRoute(['sports','art','music']);
+ route.step=route.path.indexOf('library');
+ saved=JSON.stringify({route,visits:{502:{restoration:{solved:true}}},
+  escapeTimer:{startedAt:1_000,deadline:601_000}});
+ vm.runInContext('{'+redirect+'}',ctx);
+ assert.equal(destination,'music.html?school=1');
 });
 
 test('the puzzle answers come from the displayed sequence, printing, queue and decision rules',()=>{

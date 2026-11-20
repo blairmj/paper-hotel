@@ -78,13 +78,12 @@ function schoolRoute(book) {
   return plan.stops.every((id,i)=>id===ordered[i])?plan:null;
 }
 
-function schoolStopPending(book,plan,kind) {
-  return plan.stops.includes(kind)&&!roomRestored(book,RECOVERY_ROOMS.find(room=>room.kind===kind));
-}
-
-function canEnterSchoolRoom(book,kind) {
-  const plan=schoolRoute(book);
-  if(!plan||!roomRestored(book,RECOVERY_ROOMS[0])||plan.path[plan.step]!==kind)return false;
-  if(kind==='computer')return plan.stops.every(id=>!schoolStopPending(book,plan,id));
-  return plan.stops.includes(kind);
+function schoolRoomToPlay(book,plan=schoolRoute(book)) {
+  const classroom=RECOVERY_ROOMS[0];
+  if(!plan||!roomRestored(book,classroom))return classroom;
+  for(const kind of plan.stops){
+    const room=RECOVERY_ROOMS.find(item=>item.kind===kind);
+    if(!roomRestored(book,room))return room;
+  }
+  return RECOVERY_ROOMS.find(room=>room.kind==='computer');
 }
