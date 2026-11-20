@@ -1,3 +1,9 @@
+#escape.room-transfer{
+  display:block;bottom:clamp(22px,6vh,54px);width:max-content;max-width:calc(100% - 28px);
+  padding:12px 17px;background:#fff;border:1px solid #becbd2;border-left:4px solid #26756e;
+  border-radius:5px;box-shadow:0 3px 16px #14202b30;color:#26343c;
+  font-size:clamp(15px,1.6vw,18px);font-weight:650;line-height:1.35;word-break:keep-all;
+}
 dialog[data-panel=intro],dialog[data-panel=map]{width:min(740px,calc(100vw - 24px))}
 dialog[data-panel=intro],dialog[data-panel=map]:has(.school-floorplan){
   background:#eaf4f9;color:#19364d;border-color:#9ab5ca;

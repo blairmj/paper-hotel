@@ -101,8 +101,21 @@ function showFinish(){
 function showExit(){
   if(countdown.check())return;
   if(story){
-    if(room.kind==='computer')showFinish();
-    else location.replace(recoveryRoomLink(schoolRoomToPlay(book()),true));
+    if(room.kind==='computer'){
+      showFinish();
+      return;
+    }
+    const destination=schoolRoomToPlay(book());
+    const notice=byId('escape'),status=notice.querySelector('[role=status]');
+    movement.hidden=true;
+    notice.classList.add('room-transfer');
+    notice.querySelector('div').hidden=true;
+    status.classList.remove('sr-only');
+    notice.hidden=false;
+    status.textContent=destination.place+'로 이동합니다.';
+    setTimeout(()=>{
+      if(!countdown.check())location.replace(recoveryRoomLink(destination,true));
+    },1700);
     return;
   }
   const next=RECOVERY_ROOMS[stage+1];
