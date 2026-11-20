@@ -136,8 +136,8 @@ function buildHallway(scene,layout,{canEnter,onWalk}){
 
 async function startHallway(){
   const read=()=>readSchoolBook(SCHOOL_STORY_KEY);
-  const progress=read(),plan=schoolRoute(progress);
-  if(!plan||!roomRestored(progress,RECOVERY_ROOMS[0])){
+  const progress=read(),plan=schoolRoute(progress),attempt=schoolEscapeTimer(progress);
+  if(!plan||!attempt||!roomRestored(progress,RECOVERY_ROOMS[0])){
     location.replace('./');return;
   }
   const layout=hallwayLayout(),byId=id=>document.getElementById(id);
@@ -145,57 +145,69 @@ async function startHallway(){
   const current=()=>plan.path[plan.step],next=()=>plan.path[plan.step+1];
   const start=hallPosition(current()),look=hallPosition(next()??current());
   const destination=layout.doors.find(door=>door.id===current());
-  const stop=RECOVERY_ROOMS.find(item=>item.kind===plan.stop);
-  const stopRestored=stop&&roomRestored(progress,stop);
   let model,world,leaving=false;
   const room={
     interior:true,
     wall:{width:2*(layout.bounds.right+.20),height:HALL_HEIGHT,z:layout.bounds.front-.20,back:layout.bounds.back+.20},
     bounds:layout.bounds,obstacles:layout.obstacles,
     start:[start.x,1.55,start.z],
-    firstView:destination&&canEnterSchoolRoom(progress,current())?destination.xyz:[look.x,1.42,look.z],
-    targets:layout.doors.filter(door=>door.id===plan.stop||door.id==='computer'),
+    firstView:destination&&(mustVisit(progress)||!next())?destination.xyz:[look.x,1.42,look.z],
+    targets:layout.doors.filter(door=>plan.stops.includes(door.id)||door.id==='computer'),
     stops:[
       [start.x+25,1.47,start.z],[start.x-25,1.47,start.z],
       [start.x,1.47,start.z+25],[start.x,1.47,start.z-25]
     ]
   };
 
-  function mustVisit(){
-    return stop?.kind===current()&&!stopRestored;
+  function mustVisit(book=read()){
+    return schoolStopPending(book,plan,current());
   }
 
-  function refresh(){
-    const book=read();
+  function refresh(book=read()){
     const ready=canEnterSchoolRoom(book,current());
-    const waiting=mustVisit(),done=!next();
+    const waiting=mustVisit(book),done=!next();
     byId('hallProgress').textContent=plan.step+' / '+(plan.path.length-1)+'구간';
     action.textContent=waiting||done&&ready?SCHOOL_POINTS[current()].label+' 들어가기':'다음 구간 걷기';
-    action.disabled=leaving||(done&&!ready);
+    action.disabled=countdown.expired||leaving||(done&&!ready);
     byId('roomView').dataset.routeStep=String(plan.step);
   }
 
   function enter(id){
-    if(leaving||!canEnterSchoolRoom(read(),id))return;
+    if(leaving||countdown.check()||!canEnterSchoolRoom(read(),id))return;
     const door=layout.doors.find(item=>item.id===id);
     const destination=RECOVERY_ROOMS.find(item=>item.kind===id);
     world.walkTo(door.approach,door.xyz,()=>{
+      if(countdown.check())return;
       leaving=true;
       refresh();
-      model.openDoor(id,()=>location.assign(recoveryRoomLink(destination,true)));
+      model.openDoor(id,()=>{
+        if(!countdown.check())location.assign(recoveryRoomLink(destination,true));
+      });
     });
   }
 
   function progressOnWalk(_oldX,_oldZ,x,z){
-    if(!next()||mustVisit())return;
+    if(!next()||countdown.expired)return;
     const point=hallPosition(next());
     if(Math.max(Math.abs(point.x-x),Math.abs(point.z-z))>HALL_WIDTH/2-.12)return;
     const book=read();
-    plan.step++;
-    book.route=plan;
-    writeSchoolBook(SCHOOL_STORY_KEY,book);
-    refresh();
+    if(schoolEscapeTimer(book)?.startedAt!==attempt.startedAt||book.route?.step!==plan.step){
+      location.reload();return;
+    }
+    if(mustVisit(book)||countdown.check())return;
+    book.route={...plan,step:plan.step+1};
+    if(!writeSchoolBook(SCHOOL_STORY_KEY,book))return;
+    plan.step=book.route.step;
+    refresh(book);
   }
+
+  const countdown=setupSchoolTimer(undefined,{key:SCHOOL_STORY_KEY,onExpire:()=>{
+    world?.clearKeys();action.disabled=true;byId('map').disabled=true;
+    showSchoolTimeout(dialog,retrySchool);
+  }});
+  dialog.addEventListener('cancel',event=>{
+    if(dialog.dataset.panel==='timeout')event.preventDefault();
+  });
 
   world=await createMusicWorld({
     room,
@@ -204,24 +216,27 @@ async function startHallway(){
         canEnter:id=>id===current()&&(!next()||mustVisit())});
       return model;
     },
-    onInspect:enter,onReadyToMove:()=>!dialog.open&&!leaving
+    onInspect:enter,onReadyToMove:()=>!dialog.open&&!leaving&&!countdown.expired
   });
   room.portraitView=room.firstView;
   world.reset();
   refresh();
   action.onclick=()=>{
-    if(mustVisit()||!next()){enter(current());return}
+    if(countdown.check())return;
+    const book=read();
+    if(mustVisit(book)||!next()){enter(current());return}
     const point=hallPosition(next());
     const after=plan.path[plan.step+2],door=layout.doors.find(item=>item.id===next());
     const look=hallPosition(after??next());
-    const face=door&&(!after||door.id===plan.stop&&!stopRestored)?door.xyz:[look.x,1.42,look.z];
+    const face=door&&(!after||schoolStopPending(book,plan,next()))?door.xyz:[look.x,1.42,look.z];
     world.walkTo(point,face);
   };
   byId('map').onclick=()=>{
+    if(countdown.check())return;
     world.clearKeys();panel.replaceChildren();renderSchoolMap(panel,{plan});
     dialog.showModal();
   };
-  byId('dismiss').onclick=()=>dialog.close();
+  byId('dismiss').onclick=()=>{if(dialog.dataset.panel!=='timeout')dialog.close()};
   window.addEventListener('pageshow',event=>{if(event.persisted)location.reload()});
 }
 

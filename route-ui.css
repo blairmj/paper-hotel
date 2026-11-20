@@ -1,14 +1,31 @@
 dialog[data-panel=intro],dialog[data-panel=map]{width:min(740px,calc(100vw - 24px))}
+dialog[data-panel=intro] #panelTitle:focus{outline:none}
+.map-room-choices{
+  display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;
+  margin:16px 0 10px;
+}
+.map-room-choices button{
+  min-height:52px;padding:7px 4px;border-color:#b6c5d5;border-top:4px solid var(--room-color);
+  background:#fff;color:#273d55;font-weight:650;word-break:keep-all;
+}
+.map-room-choices button:hover{background:#edf3fb}
+.map-room-choices button[aria-pressed=true]{background:#224e9b;color:#fff;border-color:#224e9b}
+.map-room-choices button[aria-pressed=true]:hover{background:#1a4080}
+dialog p.map-selection-note{
+  margin:0;padding:7px 10px;border-left:3px solid #a3b8d4;
+  background:#f0f5fc;color:#344e72;font-size:14px;
+}
+dialog p.map-selection-note[data-required=true],dialog p.map-selection-note[role=alert]{
+  border-left-color:#cc982a;background:#fff6e2;color:#684a16;
+}
 .school-map{
   position:relative;
-  height:clamp(205px,35vh,278px);
+  height:clamp(200px,30vh,252px);
   background:#f0f4f8;
   border:1px solid #d3deeb;
   border-radius:10px;
 }
 .map-prompt{font-weight:700;color:#233750}
-.map-prompt:focus{outline:none}
-dialog p.map-instruction{margin:-8px 0 12px;color:#4a6078;font-size:14px}
 .map-legend{
   display:flex;flex-wrap:wrap;align-items:center;gap:4px 14px;
   margin:9px 0 0;font-size:13px;color:#405670;
@@ -17,7 +34,13 @@ dialog p.map-instruction{margin:-8px 0 12px;color:#4a6078;font-size:14px}
 .map-key>span{color:#a83028;font:700 18px/1 system-ui}
 .map-key-pick{margin-left:auto}
 .map-key-pick>span{width:18px;height:4px;background:#265ac1;border-radius:2px}
-.map-count{font-variant-numeric:tabular-nums}
+.map-itinerary{
+  display:flex;flex-wrap:wrap;gap:5px 9px;margin:14px 0 0;padding:10px 12px;
+  list-style:none;background:#edf3fb;border-radius:6px;
+  color:#253c59;font-size:14px;font-weight:700;
+}
+.map-itinerary li+li::before{content:'→';margin-right:8px;color:#54739b}
+dialog p.map-start-time{margin:9px 0 0;font-size:14px;color:#384f6b}
 .map-passage{position:absolute;background:#a6b7c9;z-index:0}
 .map-passage.horizontal{width:var(--length);height:6px;transform:translateY(-50%)}
 .map-passage.vertical{height:var(--length);width:6px;transform:translateX(-50%)}
@@ -53,19 +76,14 @@ dialog p.map-instruction{margin:-8px 0 12px;color:#4a6078;font-size:14px}
 .map-node.map-room{width:19%;border-top:4px solid var(--room-color)}
 .map-junction{width:clamp(44px,15%,60px);border-radius:24px;background:#f9fcff}
 .map-node-note{font-size:clamp(10px,.8em,12px);font-weight:700;color:#405670}
-button.map-node:enabled{font-weight:700}
-button.map-node:enabled:hover{background:#edf4ff}
-button.map-node:disabled{cursor:default}
 .map-node.on-path{background:#e0ebff;border-color:#7196df}
 .map-node.target-stop{border-color:#b37a1b;background:#fff4d4}
 .map-node.target-stop .map-node-note{color:#754a00}
-.map-node.next-point{box-shadow:0 0 0 1px #265ac1;border-color:#265ac1}
 .map-node.current-point{color:#fff;background:#224e9b;border-color:#224e9b}
 .map-node.current-point .map-node-note{color:inherit}
-.map-node:focus-visible{z-index:3;outline:2px dashed #174187;outline-offset:3px}
 .map-controls{display:flex;flex-wrap:wrap;gap:7px;margin-top:10px}
 .map-controls button{min-height:44px}
-.map-controls .primary,.map-controls .map-skip{margin-left:auto}
+.map-controls .primary{margin-left:auto}
 .map-controls button:disabled{color:#5d6b7d;background:#e9eef4;cursor:default}
 .book-keys{grid-template-columns:repeat(7,minmax(0,1fr));gap:3px}
 .book-keys button{min-height:78px;background:#e6efff;border-top:5px solid #386acc}
@@ -92,7 +110,6 @@ button.map-node:disabled{cursor:default}
 .hall-control button:disabled{cursor:default;opacity:.7}
 @media(max-width:600px){
   .hall-control{left:50%;bottom:68px;transform:translateX(-50%);white-space:nowrap}
-  .map-controls{justify-content:flex-end}
   .map-controls button{font-size:13px;padding-inline:8px}
-  .map-controls .primary{margin-left:0}
+  .map-itinerary{font-size:13px;padding-inline:8px}
 }

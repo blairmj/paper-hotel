@@ -1,143 +1,159 @@
 'use strict';
 
-function renderSchoolMap(host,{plan,onStart,position=plan?.path[plan.step]}={}){
-  let stop=plan?.stop??null,path=plan?.path.slice()??['classroom'],choosing=!!onStart&&!plan;
+function schoolPointLabel(id){
+  const {label,color,col}=SCHOOL_POINTS[id];
+  return color?label:['왼쪽','가운데','오른쪽'][col-1]+' 갈림길';
+}
+
+function renderSchoolMap(host,{plan,position=plan?.path[plan.step],preview=false}={}){
+  const path=plan?.path??[],stops=plan?.stops??[];
   const coordinates=id=>{
     const {col,row}=SCHOOL_POINTS[id];
     return [10+20*col,16+34*row];
   };
-  const label=id=>{
-    const {label,color,col}=SCHOOL_POINTS[id];
-    if(id==='classroom')return '5-2 교실';
-    return color?label:['왼쪽','가운데','오른쪽'][col-1]+' 갈림길';
-  };
-  const status=document.createElement('p');
-  status.className='map-prompt';
-  status.setAttribute('role','status');
-  status.tabIndex=-1;
-  const instruction=document.createElement('p');
-  instruction.className='map-instruction';
+
+  if(position&&!preview){
+    const status=document.createElement('p');
+    status.className='map-prompt';
+    status.textContent='지금 위치 '+schoolPointLabel(position);
+    host.append(status);
+  }
   const map=document.createElement('div');
   map.className='school-map';
   map.setAttribute('role','group');
   map.setAttribute('aria-label','복도 안내도');
-  const passages=SCHOOL_PASSAGES.map(([a,b,blocked])=>{
+  for(const [a,b,blocked] of SCHOOL_PASSAGES){
     const [x1,y1]=coordinates(a),[x2,y2]=coordinates(b);
     const line=document.createElement('span');
     line.className='map-passage '+(x1===x2?'vertical':'horizontal');
     line.style.left=Math.min(x1,x2)+'%';line.style.top=Math.min(y1,y2)+'%';
     line.style.setProperty('--length',Math.max(Math.abs(x2-x1),Math.abs(y2-y1))+'%');
-    line.classList.toggle('blocked',!!blocked);
+    line.classList.toggle('on-path',path.slice(1).some((point,i)=>
+      (point===a&&path[i]===b)||(point===b&&path[i]===a)));
     if(blocked){
+      line.classList.add('blocked');
       const cross=document.createElement('span');
       cross.textContent='×';
       line.append(cross);
     }
-    line.setAttribute('aria-hidden','true');map.append(line);
-    return {a,b,line};
-  });
-  const fields=new Map();
+    line.setAttribute('aria-hidden','true');
+    map.append(line);
+  }
+
   for(const [id,point] of Object.entries(SCHOOL_POINTS)){
-    const marker=document.createElement(onStart?'button':'span');
-    if(onStart){marker.type='button';marker.onclick=()=>selectPoint(id)}
+    const marker=document.createElement('span');
     marker.className=point.color?'map-node map-room':'map-node map-junction';
-    const name=document.createElement('span'),note=document.createElement('span');
+    const visit=stops.indexOf(id);
+    const tag=id==='classroom'?'출발':id==='computer'?'도착':visit>=0?(visit+1)+'번째':'';
+    if(tag){
+      const note=document.createElement('span');
+      note.className='map-node-note';note.textContent=tag;
+      marker.append(note);
+    }
+    const name=document.createElement('span');
     name.textContent=point.color?point.label:'갈림길';
-    note.className='map-node-note';
-    marker.append(note,name);
+    marker.append(name);
     if(point.color)marker.style.setProperty('--room-color',point.color);
     const [x,y]=coordinates(id);
     marker.style.left=x+'%';marker.style.top=y+'%';
-    map.append(marker);fields.set(id,{marker,note});
+    marker.classList.toggle('on-path',path.includes(id));
+    marker.classList.toggle('target-stop',visit>=0);
+    marker.classList.toggle('current-point',position===id);
+    if(position===id&&!preview)marker.setAttribute('aria-current','location');
+    map.append(marker);
   }
+
   const legend=document.createElement('div');
   legend.className='map-legend';
-  legend.innerHTML='<span class="map-key"><span aria-hidden="true">×</span>막힌 복도</span>'+
-    '<span class="map-key-pick"><span aria-hidden="true"></span>고른 길 <b class="map-count" aria-live="polite"></b></span>';
-  const pathKey=legend.querySelector('.map-key-pick'),count=legend.querySelector('.map-count');
-  host.append(status,instruction,map,legend);
-  let undo,confirm,chooseAgain,skip;
-  if(onStart){
+  legend.innerHTML='<span class="map-key"><span aria-hidden="true">×</span>막힌 복도</span>';
+  if(plan)legend.insertAdjacentHTML('beforeend','<span class="map-key-pick"><span aria-hidden="true"></span>이동 경로</span>');
+  host.append(map,legend);
+
+  if(plan){
+    const order=document.createElement('ol');
+    order.className='map-itinerary';
+    order.setAttribute('aria-label','방문 순서');
+    for(const id of ['classroom',...stops,'computer']){
+      const item=document.createElement('li');
+      item.textContent=SCHOOL_POINTS[id].label;
+      order.append(item);
+    }
+    host.append(order);
+  }
+}
+
+function renderSchoolRoutePicker(host,{heading,onStart}){
+  const selected=new Set();
+  heading.tabIndex=-1;
+  function button(label,onClick,primary=false){
+    const element=document.createElement('button');
+    element.type='button';element.textContent=label;element.onclick=onClick;
+    if(primary)element.className='primary';
+    return element;
+  }
+  function choose(){
+    heading.textContent='들를 교실 고르기';
+    const story=document.createElement('p');
+    story.textContent='학교 출입 시스템이 멈췄어요. 컴퓨터실에서 고칠 수 있어요.';
+    const choices=document.createElement('div');
+    choices.className='map-room-choices';
+    choices.setAttribute('role','group');
+    choices.setAttribute('aria-label','들를 교실');
+    choices.setAttribute('aria-describedby','schoolStopNotice');
+    const notice=document.createElement('p');
+    notice.id='schoolStopNotice';notice.className='map-selection-note';
+    notice.textContent='교실을 '+SCHOOL_MIN_STOPS+'개 이상 선택하세요.';
     const controls=document.createElement('div');
     controls.className='map-controls';
-    const button=(text,fn)=> {
-      const element=document.createElement('button');
-      element.type='button';element.textContent=text;element.onclick=fn;
-      controls.append(element);
-      return element;
-    };
-    skip=button('중간 교실에 들르지 않기',()=>beginRoute(null));
-    skip.className='map-skip';
-    chooseAgain=button('교실 다시 고르기',()=>{
-      const previous=stop;
-      stop=null;path=['classroom'];choosing=true;draw();
-      if(previous)fields.get(previous).marker.focus({preventScroll:true});
-      else skip.focus({preventScroll:true});
-    });
-    undo=button('한 칸 되돌리기',()=>{
-      const removed=path.pop();
-      draw();
-      fields.get(removed).marker.focus({preventScroll:true});
-    });
-    confirm=button('이 길로 출발',()=>{
-      onStart({stop,path:path.slice(),step:0});
-    });
-    confirm.className='primary';
-    host.append(controls);
-  }
-  function beginRoute(room){
-    stop=room;choosing=false;draw();
-    fields.get(schoolNeighbors(path.at(-1))[0]).marker.focus({preventScroll:true});
-  }
-  function selectPoint(id){
-    if(choosing){beginRoute(id);return}
-    if(!schoolNeighbors(path.at(-1)).includes(id)||path.at(-1)==='computer')return;
-    path.push(id);draw();
-    (confirm.disabled?status:confirm).focus({preventScroll:true});
-  }
-  function draw(){
-    const end=path.at(-1),here=onStart?end:position;
-    const arrived=end==='computer',canStart=onStart&&arrived&&validSchoolPath(path,stop);
-    const next=onStart&&!choosing&&!arrived?schoolNeighbors(end):[];
-    for(const [id,{marker,note}] of fields){
-      const tag=id==='classroom'?'출발':id==='computer'?'도착':stop===id?'들름':'';
-      note.textContent=tag;
-      note.hidden=!tag;
-      marker.setAttribute('aria-label',tag?tag+' '+label(id):label(id));
-      marker.classList.toggle('on-path',path.includes(id));
-      marker.classList.toggle('target-stop',stop===id);
-      marker.classList.toggle('current-point',here===id);
-      marker.classList.toggle('next-point',next.includes(id));
-      if(here===id)marker.setAttribute('aria-current',onStart?'step':'location');
-      else marker.removeAttribute('aria-current');
-      if(onStart)marker.disabled=choosing?!isSchoolStop(id):!next.includes(id);
+    const next=button('경로 보기',()=>{
+      const plan=planSchoolRoute([...selected]);
+      if(plan)preview(plan);
+    },true);
+
+    function refresh(){
+      next.disabled=selected.size<SCHOOL_MIN_STOPS;
+      notice.dataset.required=String(next.disabled);
     }
-    for(const {a,b,line} of passages)line.classList.toggle('on-path',
-      path.slice(1).some((point,i)=>point===a&&path[i]===b||point===b&&path[i]===a));
-    pathKey.hidden=choosing||!onStart&&!plan;
-    count.textContent=(path.length-1)+'칸';
-    let message,help='';
-    if(onStart){
-      skip.hidden=!choosing;
-      chooseAgain.hidden=choosing;undo.hidden=choosing;undo.disabled=path.length===1;
-      confirm.hidden=choosing;confirm.disabled=!canStart;
-      if(choosing){
-        message='퍼즐을 풀 교실을 지도에서 하나 고르세요.';
-      }else if(!arrived){
-        message=stop?label(stop)+'을 거쳐 가장 짧은 길을 찾아보세요.':'컴퓨터실까지 가장 짧은 길을 찾아보세요.';
-        help='파란 테두리의 다음 칸을 누르세요. 선 하나가 한 칸이에요.';
-      }else if(canStart){
-        message='가장 짧은 길을 찾았어요.';
-      }else{
-        message=stop&&!path.includes(stop)?label(stop)+'을 지나지 않았어요.':'더 짧은 길이 있어요.';
-        help='한 칸 되돌려 길을 다시 이어 보세요.';
+    for(const [id,{label,color}] of Object.entries(SCHOOL_POINTS)){
+      if(!isSchoolStop(id))continue;
+      const pick=button(label,()=>{
+        if(selected.has(id))selected.delete(id);
+        else selected.add(id);
+        pick.setAttribute('aria-pressed',String(selected.has(id)));
+        refresh();
+      });
+      pick.style.setProperty('--room-color',color);
+      pick.setAttribute('aria-pressed',String(selected.has(id)));
+      choices.append(pick);
+    }
+    controls.append(next);
+    refresh();
+    host.replaceChildren(story,choices,notice,controls);
+    heading.focus({preventScroll:true});
+  }
+
+  function preview(plan){
+    heading.textContent='컴퓨터실까지 갈 길';
+    host.replaceChildren();
+    renderSchoolMap(host,{plan,preview:true});
+    const time=document.createElement('p');
+    time.className='map-start-time';
+    time.textContent='출발하면 '+(SCHOOL_ESCAPE_DURATION/60_000)+'분 안에 탈출해야 해요.';
+    const feedback=document.createElement('p');
+    feedback.className='map-selection-note';
+    feedback.setAttribute('role','alert');
+    feedback.hidden=true;
+    const controls=document.createElement('div');
+    controls.className='map-controls';
+    controls.append(button('교실 다시 고르기',choose),button('이 길로 출발',()=>{
+      if(onStart(plan)===false){
+        feedback.textContent='진행을 저장할 수 없어요. 브라우저 설정을 확인해 주세요.';
+        feedback.hidden=false;
       }
-    }else{
-      message=here?'지금 위치 '+label(here):'학교 복도';
-    }
-    if(status.textContent!==message)status.textContent=message;
-    instruction.textContent=help;instruction.hidden=!help;
+    },true));
+    host.append(time,feedback,controls);
+    heading.focus({preventScroll:true});
   }
-  draw();
-  if(onStart)status.focus({preventScroll:true});
+
+  choose();
 }

@@ -1,7 +1,7 @@
 'use strict';
 
 const SCHOOL_POINTS = {
-  classroom:{col:0,row:1,label:'5-2',color:'#3067d6'},
+  classroom:{col:0,row:1,label:'우리 반 교실',color:'#3067d6'},
   west:{col:1,row:1,label:'A'},
   center:{col:2,row:1,label:'B'},
   east:{col:3,row:1,label:'C'},
@@ -20,6 +20,7 @@ const SCHOOL_PASSAGES = [
   ['west','broadcast'],['broadcast','science'],['science','sports'],['sports','east'],
   ['center','science'],['center','music',true]
 ];
+const SCHOOL_MIN_STOPS = 3;
 
 function schoolNeighbors(id) {
   const neighbors=[];
@@ -31,47 +32,59 @@ function schoolNeighbors(id) {
   return neighbors;
 }
 
-function schoolDistance(from,to) {
-  const queue=[from],distances=new Map([[from,0]]);
+function isSchoolStop(id) {
+  return typeof id==='string'&&!!SCHOOL_POINTS[id]?.color&&id!=='classroom'&&id!=='computer';
+}
+
+function validSchoolStops(stops) {
+  return Array.isArray(stops)&&stops.length>=SCHOOL_MIN_STOPS&&
+    stops.every(isSchoolStop)&&new Set(stops).size===stops.length;
+}
+
+function planSchoolRoute(stops) {
+  if(!validSchoolStops(stops))return null;
+  const bits=new Map(stops.map((id,i)=>[id,1<<i]));
+  const allVisited=(1<<stops.length)-1;
+  const queue=[{point:'classroom',visited:0,previous:null}];
+  const seen=new Set(['classroom:0']);
+  // A junction can be visited again after a new classroom has been reached.
   for(let i=0;i<queue.length;i++){
-    const point=queue[i],distance=distances.get(point);
-    if(point===to)return distance;
-    for(const next of schoolNeighbors(point)){
-      if(distances.has(next))continue;
-      distances.set(next,distance+1);
-      queue.push(next);
+    const state=queue[i];
+    if(state.point==='computer'){
+      const path=[];
+      for(let edge=state;edge;edge=edge.previous)path.push(edge.point);
+      path.reverse();
+      return {path,stops:[...new Set(path.filter(id=>bits.has(id)))],step:0};
+    }
+    for(const point of schoolNeighbors(state.point)){
+      const visited=state.visited|(bits.get(point)??0);
+      const key=point+':'+visited;
+      if(seen.has(key)||point==='classroom'||(point==='computer'&&visited!==allVisited))continue;
+      seen.add(key);
+      queue.push({point,visited,previous:state});
     }
   }
-  return Infinity;
-}
-
-function isSchoolStop(id) {
-  return !!SCHOOL_POINTS[id]?.color&&id!=='classroom'&&id!=='computer';
-}
-
-function schoolRouteMinimum(stop) {
-  return stop?schoolDistance('classroom',stop)+schoolDistance(stop,'computer'):
-    schoolDistance('classroom','computer');
-}
-
-function validSchoolPath(path,stop) {
-  return Array.isArray(path)&&path[0]==='classroom'&&path.at(-1)==='computer'&&
-    (!stop||(isSchoolStop(stop)&&path.includes(stop)))&&
-    path.length-1===schoolRouteMinimum(stop)&&
-    path.slice(1).every((point,i)=>schoolNeighbors(path[i]).includes(point));
+  return null;
 }
 
 function schoolRoute(book) {
   const plan=book.route;
-  return plan&&Number.isInteger(plan.step)&&plan.step>=0&&validSchoolPath(plan.path,plan.stop)&&
-    plan.step<plan.path.length?plan:null;
+  if(!plan||!validSchoolStops(plan.stops)||!Array.isArray(plan.path)||
+    !Number.isInteger(plan.step)||plan.step<0||plan.step>=plan.path.length)return null;
+  if(plan.path[0]!=='classroom'||plan.path.at(-1)!=='computer'||
+    plan.path.slice(1,-1).some(id=>id==='classroom'||id==='computer')||
+    !plan.path.slice(1).every((point,i)=>schoolNeighbors(plan.path[i]).includes(point)))return null;
+  const ordered=[...new Set(plan.path.filter(id=>plan.stops.includes(id)))];
+  return plan.stops.every((id,i)=>id===ordered[i])?plan:null;
+}
+
+function schoolStopPending(book,plan,kind) {
+  return plan.stops.includes(kind)&&!roomRestored(book,RECOVERY_ROOMS.find(room=>room.kind===kind));
 }
 
 function canEnterSchoolRoom(book,kind) {
   const plan=schoolRoute(book);
   if(!plan||!roomRestored(book,RECOVERY_ROOMS[0])||plan.path[plan.step]!==kind)return false;
-  if(kind==='computer'){
-    return !plan.stop||roomRestored(book,RECOVERY_ROOMS.find(room=>room.kind===plan.stop));
-  }
-  return kind===plan.stop;
+  if(kind==='computer')return plan.stops.every(id=>!schoolStopPending(book,plan,id));
+  return plan.stops.includes(kind);
 }

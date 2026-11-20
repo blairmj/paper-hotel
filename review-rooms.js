@@ -10,9 +10,10 @@ const REVIEW_ROOMS = [
   {n:209, place:'컴퓨터실', href:'computer.html', kind:'computer'}
 ];
 
-const RECOVERY_ROOMS = [{n:502,place:'우리 교실',href:'index.html',kind:'classroom'},...REVIEW_ROOMS];
-const SCHOOL_STORY_KEY = 'paperhotel.recovery.school.v1';
+const RECOVERY_ROOMS = [{n:502,place:'우리 반 교실',href:'index.html',kind:'classroom'},...REVIEW_ROOMS];
+const SCHOOL_STORY_KEY = 'paperhotel.recovery.school.v2';
 const SCHOOL_REVIEW_KEY = 'paperhotel.recovery.review.v1';
+const SCHOOL_ESCAPE_DURATION = 10*60_000;
 
 function recoveryRoomLink(room, story) {
   if (room.kind==='classroom') return story ? './' : 'index.html?review=1';
@@ -39,6 +40,37 @@ function writeSchoolBook(key,book){
     try{globalThis[store].setItem(key,value);return true}catch{}
   }
   return false;
+}
+
+function schoolEscapeTimer(book){
+  const timer=book.escapeTimer;
+  return Number.isFinite(timer?.startedAt)&&Number.isFinite(timer.deadline)?timer:null;
+}
+
+function beginSchoolAttempt(plan){
+  const startedAt=Date.now();
+  return writeSchoolBook(SCHOOL_STORY_KEY,{
+    room:RECOVERY_ROOMS[0].n,visits:{},route:plan,
+    escapeTimer:{startedAt,deadline:startedAt+SCHOOL_ESCAPE_DURATION}
+  });
+}
+
+function retrySchool(){
+  writeSchoolBook(SCHOOL_STORY_KEY,{room:RECOVERY_ROOMS[0].n,visits:{}});
+  location.replace('./');
+}
+
+function showSchoolTimeout(dialog,retry){
+  dialog.dataset.panel='timeout';
+  dialog.querySelector('#panelTitle').textContent='시간이 끝났어요.';
+  const actions=document.createElement('div');
+  actions.className='actions';
+  const button=document.createElement('button');
+  button.type='button';button.className='primary';button.textContent='다시 도전';button.onclick=retry;
+  actions.append(button);
+  dialog.querySelector('#panelBody').replaceChildren(actions);
+  if(!dialog.open)dialog.showModal();
+  button.focus();
 }
 
 function reviewRoomSolved(room,book=readSchoolBook()){
@@ -125,28 +157,52 @@ function appendRoomTextHint(host,timer,text){
   host.append(hint);
 }
 
-function setupSchoolTimer(number,{isSolved,onExpire,key='paperhotel.explore.v1'}){
-  const duration=120000,saved=readSchoolBook(key).visits[number]?.escapeTimer;
+function setupSchoolTimer(number,{isSolved=()=>false,onExpire,key='paperhotel.explore.v1'}){
+  const shared=key===SCHOOL_STORY_KEY,progress=readSchoolBook(key);
+  const duration=shared?SCHOOL_ESCAPE_DURATION:120_000;
+  const saved=shared?schoolEscapeTimer(progress):progress.visits[number]?.escapeTimer;
+  const attempt=saved?.startedAt;
   let deadline=Number.isFinite(saved?.deadline)?saved.deadline:Date.now()+duration;
-  let expired=false,stopped=isSolved(),remaining=stopped?(saved?.remaining??duration):duration;
+  let expired=false,replaced=false,stopped=shared?saved?.stopped===true:isSolved();
+  let remaining=stopped?(saved?.remaining??duration):Math.max(0,deadline-Date.now());
   const badge=document.createElement('span');badge.className='room-timer';badge.setAttribute('aria-label','남은 시간');
   badge.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 6V12L16 14"/></svg><span id="roomTime"></span>';
   document.querySelector('.room-head > nav').append(badge);
   const text=badge.querySelector('#roomTime');
-  function save(){
-    const book=readSchoolBook(key);book.visits[number]={...book.visits[number],escapeTimer:{deadline,remaining,expired,stopped}};
-    writeSchoolBook(key,book);
+  function save(complete){
+    const book=readSchoolBook(key),state={deadline,remaining,expired,stopped};
+    if(shared){
+      const latest=schoolEscapeTimer(book);
+      if(!latest||latest.startedAt!==attempt||latest.stopped)return false;
+      book.escapeTimer={...state,startedAt:attempt};
+    }else{
+      book.visits[number]={...book.visits[number],escapeTimer:state};
+    }
+    complete?.(book);
+    return writeSchoolBook(key,book);
   }
   function render(){
     const seconds=Math.max(0,Math.ceil(remaining/1000));text.textContent=Math.floor(seconds/60)+':'+String(seconds%60).padStart(2,'0');
     badge.dataset.expired=String(expired);badge.classList.toggle('running-low',!stopped&&seconds>0&&seconds<=10);
   }
   function check(){
+    if(replaced)return true;
+    if(shared){
+      const latest=schoolEscapeTimer(readSchoolBook(key));
+      if(!latest||latest.startedAt!==attempt){
+        replaced=true;
+        location.reload();
+        return true;
+      }
+      deadline=latest.deadline;
+      stopped=latest.stopped===true;
+      if(stopped){remaining=latest.remaining;render();return false}
+    }
     if(stopped)return false;
     remaining=Math.max(0,deadline-Date.now());
     if(remaining===0&&!expired){
       expired=true;
-      save();
+      if(!shared)save();
       render();
       document.querySelector('.hint-confirm[open]')?.close('cancel');
       onExpire();
@@ -158,17 +214,29 @@ function setupSchoolTimer(number,{isSolved,onExpire,key='paperhotel.explore.v1'}
   let tick=setInterval(check,200);
   document.addEventListener('visibilitychange',check);window.addEventListener('pagehide',()=>clearInterval(tick));
   window.addEventListener('pageshow',()=>{clearInterval(tick);tick=setInterval(check,200);check()});
-  save();render();queueMicrotask(check);
+  if(!shared)save();
+  render();queueMicrotask(check);
   return {
-    get expired(){return expired||(!stopped&&Date.now()>=deadline)},check,
+    get expired(){return replaced||expired||(!stopped&&Date.now()>=deadline)},check,
     spendHint(){
-      if(stopped||check())return false;
+      if(check()||stopped)return false;
+      const originalDeadline=deadline;
       deadline-=10_000;
+      if(shared&&!save()){deadline=originalDeadline;return false}
       if(check())return false;
-      save();
+      if(!shared)save();
       return true;
     },
-    stop(){if(check())return false;stopped=true;save();render();return true},
-    reset(){deadline=Date.now()+duration;remaining=duration;expired=false;stopped=false;save();render()}
+    stop(complete){
+      if(check()||stopped)return false;
+      stopped=true;
+      if(!save(complete)){stopped=false;return false}
+      render();return true;
+    },
+    reset(){
+      if(shared)return;
+      deadline=Date.now()+duration;remaining=duration;expired=false;stopped=false;
+      save();render();
+    }
   };
 }

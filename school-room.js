@@ -19,7 +19,7 @@ function newRun(){
   if(puzzle.control==='balls')restoration.awaitingCount=false;
   return restoration;
 }
-let run=newRun(),world,countdown,opening=false,finished=false;
+let run=newRun(),world,countdown,attempt,opening=false,finished=false;
 if(saved&&!outdated){
   run.found=Array.isArray(saved.found)?saved.found.filter(id=>room.clues.some(clue=>clue.id===id)):[];
   if(Array.isArray(saved.entry)){
@@ -49,12 +49,17 @@ if(run.solved){
   if(puzzle.control==='balls')run.awaitingCount=false;
 }
 
-function save(){
-  const next=book(),visit=next.visits[room.n];
-  if(story&&visit?.restoration?.solved&&!run.solved)return;
+function recordRestoration(next){
   next.room=room.n;
-  next.visits[room.n]={...visit,restoration:run};
-  writeSchoolBook(bookKey,next);
+  next.visits[room.n]={...next.visits[room.n],restoration:run};
+}
+
+function save(){
+  const next=book();
+  if(story&&(schoolEscapeTimer(next)?.startedAt!==attempt||
+    next.visits[room.n]?.restoration?.solved&&!run.solved))return false;
+  recordRestoration(next);
+  return writeSchoolBook(bookKey,next);
 }
 
 function modal(title,html,panel='clue'){
@@ -79,7 +84,7 @@ function showFinish(){
   roomHead.hidden=true;byId('spots').hidden=true;movement.hidden=true;
   byId('roomView').setAttribute('aria-label','학교 현관');
   const progress=book(),plan=schoolRoute(progress);
-  const preceding=RECOVERY_ROOMS.filter(item=>['classroom',plan?.stop].includes(item.kind));
+  const preceding=RECOVERY_ROOMS.filter(item=>item.kind==='classroom'||plan?.stops.includes(item.kind));
   const restored=preceding.filter(item=>roomRestored(progress,item)).length;
   const panel=document.createElement('section');
   panel.className='finale-status';panel.setAttribute('aria-label','학교 출입 복구 결과');
@@ -88,34 +93,40 @@ function showFinish(){
   world.showFinale(buildSchoolFinale(),()=>{
     panel.innerHTML='<p role="status">교실 장치 '+restored+'/'+preceding.length+' 복구 · 현관 열림</p><h1 tabindex="-1">하교 완료</h1>';
     panel.classList.add('finale-complete');
-    action(panel,'처음부터',()=>{
-      writeSchoolBook(bookKey,{room:RECOVERY_ROOMS[0].n,visits:{}});
-      location.assign('./');
-    },true);
+    action(panel,'처음부터',retrySchool,true);
     panel.querySelector('h1').focus({preventScroll:true});
   });
 }
 
 function showExit(){
+  if(countdown.check())return;
   const next=RECOVERY_ROOMS[stage+1];
   if(story&&room.kind==='computer'){showFinish();return}
   movement.hidden=true;byId('escape').hidden=false;
   byId('replay').hidden=story;
   const link=byId('nextRoom');
   link.href=story?'hallway.html':next?recoveryRoomLink(next,false):'./';
-  link.textContent=story?'복도로 나가기':next?next.place+'로 이동':'우리 교실부터 시작';
+  link.textContent=story?'복도로 나가기':next?next.place+'로 이동':'우리 반 교실부터 시작';
+  link.onclick=event=>{if(countdown.check())event.preventDefault()};
   link.focus({preventScroll:true});
 }
 function solve(){
-  if(run.solved||opening||!countdown?.stop())return;
-  run.solved=true;save();close();opening=true;
+  if(run.solved||opening||!countdown||countdown.check())return;
+  if(story&&room.kind==='computer'&&!canEnterSchoolRoom(book(),'computer'))return;
+  run.solved=true;
+  const saved=story&&room.kind!=='computer'?save():countdown.stop(recordRestoration);
+  if(!saved){run.solved=false;return}
+  close();opening=true;
   byId('spots').inert=true;roomHead.inert=true;
   world.facingDoor(()=>{
-    opening=false;byId('spots').inert=false;roomHead.inert=false;
+    opening=false;
+    if(countdown.check())return;
+    byId('spots').inert=false;roomHead.inert=false;
     showExit();
   });
 }
 function changed(){
+  if(countdown.check())return;
   world.setDigits(run.entry);
   if(correct())solve();
   else save();
@@ -458,26 +469,33 @@ function directory(){
 function restart(){
   close();
   run=newRun();opening=false;save();byId('bag').hidden=true;byId('escape').hidden=true;
+  roomHead.inert=false;byId('spots').inert=false;
   movement.hidden=false;world.reset(false,run.entry);
   countdown?.reset();
 }
 function beginTimer(){
+  if(story)attempt=schoolEscapeTimer(book())?.startedAt;
   countdown=setupSchoolTimer(room.n,{key:bookKey,isSolved:()=>run.solved,onExpire:()=>{
-    world.clearKeys();modal('시간이 끝났어요.','','timeout');
-    action(actions(),'다시 도전',restart,true);
+    world.clearKeys();opening=false;roomHead.inert=true;
+    byId('escape').hidden=true;
+    showSchoolTimeout(dialog,story?retrySchool:restart);
   }});
+  return !countdown.check();
 }
 function intro(){
-  modal('컴퓨터실까지 길 찾기','<p>학교 출입 시스템이 멈췄어요. 컴퓨터실에서 고칠 수 있어요.</p>','intro');
-  renderSchoolMap(content,{onStart:plan=>{
-    const progress=book();progress.route=plan;writeSchoolBook(bookKey,progress);
-    close();beginTimer();if(run.solved)showExit();
+  modal('들를 교실 고르기','','intro');
+  renderSchoolRoutePicker(content,{heading:byId('panelTitle'),onStart:plan=>{
+    const progress=book();
+    if(schoolEscapeTimer(progress)&&schoolRoute(progress)){location.reload();return}
+    if(!beginSchoolAttempt(plan))return false;
+    run=newRun();world.reset(false,run.entry);byId('bag').hidden=true;
+    close();beginTimer();
   }});
 }
 function mandatoryDialog(){return ['intro','timeout'].includes(dialog.dataset.panel)}
 
 function start(){
-  const progress=book(),plan=schoolRoute(progress);
+  const progress=book(),plan=schoolEscapeTimer(progress)&&schoolRoute(progress);
   if(story&&room.kind!=='classroom'&&!canEnterSchoolRoom(progress,room.kind)){
     location.replace(plan&&roomRestored(progress,RECOVERY_ROOMS[0])?'hallway.html':'./');
     return;
@@ -486,7 +504,7 @@ function start(){
     location.replace('hallway.html');
     return;
   }
-  if(outdated&&!run.solved){
+  if(outdated&&!run.solved&&(!story||plan)){
     progress.visits[room.n]={restoration:run};
     writeSchoolBook(bookKey,progress);
   }
@@ -505,16 +523,20 @@ function start(){
     close();
   });
   setupReviewNavigation(room.n,{rooms:RECOVERY_ROOMS,showJump:!story,urlFor:item=>recoveryRoomLink(item,false)});
+  if(story)window.addEventListener('pageshow',event=>{if(event.persisted)location.reload()});
   createMusicWorld({
     room,buildRoom:buildSchoolRoom,
     onReadyToMove:()=>!!countdown&&!dialog.open&&!opening&&!finished&&!countdown.expired,
-    onInspect:id=>{if(id===(room.lock?.id??'lock'))inspectLock();else inspectClue(id)}
+    onInspect:id=>{
+      if(!countdown||countdown.check())return;
+      if(id===(room.lock?.id??'lock'))inspectLock();
+      else inspectClue(id);
+    }
   }).then(created=>{
     world=created;world.reset(run.solved,run.entry);byId('bag').hidden=!run.found.length;
     if(run.awaitingCount)world.setDigits(run.entry,{pending:true});
     if(story&&!plan){intro();return}
-    beginTimer();
-    if(run.solved)showExit();
+    if(beginTimer()&&run.solved)showExit();
   }).catch(error=>{
     console.error(error);
     modal('교실을 열지 못했어요.','','error');

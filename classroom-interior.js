@@ -119,11 +119,12 @@ const ClassroomInterior=(()=>{
     }
     box(scene,2.18,.72,.36,-3.59,.36,7.39,doorCabinet);
     for(const x of [-4.34,-3.78,-3.20,-2.72])box(scene,.225,.018,.03,x,.542,7.19,trim);
-    const plaque=InteriorArtwork.canvasMap(270,100,(g,w,h)=>{
+    const plaque=InteriorArtwork.canvasMap(420,112,(g,w,h)=>{
       g.fillStyle='#eef0e9';g.fillRect(0,0,w,h);
-      g.fillStyle='#395654';g.font='600 53px Arial';g.textAlign='center';g.fillText('5 - 2',w/2,69);
+      g.fillStyle='#395654';g.font='700 57px Malgun Gothic, sans-serif';
+      g.textAlign='center';g.textBaseline='middle';g.fillText(SCHOOL_POINTS.classroom.label,w/2,h/2);
     });
-    patchPlane(scene,.54,.20,3.34,2.60,.033,plaque);
+    patchPlane(scene,.84,.224,3.34,2.60,.033,plaque);
     box(scene,lock.width+.025,lock.height+.024,.077,lock.center[0],lock.center[1],.047,lead);
     const plate=patchPlane(scene,lock.width,lock.height,...lock.center,imageMap(schoolLockArt(room,[])));
     document.getElementById('roomView').dataset.interior='classroom';

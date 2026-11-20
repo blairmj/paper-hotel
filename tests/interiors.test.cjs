@@ -95,7 +95,12 @@ function timerHarness(){
   window:{addEventListener:(k,fn)=>events[k]=fn},setInterval:()=>1,clearInterval(){},queueMicrotask:fn=>jobs.push(fn)
  });
  vm.runInContext(fs.readFileSync(path.join(root,'review-rooms.js'),'utf8')+'\nglobalThis.timerFactory=setupSchoolTimer;',context);
- return {advance:ms=>now+=ms,load:(solved=false,key)=>{const timer=context.timerFactory(203,{key,isSolved:()=>solved,onExpire:()=>expires++});while(jobs.length)jobs.shift()();return timer},get label(){return labels.at(-1).textContent},get warning(){return badges.at(-1).classList.contains('running-low')},get expires(){return expires},events};
+ const storyKey=vm.runInContext('SCHOOL_STORY_KEY',context);
+ return {advance:ms=>now+=ms,storyKey,
+  startSchool:()=>context.beginSchoolAttempt({path:['classroom'],stops:[],step:0}),
+  storyBook:()=>context.readSchoolBook(storyKey),
+  load:(solved=false,key,number=203)=>{const timer=context.timerFactory(number,{key,isSolved:()=>solved,onExpire:()=>expires++});while(jobs.length)jobs.shift()();return timer},
+  get label(){return labels.at(-1).textContent},get warning(){return badges.at(-1).classList.contains('running-low')},get expires(){return expires},events};
 }
 test('deadline survives reload and expiration fires exactly once',()=>{
  const h=timerHarness();h.load();assert.equal(h.label,'2:00');h.advance(60_000);
@@ -134,41 +139,75 @@ test('when a hint uses all the remaining time, expiration happens instead of rev
 });
 
 test('a review room visit does not spend the story timer',()=>{
- const h=timerHarness();h.load(false,'story');h.advance(35_000);
+ const h=timerHarness();h.startSchool();h.load(false,h.storyKey);h.advance(35_000);
  h.load(false,'review');assert.equal(h.label,'2:00');
- h.load(false,'story');assert.equal(h.label,'1:25');
+ h.load(false,h.storyKey);assert.equal(h.label,'9:25');
 });
 
-test('shortest routes can pass through any chosen room and exclude the blocked passage',()=>{
+test('the same ten-minute countdown runs in solved rooms, the hallway and the next room',()=>{
+ const h=timerHarness();h.startSchool();h.load(false,h.storyKey,502);assert.equal(h.label,'10:00');
+ h.advance(125_000);h.load(true,h.storyKey,502);assert.equal(h.label,'7:55');
+ h.advance(5_000);h.load(false,h.storyKey,0);assert.equal(h.label,'7:50');
+ const room=h.load(false,h.storyKey,205);assert.equal(room.spendHint(),true);assert.equal(h.label,'7:40');
+ h.advance(450_000);
+ const last=h.load(false,h.storyKey,209);assert.equal(h.label,'0:10');assert.equal(h.warning,true);
+ h.advance(10_000);assert.equal(last.stop(),false);assert.equal(last.check(),true);
+ assert.equal(h.label,'0:00');assert.equal(h.expires,1);
+});
+
+test('finishing writes the last puzzle and freezes the shared time together',()=>{
+ const h=timerHarness();h.startSchool();
+ const timer=h.load(false,h.storyKey,209);h.advance(68_000);
+ assert.equal(timer.stop(book=>{book.visits[209]={restoration:{solved:true}}}),true);
+ const saved=h.storyBook();
+ assert.equal(saved.visits[209].restoration.solved,true);assert.equal(saved.escapeTimer.stopped,true);
+ h.advance(600_000);h.load(true,h.storyKey,209);
+ assert.equal(h.label,'8:52');assert.equal(h.expires,0);
+});
+
+test('every supported selection creates a route through at least three distinct rooms',()=>{
  const ctx=vm.createContext({});
  vm.runInContext(fs.readFileSync(path.join(root,'school-routes.js'),'utf8'),ctx);
- assert.equal(ctx.schoolRouteMinimum(null),4);
- const north=['classroom','west','library','music','art','east','computer'];
- const south=['classroom','west','broadcast','science','sports','east','computer'];
- for(const room of ['library','music','art'])assert.equal(ctx.validSchoolPath(north,room),true);
- for(const room of ['broadcast','science','sports'])assert.equal(ctx.validSchoolPath(south,room),true);
- assert.equal(ctx.validSchoolPath(north,null),false,'a longer route should prompt a retry');
- assert.equal(ctx.validSchoolPath(north,'science'),false,'the route must visit the selected room');
- assert.equal(ctx.validSchoolPath(['classroom','west','center','music','art','east','computer'],'music'),false);
- assert.equal(ctx.validSchoolPath(['classroom','west','center','science','sports','east','computer'],'science'),true,
-  'different paths of the same minimum length may be used');
+ const rooms=['library','music','art','broadcast','science','sports'];
+ for(let mask=0;mask<(1<<rooms.length);mask++){
+  const selected=rooms.filter((_,i)=>mask&(1<<i));
+  const plan=ctx.planSchoolRoute(selected);
+  if(selected.length<3){assert.equal(plan,null);continue}
+  assert.equal(ctx.schoolRoute({route:plan}),plan,selected.join(', '));
+  assert.deepEqual([...plan.stops].sort(),selected.slice().sort());
+  assert.deepEqual([...plan.stops],[...new Set(plan.path.filter(id=>selected.includes(id)))]);
+  assert.equal(plan.path[0],'classroom');assert.equal(plan.path.at(-1),'computer');
+  assert.equal(plan.path.some((id,i)=>[id,plan.path[i+1]].sort().join(',')==='center,music'),false);
+ }
+ assert.equal(ctx.planSchoolRoute(['library','library','art']),null);
+ assert.equal(ctx.planSchoolRoute(['library','music','computer']),null);
+ assert.deepEqual([...ctx.planSchoolRoute(['art','music','library']).path],['classroom','west','library','music','art','east','computer']);
+ assert.equal(ctx.planSchoolRoute(rooms).path.length-1,12);
+ const blocked={path:['classroom','west','library','west','center','music','art','east','computer'],stops:['library','music','art'],step:0};
+ assert.equal(ctx.schoolRoute({route:blocked}),null);
 });
 
-test('the chosen room opens only at its corridor stop and computer access requires its puzzle',()=>{
+test('each selected room requires a stop and computer access requires all selected puzzles',()=>{
  const ctx=vm.createContext({});
  for(const file of ['review-rooms.js','school-routes.js']){
   vm.runInContext(fs.readFileSync(path.join(root,file),'utf8'),ctx);
  }
  const progress={visits:{}};
  assert.equal(ctx.canEnterSchoolRoom(progress,'computer'),false);
- progress.route={stop:'library',path:['classroom','west','library','music','art','east','computer'],step:2};
+ progress.route=ctx.planSchoolRoute(['library','music','art']);progress.route.step=2;
  assert.equal(ctx.canEnterSchoolRoom(progress,'library'),false);
  progress.visits[502]={restoration:{solved:true}};
  assert.equal(ctx.canEnterSchoolRoom(progress,'library'),true);
  assert.equal(ctx.canEnterSchoolRoom(progress,'science'),false);
+ assert.equal(ctx.schoolStopPending(progress,progress.route,'library'),true);
+ progress.visits[205]={restoration:{solved:true}};
+ assert.equal(ctx.schoolStopPending(progress,progress.route,'library'),false);
+ assert.equal(ctx.schoolStopPending(progress,progress.route,'music'),true);
  progress.route.step=6;
  assert.equal(ctx.canEnterSchoolRoom(progress,'computer'),false);
- progress.visits[205]={restoration:{solved:true}};
+ progress.visits[203]={restoration:{solved:true}};
+ assert.equal(ctx.canEnterSchoolRoom(progress,'computer'),false);
+ progress.visits[207]={restoration:{solved:true}};
  assert.equal(ctx.canEnterSchoolRoom(progress,'computer'),true);
 });
 
