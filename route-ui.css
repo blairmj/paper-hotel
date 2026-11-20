@@ -9,6 +9,14 @@ dialog[data-panel=intro],dialog[data-panel=map]:has(.school-floorplan){
   background:#eaf4f9;color:#19364d;border-color:#9ab5ca;
 }
 dialog[data-panel=intro] #panelTitle:focus{outline:none}
+dialog:is([data-panel=intro],[data-panel=timeout]) .panel-top{flex-wrap:wrap;justify-content:flex-start;gap:8px}
+dialog:is([data-panel=intro],[data-panel=timeout]) .panel-top h1{flex-basis:100%;order:1}
+dialog:is([data-panel=intro],[data-panel=timeout]) .review-jump{z-index:4}
+dialog:is([data-panel=intro],[data-panel=timeout]) .review-jump nav{
+  grid-template-columns:repeat(2,minmax(0,1fr));width:min(260px,calc(100vw - 68px));
+}
+dialog[data-panel=timeout] .review-jump nav{position:static;margin-top:6px}
+dialog:is([data-panel=intro],[data-panel=timeout]) .review-jump a{padding-inline:8px}
 .floorplan-overview{
   display:flex;flex-wrap:wrap;justify-content:space-between;align-items:baseline;
   gap:4px 12px;margin:0 0 12px;color:#38576d;font-size:14px;

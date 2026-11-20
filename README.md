@@ -21,7 +21,7 @@
 
 ## 교실 검토
 
-[우리 반 교실 검토](https://blairmj.github.io/paper-hotel/index.html?review=1)에서 **바로가기**를 열어 어느 교실이든 연습할 수 있습니다. 개별 교실 주소도 검토 화면으로 열립니다. 교실별 검토 제한 시간은 2분이며 검토 진행과 학생용 진행은 서로 다른 기록에 저장됩니다.
+첫 화면과 교실 왼쪽 위의 **바로가기**에서 검토할 교실을 열 수 있습니다. [우리 반 교실 검토](https://blairmj.github.io/paper-hotel/index.html?review=1)와 개별 교실 주소도 검토 모드로 열립니다. 교실별 검토 제한 시간은 2분이며 검토 진행과 학생용 진행은 서로 다른 기록에 저장됩니다.
 
 - [음악실](https://blairmj.github.io/paper-hotel/music.html)
 - [미술실](https://blairmj.github.io/paper-hotel/art.html)

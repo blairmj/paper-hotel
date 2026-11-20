@@ -9,6 +9,7 @@ const bookKey=story?SCHOOL_STORY_KEY:SCHOOL_REVIEW_KEY;
 const book=()=>readSchoolBook(bookKey);
 const byId=id=>document.getElementById(id),dialog=byId('inspect'),content=byId('panelBody');
 const roomHead=document.querySelector('.room-head'),movement=document.querySelector('.movement');
+const panelTop=dialog.querySelector('.panel-top');
 const saved=book().visits[room.n]?.restoration;
 const outdated=saved?.revision!==puzzle.revision;
 
@@ -19,7 +20,7 @@ function newRun(){
   if(puzzle.control==='balls')restoration.awaitingCount=false;
   return restoration;
 }
-let run=newRun(),world,countdown,attempt,opening=false,finished=false;
+let run=newRun(),world,countdown,attempt,reviewJump,opening=false,finished=false;
 if(saved&&!outdated){
   run.found=Array.isArray(saved.found)?saved.found.filter(id=>room.clues.some(clue=>clue.id===id)):[];
   if(Array.isArray(saved.entry)){
@@ -69,7 +70,18 @@ function modal(title,html,panel='clue'){
   if(!dialog.open)dialog.showModal();
   content.scrollTop=0;
 }
-function close(){dialog.close();byId('roomView').focus({preventScroll:true})}
+function close(){
+  dialog.close();
+  if(reviewJump&&dialog.contains(reviewJump)){
+    reviewJump.open=false;
+    roomHead.querySelector('.room-location').append(reviewJump);
+  }
+  byId('roomView').focus({preventScroll:true});
+}
+function placeJumpInDialog(){
+  reviewJump.open=false;
+  panelTop.prepend(reviewJump);
+}
 function action(host,label,fn,primary=false){
   const button=document.createElement('button');
   button.type='button';button.textContent=label;button.onclick=fn;
@@ -502,11 +514,13 @@ function beginTimer(){
   countdown=setupSchoolTimer(room.n,{key:bookKey,isSolved:()=>run.solved,onExpire:()=>{
     world.clearKeys();opening=false;roomHead.inert=true;
     byId('escape').hidden=true;
+    placeJumpInDialog();
     showSchoolTimeout(dialog,story?retrySchool:restart);
   }});
   return !countdown.check();
 }
 function intro(){
+  placeJumpInDialog();
   modal('들를 교실 고르기','','intro');
   renderSchoolRoutePicker(content,{heading:byId('panelTitle'),onStart:plan=>{
     const progress=book();
@@ -552,7 +566,7 @@ function start(){
     }
     close();
   });
-  setupReviewNavigation(room.n,{rooms:RECOVERY_ROOMS,showJump:!story,urlFor:item=>recoveryRoomLink(item,false)});
+  reviewJump=setupReviewNavigation(story?null:room.n,{rooms:RECOVERY_ROOMS,urlFor:item=>recoveryRoomLink(item,false)});
   if(story)window.addEventListener('pageshow',event=>{if(event.persisted)location.reload()});
   createMusicWorld({
     room,buildRoom:buildSchoolRoom,

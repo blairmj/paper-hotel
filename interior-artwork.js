@@ -5,6 +5,14 @@
 // camera are independent from the artwork and keep their own depth in the room.
 const InteriorArtwork = (() => {
   const SOURCES = {
+    classroom: {
+      image: 'rooms/interiors/classroom-approved.webp',
+      samples: {
+        wall:[778,136,345,34], lavender:[34,107,148,258], panel:[1236,468,29,34],
+        ceiling:[787,20,109,46], floor:[1155,773,201,85],
+        wood:[230,651,230,36], millwork:[252,128,42,178], door:[1420,331,108,211]
+      }
+    },
     music: {
       image: 'rooms/interiors/music-approved.webp',
       samples: {

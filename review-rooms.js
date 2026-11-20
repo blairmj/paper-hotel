@@ -90,8 +90,9 @@ function setupReviewNavigation(number,{showJump=true,rooms=REVIEW_ROOMS,urlFor=r
   const school=document.querySelector('.school'),location=document.createElement('div');
   location.className='room-location';
   school.before(location);location.append(school);
+  let jump;
   if(showJump){
-    const jump=document.createElement('details');
+    jump=document.createElement('details');
     jump.className='review-jump';jump.id='reviewJump';
     const summary=document.createElement('summary');summary.textContent='바로가기';
     const links=document.createElement('nav');links.setAttribute('aria-label','검토용 교실 바로가기');
@@ -112,6 +113,7 @@ function setupReviewNavigation(number,{showJump=true,rooms=REVIEW_ROOMS,urlFor=r
     button.setAttribute('aria-label',label);button.title=label;button.classList.add('menu-icon');
     button.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="'+path+'"/></svg>';
   }
+  return jump;
 }
 
 function confirmRoomHint(timer, reveal){
