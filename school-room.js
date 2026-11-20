@@ -468,7 +468,7 @@ function beginTimer(){
   }});
 }
 function intro(){
-  modal('하교 경로 고르기','<p>학교 출입 시스템이 멈췄어요. 컴퓨터실에서 복구할 수 있어요.</p>','intro');
+  modal('컴퓨터실까지 길 찾기','<p>학교 출입 시스템이 멈췄어요. 컴퓨터실에서 고칠 수 있어요.</p>','intro');
   renderSchoolMap(content,{onStart:plan=>{
     const progress=book();progress.route=plan;writeSchoolBook(bookKey,progress);
     close();beginTimer();if(run.solved)showExit();
