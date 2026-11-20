@@ -1,6 +1,6 @@
 'use strict';
 
-async function createMusicWorld({onInspect,onReadyToMove,room=paintedRoom,buildRoom=buildPaintedRoom}){
+async function createMusicWorld({onInspect,onReadyToMove,deviceInstructions,room=paintedRoom,buildRoom=buildPaintedRoom}){
   // Each interior supplies the same metre-based limits as its geometry.
   const roomLimits = room.bounds ?? {left:-9.06, right:9.06, front:-7.54, back:4.94};
   const obstacles = room.obstacles ?? [[-3.96,-1.10,-4.96,-1.96],[1.10,3.96,-4.96,-1.96]];
@@ -81,6 +81,16 @@ async function createMusicWorld({onInspect,onReadyToMove,room=paintedRoom,buildR
   });
   const stopPoints=room.stops;
   const puzzleTarget=room.lock?.id??'lock';
+  const devices=targets.filter(target=>target.id===puzzleTarget||target.id==='doorGuide');
+  let deviceGuide;
+  if(deviceInstructions){
+    deviceGuide=document.createElement('p');
+    deviceGuide.className='device-guide';
+    deviceGuide.hidden=true;
+    deviceGuide.setAttribute('role','status');
+    deviceGuide.textContent=deviceInstructions;
+    document.getElementById('spots').append(deviceGuide);
+  }
   let width=1,height=1,yaw=0,pitch=0,openness=0,journey,trail,drag,finale,raf=0,previousTime=0;
   const clamp=THREE.MathUtils.clamp, wrap=angle=>Math.atan2(Math.sin(angle),Math.cos(angle));
   function heading(position){return Math.atan2(position[0]-eye.x,eye.z-position[2])}
@@ -95,6 +105,12 @@ async function createMusicWorld({onInspect,onReadyToMove,room=paintedRoom,buildR
       2*Math.atan(Math.tan(viewAngle*Math.PI/360)/Math.min(camera.aspect,1))
     ),viewAngle,74);
     camera.updateProjectionMatrix();queue();
+  }
+  function nearDevice(target){
+    const dx=target.point.x-eye.x,dz=target.point.z-eye.z;
+    const distance=Math.hypot(dx,dz);
+    return distance<2.35&&(distance<1||dx*Math.sin(yaw)-dz*Math.cos(yaw)>0)&&
+      model.canInspect?.(target.id)!==false&&!targetOccluded(target);
   }
   function draw(){
     if(finale){
@@ -112,6 +128,7 @@ async function createMusicWorld({onInspect,onReadyToMove,room=paintedRoom,buildR
     canvas.dataset.position=[eye.x,eye.y,eye.z].map(n=>n.toFixed(3)).join(',');
     canvas.dataset.heading=yaw.toFixed(3);
     canvas.dataset.door=openness.toFixed(3);
+    if(deviceGuide)deviceGuide.hidden=openness>0||!!journey?.door||!!trail?.automatic||!devices.some(nearDevice);
     for(const target of targets){
       point.copy(target.point);
       const v=point.project(camera),px=width*(1+v.x)/2,py=height*(1-v.y)/2;
@@ -120,7 +137,7 @@ async function createMusicWorld({onInspect,onReadyToMove,room=paintedRoom,buildR
       const viewNormal=new THREE.Vector3(sin,0,cos);
       const behindSurface=!target.inspectFromAnySide&&viewNormal.dot(new THREE.Vector3().subVectors(eye,target.point))<.025;
       b.hidden=behindSurface||v.z<0||v.z>=1||px<20||px>width-20||py<55||py>height-56||!!journey||
-        (openness===1&&target.id===puzzleTarget)||model.canInspect?.(target.id)===false||targetOccluded(target);
+        (openness===1&&devices.includes(target))||model.canInspect?.(target.id)===false||targetOccluded(target);
       target.px=px;target.py=py;
       if(b.hidden)continue;
       let halfWidth=0,halfHeight=0;
@@ -341,6 +358,7 @@ async function createMusicWorld({onInspect,onReadyToMove,room=paintedRoom,buildR
     reset(open=false,digits=[0,0]){
       clearKeys();journey=null;trail=null;finale=null;
       eye.fromArray(room.start);openness=open?1:0;
+      if(open&&room.doorReveal){eye.x=room.doorReveal.x;eye.z=room.doorReveal.z}
       const initial=open?room.door:(width/height<.85?room.portraitView:room.firstView);
       yaw=heading(initial);pitch=tilt(initial);
       model?.setDoor(openness);model.setDigits(digits);

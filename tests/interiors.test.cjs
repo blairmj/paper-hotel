@@ -43,6 +43,13 @@ for(const kind of ['classroom','music','art','sports','computer','library','scie
   const [x,z]=index(target.approach.x,target.approach.z);
   assert.ok(seen.has(x+','+z),target.id+' is reachable from the entrance');
  }
+ const puzzleId=room.lock.id??'lock';
+ const device=room.targets.find(target=>target.id===puzzleId);
+ const doorControl=puzzleId==='lock'?device:room.targets.find(target=>target.id==='doorGuide');
+ assert.ok(doorControl&&Math.hypot(doorControl.xyz[0]-room.door[0],doorControl.xyz[2]-room.door[2])<1.7,
+   'the door has a guide even when the puzzle is solved at another station');
+ assert.ok(open(room.doorReveal.x,room.doorReveal.z)&&seen.has(index(room.doorReveal.x,room.doorReveal.z).join(',')),
+   'the open doorway can be viewed from a reachable position');
  if(kind==='music')assert.deepEqual(Object.values(room.finishes),Array(4).fill('black-acoustic'));
  if(kind==='art'){
   const [samples,record]=room.clues;

@@ -40,7 +40,7 @@ const SchoolInterior = (() => {
       ...entry, interior: true, kind, wall, bounds, depth: DEPTH, ceilingMinimum: music ? 3.4 : 3.2,
       start: [0, 1.55, 9.24], firstView: [0, 1.10, 0],
       portraitView: music ? [1.5, 1.45, 0] : [0, 1.4, 0],
-      door: [DOOR.x, DOOR.height / 2, .05], lock, clues,
+      door: [DOOR.x, DOOR.height / 2, .05], doorReveal:{x:DOOR.x-.18,z:2.62}, lock, clues,
       targets: [target('lock', music ? '문 다이얼' : '문 인쇄판', lock.center, lock.width, lock.height, lock.center[0], 1.85), ...clues],
       obstacles: music ? [
         [-1.82, 1.82, 4.06, 6.48], [-5.19, -2.55, .05, 1.42],
@@ -279,6 +279,11 @@ const SchoolInterior = (() => {
     }
   }
 
+  function doorGuide(xyz, rotationY=0) {
+    return {id:'doorGuide',name:'문 옆 표시등',xyz,rotationY,surface:{width:.16,height:.19},
+      approach:{x:xyz[0]+1.18*Math.sin(rotationY),z:xyz[2]+1.18*Math.cos(rotationY)}};
+  }
+
   function entrance(scene, room, artwork, doorFinish) {
     const {x, width, height, moldingColor, recessColor, casingColor, opensOut = false} = room.entrance ?? DOOR;
     const trim = .083;
@@ -305,18 +310,11 @@ const SchoolInterior = (() => {
     rounded(hinge,.26,.044,.065,-leafW+.335,1.04,.085,metal,.012);
     for (const y of [.44,1.24,2.02]) box(hinge,.036,.105,.044,-.018,y,.065,metal);
 
-    // The hinged door opens at the entrance to a small hall.
-    const hall = standard('#c5c9c4');
-    box(scene, width+.03, .06, 3.07, x, -.029, -1.51, standard('#aeb2ac'));
-    for (const side of [-1, 1]) {
-      const edge = x + side*(width/2+.028);
-      box(scene,.067,height,2.96,edge,height/2,-1.60,hall);
-      box(scene,.024,.14,2.93,edge-side*.04,1.02,-1.55,standard('#708d83'));
-    }
-    box(scene,width+.12,.06,2.96,x,height+.019,-1.60,standard('#d9ddda'));
-    box(scene,width+.11,height+.12,.10,x,height/2,-3.06,standard('#99aaa1'));
-    box(scene,.42,.022,.88,x,height-.036,-1.39,new THREE.MeshBasicMaterial({color:'#fbfcf7'}));
-    return amount => { hinge.rotation.y = (opensOut ? -1.48 : 1.48) * amount; };
+    const showCorridor=buildSchoolCorridor(scene,x,hinge,leafW);
+    return amount => {
+      hinge.rotation.y=(opensOut ? -1.48 : 1.48)*amount;
+      showCorridor(amount);
+    };
   }
 
   function musicScoreMap() {
@@ -827,5 +825,5 @@ const SchoolInterior = (() => {
   }
 
   const size = Object.freeze({width: WIDTH, depth: DEPTH});
-  return Object.freeze({definition,build,size,enclosure,entrance,box,rounded,patchPlane,flat,standard,faces,rod,cylinder,tube,groundShadow});
+  return Object.freeze({definition,build,size,enclosure,entrance,doorGuide,box,rounded,patchPlane,flat,standard,faces,rod,cylinder,tube,groundShadow});
 })();

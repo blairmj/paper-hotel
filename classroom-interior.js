@@ -16,8 +16,8 @@ const ClassroomInterior=(()=>{
     obstacles.push([-width/2,-width/2+.82,.57,6.88]);
     return {
       ...RECOVERY_ROOMS[0],interior:true,wall:{width,height,z:0,back:depth},
-      depth,ceilingMinimum:height,entrance:doorway,door:[doorway.x,1.44,.05],
-      doorReveal:{x:doorway.x-.12,z:2.69},
+      depth,ceilingMinimum:height,entrance:doorway,door:[doorway.x,1.21,.05],
+      doorReveal:{x:doorway.x-.68,z:2.94},
       bounds:{left:-width/2+.27,right:width/2-.27,front:.29,back:depth-.27},
       lock,clues:[boardNote],targets:[
         {id:'lock',name:'교실 복구 단말기',xyz:lock.center,surface:lock,approach:{x:1.94,z:1.39}},boardNote

@@ -42,7 +42,7 @@ const SpecialtyInteriors = (() => {
       lock:{id:'bookShelf',center:[-.68,.54,2.90],width:1.80,height:.92,depth:1.94,inspectFromAnySide:true,
         approach:{x:numberedFront.x,z:5.13},
         inspectionView:{wide:[numberedFront.x+.39,.76,numberedFront.z],compact:[numberedFront.x,.53,numberedFront.z]}},
-      statusLamp:{xyz:[2.43,1.27,.10]},
+      statusLamp:{xyz:[2.43,1.27,.10]},doorReveal:{x:3.09,z:1.98},
       start:[.08,1.55,6.80],view:[.12,1.30,.15],viewAngle:58,
       obstacles:[
         ...arcObstacles,boundsOf(counter),
@@ -61,7 +61,7 @@ const SpecialtyInteriors = (() => {
       entrance:{side:'right',x:-1.82,width:1.34,height:2.30,moldingColor:'#2a5187',opensOut:true},
       lock:{id:'waterTank',center:[tank.x,tank.bottom+tank.h/2,tank.z],width:tank.w,height:tank.h,depth:tank.d,
         approach:{x:-1.20,z:5.17},inspectionView:{wide:[tank.x+.35,1.14,tank.z+.05],compact:[tank.x-.15,1.03,tank.z+.22]}},
-      statusLamp:{xyz:[4.45,1.29,3.21],angle:-quarterTurn},
+      statusLamp:{xyz:[4.45,1.29,3.21],angle:-quarterTurn},doorReveal:{x:2.12,z:1.17},
       start:[-.15,1.55,7.59],view:[-.075,1.26,1.38],viewAngle:58,
       obstacles:[
         ...lab.map(table=>boundsOf(table)),
@@ -82,7 +82,7 @@ const SpecialtyInteriors = (() => {
       lock:{id:'mixer',center:[studioMixer.x,1.067,studioMixer.z],width:studioMixer.width,height:.245,
         depth:studioMixer.depth,rotationY:studioMixer.angle,approach:{x:1.63,z:2.85},
         inspectionView:{wide:[studioMixer.x,.96,studioMixer.z+.46],compact:[studioMixer.x,.81,studioMixer.z+.22]}},
-      statusLamp:{xyz:[.927,1.274,.093]},
+      statusLamp:{xyz:[.927,1.274,.093]},doorReveal:{x:-.58,z:2.64},
       start:[.17,1.55,6.21],view:[.54,1.31,.16],viewAngle:60,
       obstacles:[
         boundsOf(anchor),boundsOf({x:-2.04,z:.80,w:.56,d:.47},.09),
@@ -106,11 +106,12 @@ const SpecialtyInteriors = (() => {
       {id:lock.id??'lock',name:SCHOOL_PUZZLES[kind].title,xyz:lock.center,surface:lock,
         rotationY:lock.rotationY,approach:lock.approach,inspectionView:lock.inspectionView,
         inspectFromAnySide:lock.inspectFromAnySide},
-      ...clues.filter(clue=>clue.placement!=='instrument')
+      ...clues.filter(clue=>clue.placement!=='instrument'),
+      SchoolInterior.doorGuide(design.statusLamp.xyz,design.statusLamp.angle)
     ];
     return {
       ...RECOVERY_ROOMS.find(room=>room.kind===kind),depth,interior:true,
-      wall:{width,height,z:0,back:depth},ceilingMinimum:height,entrance,door,lock,clues,targets,obstacles,
+      wall:{width,height,z:0,back:depth},ceilingMinimum:height,entrance,door,doorReveal:design.doorReveal,lock,clues,targets,obstacles,
       bounds:{left:-width/2+.27,right:width/2-.27,front:.27,back:depth-.27},
       start,viewAngle,firstView:view,portraitView:[view[0]*.5,1.30,view[2]],
       stops:[...targets.map(target=>target.xyz),[width/2,1.38,depth/2],[0,1.38,depth],[-width/2,1.38,depth/2]]

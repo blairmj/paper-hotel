@@ -67,6 +67,8 @@ function modal(title,html,panel='clue'){
   if(opening||finished)return;
   world?.clearKeys();dialog.dataset.panel=panel;
   byId('panelTitle').textContent=title;content.innerHTML=html;
+  if(byId('deviceInstructions'))dialog.setAttribute('aria-describedby','deviceInstructions');
+  else dialog.removeAttribute('aria-describedby');
   if(!dialog.open)dialog.showModal();
   content.scrollTop=0;
 }
@@ -203,10 +205,13 @@ function inventory(){
   }
 }
 
+function deviceInstructions(style='object-note'){
+  return '<p class="'+style+'" id="deviceInstructions">'+puzzle.instructions+'</p>';
+}
+
 function sequencePanel(){
   const books=room.kind==='library';
-  const instruction=puzzle.instructions?'<p class="object-note">'+puzzle.instructions+'</p>':'';
-  modal(puzzle.title,instruction+'<div class="sequence-output" id="sequenceOutput" aria-label="입력한 순서"></div>'+
+  modal(puzzle.title,deviceInstructions()+'<div class="sequence-output" id="sequenceOutput" aria-label="입력한 순서"></div>'+
     '<div class="sequence-keys'+(books?' book-keys':'')+'" id="sequenceKeys"></div><p class="readout" id="entryFeedback" role="status"></p>',
     books?'shelf':'lock');
   function draw(){
@@ -245,7 +250,7 @@ function sequencePanel(){
 }
 
 function selectionPanel(){
-  modal(puzzle.title,'<p class="object-note">게시판의 기록과 같은 기준으로 인쇄할 도안을 켜세요.</p>'+
+  modal(puzzle.title,deviceInstructions()+
     '<div class="print-keys" id="printKeys" aria-label="인쇄할 도안"></div>','lock');
   const keys=byId('printKeys');
   for(const [i,{label}] of PRINT_SAMPLES.entries()){
@@ -273,12 +278,12 @@ function dial(host,i) {
 }
 function dialPanel(){
   if(room.kind!=='music'){
-    modal(puzzle.title,'<p class="object-note">'+puzzle.instructions+'</p>'+
+    modal(puzzle.title,deviceInstructions()+
       '<div class="switches four-digits" id="wheels"></div>','lock');
     run.entry.forEach((_,i)=>dial(byId('wheels'),i));
     return;
   }
-  modal(puzzle.title,'<div class="dial-pairs" id="wheels" aria-label="변환 결과"></div>','lock');
+  modal(puzzle.title,deviceInstructions()+'<div class="dial-pairs" id="wheels" aria-label="변환 결과"></div>','lock');
   for(let i=0;i<MUSIC_CONVERTED.length;i+=2){
     const pair=document.createElement('div');pair.className='dial-pair';byId('wheels').append(pair);
     for(const position of [i,i+1]){
@@ -293,7 +298,7 @@ function dialPanel(){
 }
 
 function routingPanel(){
-  modal(puzzle.title,'<div class="signal-tests" id="signalTests"></div><p class="readout" id="entryFeedback" role="status"></p>','routing');
+  modal(puzzle.title,deviceInstructions()+'<div class="signal-tests" id="signalTests"></div><p class="readout" id="entryFeedback" role="status"></p>','routing');
   function feedback(){
     byId('entryFeedback').textContent=run.entry.every(Boolean)&&!correct()?'신호 경로를 다시 확인해 보세요.':'';
   }
@@ -316,7 +321,7 @@ function mixerPanel(){
   const result=()=>run.entry.every(Boolean)?broadcastTrace(run.entry):null;
   const initial=result();
   if(initial?.passed){solve();return}
-  modal(puzzle.title,'<p class="mixer-guide">명령 버튼을 눌러 순서를 맞추세요.</p>'+
+  modal(puzzle.title,deviceInstructions('mixer-guide')+
     '<div class="mixer-order" id="mixerOrder" role="group" aria-label="방송 순서"></div>'+
     '<div class="mixer-pads" id="mixerPads" role="group" aria-label="방송 명령"></div>'+
     '<p class="mixer-feedback" id="entryFeedback" role="status"></p>','mixer');
@@ -357,7 +362,7 @@ function mixerPanel(){
 function waterPanel(){
   collectClue('waterStart');
   if(correct()){solve();return}
-  modal(puzzle.title,'<p class="water-guide">'+puzzle.instructions+'</p>'+
+  modal(puzzle.title,deviceInstructions('water-guide')+
     '<div class="water-readings"><span>시작 눈금 <b>'+WATER_CYCLE.initial+'칸</b></span>'+
     '<span>현재 눈금 <b id="waterReading" aria-live="polite"></b></span></div>'+
     '<div class="water-order" id="waterOrder" role="group" aria-label="회차별 물 높이"></div>'+
@@ -411,7 +416,7 @@ function waterPanel(){
 function ballLockerPanel(){
   collectClue('ballLine');
   if(correct()){solve();return}
-  modal(puzzle.title,'<p class="ball-guide">'+puzzle.instructions+'</p>'+
+  modal(puzzle.title,deviceInstructions('ball-guide')+
     '<div class="ball-record" id="ballRecord" role="group" aria-label="회차별 기록"></div>'+
     '<p class="ball-task" id="ballTask"></p>'+
     '<div class="ball-row-label" id="ballBeforeBox" hidden>빼기 전<div class="ball-row" id="ballBefore"></div></div>'+
@@ -569,12 +574,12 @@ function start(){
   reviewJump=setupReviewNavigation(story?null:room.n,{rooms:RECOVERY_ROOMS,urlFor:item=>recoveryRoomLink(item,false)});
   if(story)window.addEventListener('pageshow',event=>{if(event.persisted)location.reload()});
   createMusicWorld({
-    room,buildRoom:buildSchoolRoom,
+    room,buildRoom:buildSchoolRoom,deviceInstructions:puzzle.instructions,
     onReadyToMove:()=>!!countdown&&!dialog.open&&!opening&&!finished&&!countdown.expired,
     onInspect:id=>{
       if(!countdown||countdown.check())return;
       if(id===(room.lock?.id??'lock'))inspectLock();
-      else inspectClue(id);
+      else if(id!=='doorGuide')inspectClue(id);
     }
   }).then(created=>{
     world=created;world.reset(run.solved,run.entry);byId('bag').hidden=!run.found.length;

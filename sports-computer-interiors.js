@@ -87,16 +87,18 @@ const SportsComputerInteriors = (() => {
       ? {x:4.20,width:1.27,height:2.24,moldingColor:'#747b7d',recessColor:'#363d41'}
       : {x:4.20,width:1.42,height:2.27,moldingColor:'#224875',recessColor:'#152c49'};
     const lock = sports ? layout.lock : {center:[doorway.x-doorway.width/2-.52,1.28,.073],width:.53,height:.53};
-    const targets=[{id:lock.id??'lock',name:sports?SCHOOL_PUZZLES.sports.title:'문 잠금장치',
+    const targets=[{id:lock.id??'lock',name:SCHOOL_PUZZLES[kind].title,
       xyz:lock.center,surface:lock,rotationY:lock.rotationY,inspectionView:lock.inspectionView,
       approach:lock.approach??{x:lock.center[0],z:.99}},...clues.filter(clue=>clue.id!=='ballLine')];
+    const statusLamp=sports?SchoolInterior.doorGuide([doorway.x-doorway.width/2-.53,1.28,.075]):null;
+    if(statusLamp)targets.push(statusLamp);
     const startX = sports ? -1.54 : 0;
     return {
       ...RECOVERY_ROOMS.find(item => item.kind === kind),
       interior:true, kind, wall:{width,height,z:0,back:depth}, depth, ceilingMinimum:height,
       bounds:{left:-width/2+.27,right:width/2-.27,front:.29,back:depth-.27},
       entrance:doorway, door:[doorway.x,doorway.height/2,.05], lock, layout,
-      doorReveal:sports?{x:4.32,z:2.79}:undefined,
+      doorReveal:sports?{x:4.32,z:2.79}:{x:4.93,z:2.76},statusLamp,
       obstacles, occluders, clues,
       targets,
       start:[startX,1.55,depth-.32], firstView:[sports?-1.03:0,1.27,0],
@@ -595,10 +597,10 @@ const SportsComputerInteriors = (() => {
     if (sports) {
       sportsEquipment(scene,shadow);
       const furniture=await lockers(scene,room,artwork,shadow);
-      const x=room.entrance.x-room.entrance.width/2-.53;
-      rounded(scene,.137,.168,.044,x,1.28,.048,standard('#434c55',.52),.009);
+      const [x,y,z]=room.statusLamp.xyz;
+      rounded(scene,.137,.168,.044,x,y,z-.027,standard('#434c55',.52),.009);
       const indicator=new THREE.MeshBasicMaterial({color:'#f38d72'});
-      cylinder(scene,.026,.026,.011,x,1.28,.075,indicator,24).rotation.x=Math.PI/2;
+      cylinder(scene,.026,.026,.011,x,y,z,indicator,24).rotation.x=Math.PI/2;
       canvas.dataset.artwork='balls-v37';
       return {
         ...furniture,
