@@ -249,10 +249,38 @@ test('the puzzle answers come from the displayed sequence, printing, queue and d
  assert.equal(ctx.puzzles.sports.answer.join(''),'2331');
  assert.equal(ctx.routeSignal({reply:false,power:true,code:true}),'link');
  assert.equal(ctx.puzzles.computer.answer.join(','),'link,code,send');
- assert.equal(ctx.puzzles.library.answer.join(','),'49,74,61');
  assert.equal(ctx.puzzles.science.answer.join(''),'4203');
  const broken=ctx.broadcastTrace(['mic','record','save','save']);
  assert.equal(broken.passed,false);
  assert.equal(broken.trace.length,2);
  assert.equal(ctx.broadcastTrace(ctx.puzzles.broadcast.answer).passed,true);
+});
+
+test('the covered shelf can hold the requested book in any slot and a midpoint search always fits the allowance',()=>{
+ const ctx=layoutContext;
+ const limit=vm.runInContext('SHELF_LIMIT',ctx);
+ for(let target=0;target<7;target++){
+  const shelf=ctx.makeLibraryShelf(()=>(target+.5)/7);
+  assert.equal(ctx.validLibraryShelf(shelf),true);
+  assert.equal(shelf.indexOf(61),target);
+  for(let first=0;first<7;first++){
+   assert.equal(ctx.canOpenLibraryBook(shelf,[],first),true);
+   for(let next=0;next<7;next++){
+    assert.equal(ctx.canOpenLibraryBook(shelf,[first],next),first!==target&&next!==first);
+   }
+  }
+  const opened=[];let left=0,right=shelf.length-1;
+  while(opened.length<limit){
+   const slot=Math.floor((left+right)/2);
+   assert.equal(ctx.canOpenLibraryBook(shelf,opened,slot),true);
+   opened.push(slot);
+   if(shelf[slot]===61)break;
+   if(shelf[slot]<61)left=slot+1;
+   else right=slot-1;
+  }
+  assert.equal(shelf[opened.at(-1)],61);
+  assert.equal(ctx.canOpenLibraryBook(shelf,[0,1,2],4),false);
+ }
+ assert.equal(ctx.validLibraryShelf([12,19,31,49,58,74,92]),false);
+ assert.equal(ctx.validLibraryShelf([24,12,37,49,61,74,86]),false);
 });

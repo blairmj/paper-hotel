@@ -282,39 +282,47 @@ const SpecialtyInteriors = (() => {
   }
 
   function numberedBooks(scene,cover){
-    const order=SCHOOL_PUZZLES.library.keys;
     const paper=standard('#e7ddc8',.91);
-    const bindings=['#3b6a95','#cc8f42','#9f584e','#36587d','#5e897e','#b2835a','#746889'];
+    const foil=standard('#c9ab75',.69);
     const depth=.181,margin=.078;
     const commandPads=[];
-    const volumes=order.map((number,i)=>{
-      const angle=numberedBay.left-margin-(numberedBay.left-numberedBay.right-2*margin)*i/(order.length-1);
+    const volumes=SHELF_BINDINGS.map((color,i)=>{
+      const angle=numberedBay.left-margin-(numberedBay.left-numberedBay.right-2*margin)*i/(SHELF_BINDINGS.length-1);
       const {x,z}=arcPoint(numberedBay.radius,angle);
       const unit=positionGroup(scene,x,.568,z,quarterTurn-angle);
       const width=.076+(i%3)*.004,height=.268+(i*5%7)*.005;
       const binding=cover.clone();
-      binding.color.set(bindings[i]);
+      binding.color.set(color);
       const spine=rounded(unit,width,height,.026,0,height/2,depth/2-.013,binding,.007);
       const pages=box(unit,width-.014,height-.017,depth-.025,0,height/2,-.007,paper);
       const covers=[-.5,.5].map(side=>box(unit,.006,height,depth,side*(width-.006),height/2,0,binding));
-      for(const mesh of [spine,pages,...covers]){
-        mesh.userData.command=number;
+      for(const y of [.20,.80])box(unit,width*.72,.004,.003,0,height*y,depth/2+.002,foil);
+      const ticket=patchPlane(unit,width*.91,.069,0,height*.72,depth/2+.006,null);
+      ticket.visible=false;
+      for(const mesh of [spine,pages,...covers,ticket]){
+        mesh.userData.command='book-'+i;
         commandPads.push(mesh);
       }
-      const label=InteriorArtwork.canvasMap(124,108,(g,w,h)=>{
-        g.fillStyle='#f4eddc';g.fillRect(0,0,w,h);
-        g.strokeStyle='#b8ac95';g.lineWidth=2;g.strokeRect(4,4,w-8,h-8);
-        g.fillStyle='#243b54';g.font='bold 76px sans-serif';
-        g.textAlign='center';g.textBaseline='middle';g.fillText(number,w/2,h/2+2);
-      });
-      patchPlane(unit,width*.91,.063,0,height*.52,depth/2+.002,label);
-      return {number,unit,x,z,angle};
+      return {ticket,unit,x,z,angle};
     });
     return {
       commandPads,
-      setDigits(values){
-        for(const {number,unit,x,z,angle} of volumes){
-          const pull=values.includes(number)?.047:0;
+      setDigits(readings){
+        for(const [slot,{ticket,unit,x,z,angle}] of volumes.entries()){
+          const number=readings[slot];
+          ticket.visible=Number.isInteger(number);
+          if(ticket.visible&&ticket.userData.number!==number){
+            ticket.material.map?.dispose();
+            ticket.material.map=InteriorArtwork.canvasMap(124,108,(g,w,h)=>{
+              g.fillStyle='#f8efd9';g.fillRect(0,0,w,h);
+              g.strokeStyle='#baa780';g.lineWidth=3;g.strokeRect(4,4,w-8,h-8);
+              g.fillStyle='#243b54';g.font='bold 76px sans-serif';
+              g.textAlign='center';g.textBaseline='middle';g.fillText(number,w/2,h/2+2);
+            });
+            ticket.material.needsUpdate=true;
+            ticket.userData.number=number;
+          }
+          const pull=ticket.visible?.10:0;
           unit.position.x=x+Math.cos(angle)*pull;
           unit.position.z=z+Math.sin(angle)*pull;
         }
@@ -1019,7 +1027,7 @@ const SpecialtyInteriors = (() => {
       if(mesh.isMesh && mesh.material.isMeshStandardMaterial)mesh.receiveShadow=true;
     });
     const canvas=document.getElementById('roomView');
-    const version={library:'shelf-v36',science:'water-v35',broadcast:'studio-v34'}[room.kind];
+    const version={library:'shelf-v45',science:'water-v35',broadcast:'studio-v34'}[room.kind];
     Object.assign(canvas.dataset,{interior:room.kind,artwork:version});
     const updateDoorStatus=statusLamp(scene,design.statusLamp);
     return {

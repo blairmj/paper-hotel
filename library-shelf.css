@@ -25,42 +25,42 @@
 #inspect[data-panel=shelf] .object-note{margin:0 0 12px;font-size:14px;color:#46566a}
 .spot[data-object=bookShelf]{touch-action:none}
 
-#inspect[data-panel=shelf] .sequence-output>span{
-  min-height:54px;
-  background:#f1eee6;
-  color:#294761;
-  border-color:#bdaf96;
-  font-size:28px;
-  font-weight:650;
+#inspect[data-panel=shelf] .shelf-ticket{
+  display:flex;justify-content:space-between;align-items:baseline;gap:8px;
+  margin:10px 0 12px;color:#344b5b;font-size:14px;font-weight:650;
 }
-#inspect[data-panel=shelf] .sequence-output>span[data-next=true]{
-  background:#eaf2fa;
-  border-color:#5c84ab;
-  box-shadow:inset 0 0 0 1px #5c84ab;
+.shelf-ticket #shelfCount{color:#55636c;font-size:13px;font-weight:500}
+.shelf-row{
+  display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:3px;
+  align-items:end;padding:6px 3px 0;border-bottom:6px solid #a3845e;
 }
-#inspect[data-panel=shelf] .sequence-output[data-invalid=true]>span{
-  background:#f8ebe7;
-  border-color:#c28374;
+.shelf-row:focus{outline:none}
+.shelf-row button{
+  --book-height:76px;
+  height:var(--book-height);min-width:0;padding:0 1px 2px;
+  border:1px solid #0003;border-radius:4px 4px 1px 1px;
+  background:linear-gradient(90deg,#0002,transparent 18%,#fff1 32%,transparent 87%,#0002),var(--binding);
+  color:#233749;box-shadow:inset 2px 0 #fff2;
+  display:flex;flex-direction:column;align-items:center;justify-content:space-between;
+  font:700 clamp(15px,4vw,24px)/1.1 ui-monospace,monospace;
 }
-#inspect[data-panel=shelf] .book-keys{grid-template-columns:repeat(7,minmax(0,1fr));gap:5px}
-@media(max-width:500px){
-  #inspect[data-panel=shelf] .book-keys{grid-template-columns:repeat(4,minmax(0,1fr))}
+.shelf-row button:nth-child(3n+2){--book-height:80px}
+.shelf-row button:nth-child(3n){--book-height:72px}
+.shelf-row button::before,.shelf-row button::after{
+  content:"";width:68%;border-top:2px solid #e6cea2;margin:8px 0;
 }
-#inspect[data-panel=shelf] .book-keys button{
-  min-width:0;
-  min-height:46px;
-  padding:4px 2px;
-  background:#f7f0e2;
-  border-color:#c9b99f;
-  border-bottom:3px solid #ad9a7b;
+.shelf-row button:enabled:hover{transform:translateY(-3px);filter:brightness(1.1)}
+.shelf-row button:focus-visible{outline:3px solid #29577d;outline-offset:2px}
+.shelf-row button[data-state=opened]{
+  color:#1d3042;background:linear-gradient(90deg,#dbd0b6,#fff5dc 23%,#f8edd7);
+  border-color:var(--binding);border-left:4px solid var(--binding);
 }
-#inspect[data-panel=shelf] .book-keys b{font-size:18px;color:#29435d}
-#inspect[data-panel=shelf] .book-keys button:hover{background:#e5eff9;border-color:#9eb8cf}
-#inspect[data-panel=shelf] .book-keys button:active{transform:translateY(1px);border-bottom-width:1px}
-#inspect[data-panel=shelf] .actions{flex-flow:row wrap;justify-content:flex-start}
-#inspect[data-panel=shelf] .actions button,#inspect[data-panel=shelf] .hint button{
+.shelf-row button[data-state=opened]::before,.shelf-row button[data-state=opened]::after{border-color:#ab997a}
+.shelf-row button:disabled{cursor:default}
+#inspect[data-panel=shelf] .shelf-feedback{margin:12px 0 4px;font-size:14px;color:#344b5b}
+#inspect[data-panel=shelf] .shelf-feedback:empty{margin:0}
+#inspect[data-panel=shelf] .shelf-retry,#inspect[data-panel=shelf] .hint button{
   width:auto;min-height:44px;padding:7px 11px;font-size:13px;font-weight:600
 }
-#inspect[data-panel=shelf] .readout{margin:9px 0 0;font-size:14px;color:#943b2d}
 #inspect[data-panel=shelf] .hint{margin-top:11px;padding-top:8px;border-color:#d4c8b5}
 #inspect[data-panel=shelf] .hint p{font-size:14px}

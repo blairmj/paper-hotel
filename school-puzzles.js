@@ -75,20 +75,25 @@ function routeSignal(input) {
   return rule;
 }
 
-const SHELF_NUMBERS = [12,24,37,49,61,74,86];
 const LOAN_NUMBER = 61;
-const SEARCH_EXAMPLE = 24;
-function bookSearch(numbers, wanted) {
-  const probes=[];
-  let low=0,high=numbers.length-1;
-  while(low<=high){
-    const middle=Math.floor((low+high)/2),found=numbers[middle];
-    probes.push(String(found));
-    if(found===wanted)break;
-    if(found<wanted)low=middle+1;
-    else high=middle-1;
-  }
-  return probes;
+const SHELF_LIMIT = 3;
+const SHELF_BINDINGS = ['#3b6a95','#b67a32','#9f584e','#36587d','#517c72','#95694a','#746889'];
+function makeLibraryShelf(random=Math.random){
+  const size=SHELF_BINDINGS.length,slot=Math.floor(random()*size);
+  const books=Array(size);
+  books[slot]=LOAN_NUMBER;
+  const gap=()=>2+Math.floor(random()*5);
+  for(let i=slot-1;i>=0;i--)books[i]=books[i+1]-gap();
+  for(let i=slot+1;i<size;i++)books[i]=books[i-1]+gap();
+  return books;
+}
+function validLibraryShelf(books){
+  return Array.isArray(books)&&books.length===SHELF_BINDINGS.length&&books.includes(LOAN_NUMBER)&&
+    books.every((n,i)=>Number.isInteger(n)&&n>=10&&n<=99&&(i===0||n>books[i-1]));
+}
+function canOpenLibraryBook(books,opened,slot){
+  return Number.isInteger(slot)&&slot>=0&&slot<books.length&&opened.length<SHELF_LIMIT&&
+    !opened.includes(slot)&&!opened.some(index=>books[index]===LOAN_NUMBER);
 }
 
 const WATER_CYCLE = {initial:1, fill:3, drain:5, cycles:4};
@@ -135,9 +140,9 @@ const SCHOOL_PUZZLES = {
   sports:{control:'balls',title:'공 라커',keys:BALLS.map((_,i)=>String(i)),answer:countBallMoves(BALLS,BALL_PICKUP),
     instructions:'공 라커에서 회수 순서대로 공을 빼고, 남은 공 중 자리가 바뀐 개수를 고르세요.',
     hint:'뺀 공을 제외하고 이번에 한 칸씩 왼쪽으로 움직인 공의 개수를 세세요. 다음 공은 바뀐 배열에서 빼세요.'},
-  library:{control:'sequence',title:'곡선 서가',keys:SHELF_NUMBERS.map(String),answer:bookSearch(SHELF_NUMBERS,LOAN_NUMBER),
-    instructions:'찾기 표지와 대출 메모를 보고 곡선 서가에서 확인할 책을 차례로 누르세요.',
-    hint:'49번부터 확인하세요. 찾는 번호가 더 크면 오른쪽 세 권만 남겨 보세요.'},
+  library:{control:'shelf',revision:1,title:'곡선 서가',
+    instructions:'책은 왼쪽부터 작은 번호순이에요. 열람대의 대출 메모에 적힌 책을 찾으세요.',
+    hint:'남은 책의 가운데를 펼쳐 보세요. 찾는 번호가 더 크면 오른쪽에, 더 작으면 왼쪽에 있어요.'},
   science:{control:'water',title:'실험 물통',keys:WATER_HEIGHTS,answer:waterLevels(WATER_CYCLE),
     instructions:'실험대의 물통을 눌러 급수와 배출이 끝날 때마다 남을 물 높이를 고르세요.',
     hint:'물을 채운 다음 5칸 이상이면 5칸을 빼세요. 그때 남은 높이에서 다음 회차를 시작합니다.'},

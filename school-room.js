@@ -14,6 +14,7 @@ const saved=book().visits[room.n]?.restoration;
 const outdated=saved?.revision!==puzzle.revision;
 
 function newRun(){
+  if(puzzle.control==='shelf')return {revision:puzzle.revision,found:[],entry:[],shelf:makeLibraryShelf(),solved:false};
   let entry=Array(puzzle.answer.length).fill(['routing','debug','water'].includes(puzzle.control)?'':'0');
   if(['sequence','balls'].includes(puzzle.control))entry=[];
   const restoration={revision:puzzle.revision,found:[],entry,solved:false};
@@ -21,10 +22,21 @@ function newRun(){
   return restoration;
 }
 let run=newRun(),world,countdown,attempt,reviewJump,opening=false,finished=false;
-if(saved&&!outdated){
+if(saved&&(!outdated||puzzle.control==='shelf')){
   run.found=Array.isArray(saved.found)?saved.found.filter(id=>room.clues.some(clue=>clue.id===id)):[];
+}
+if(saved&&!outdated){
   if(Array.isArray(saved.entry)){
-    if(puzzle.control==='sequence')run.entry=saved.entry.filter(key=>puzzle.keys.includes(key)).slice(0,puzzle.answer.length);
+    if(puzzle.control==='shelf'){
+      if(validLibraryShelf(saved.shelf)){
+        run.shelf=saved.shelf;
+        for(const slot of saved.entry.slice(0,SHELF_LIMIT)){
+          if(!canOpenLibraryBook(run.shelf,run.entry,slot))break;
+          run.entry.push(slot);
+        }
+      }
+    }
+    else if(puzzle.control==='sequence')run.entry=saved.entry.filter(key=>puzzle.keys.includes(key)).slice(0,puzzle.answer.length);
     else if(puzzle.control==='balls'){
       for(const [i,value] of saved.entry.slice(0,puzzle.answer.length).entries()){
         if(value!==puzzle.answer[i])break;
@@ -45,7 +57,7 @@ if(saved&&!outdated){
   }
 }
 run.solved=saved?.solved===true&&(!outdated||story);
-if(run.solved){
+if(run.solved&&puzzle.control!=='shelf'){
   run.entry=puzzle.answer.slice();
   if(puzzle.control==='balls')run.awaitingCount=false;
 }
@@ -92,6 +104,9 @@ function action(host,label,fn,primary=false){
 }
 function actions(){const host=document.createElement('div');host.className='actions';content.append(host);return host}
 function correct(){return run.entry.length===puzzle.answer.length&&puzzle.answer.every((value,i)=>run.entry[i]===value)}
+function deviceEntry(){
+  return run.shelf?run.shelf.map((number,slot)=>run.entry.includes(slot)?number:null):run.entry;
+}
 
 function showFinish(){
   finished=true;
@@ -140,7 +155,7 @@ function showExit(){
   link.onclick=event=>{if(countdown.check())event.preventDefault()};
   link.focus({preventScroll:true});
 }
-function solve(){
+function solve(revealMs=0){
   if(run.solved||opening||!countdown||countdown.check())return;
   if(story){
     const destination=schoolRoomToPlay(book());
@@ -152,16 +167,25 @@ function solve(){
   run.solved=true;
   const saved=story&&room.kind!=='computer'?save():countdown.stop(recordRestoration);
   if(!saved){run.solved=false;return}
-  close();opening=true;
+  opening=true;
   byId('spots').inert=true;roomHead.inert=true;
-  world.facingDoor(()=>{
+  function openDoor(){
     if(countdown.check())return;
-    if(!story){
-      opening=false;
-      byId('spots').inert=false;roomHead.inert=false;
-    }
-    showExit();
-  });
+    close();
+    world.facingDoor(()=>{
+      if(countdown.check())return;
+      if(!story){
+        opening=false;
+        byId('spots').inert=false;roomHead.inert=false;
+      }
+      showExit();
+    });
+  }
+  if(revealMs){
+    content.querySelectorAll('button').forEach(button=>{button.disabled=true});
+    setTimeout(openDoor,revealMs);
+  }
+  else openDoor();
 }
 function changed(){
   if(countdown.check())return;
@@ -210,10 +234,8 @@ function deviceInstructions(style='object-note'){
 }
 
 function sequencePanel(){
-  const books=room.kind==='library';
   modal(puzzle.title,deviceInstructions()+'<div class="sequence-output" id="sequenceOutput" aria-label="입력한 순서"></div>'+
-    '<div class="sequence-keys'+(books?' book-keys':'')+'" id="sequenceKeys"></div><p class="readout" id="entryFeedback" role="status"></p>',
-    books?'shelf':'lock');
+    '<div class="sequence-keys" id="sequenceKeys"></div><p class="readout" id="entryFeedback" role="status"></p>','lock');
   function draw(){
     const steps=puzzle.answer.map((_,i)=>'<span data-next="'+(i===run.entry.length)+'">'+
       (RESET_GLYPHS[run.entry[i]]??run.entry[i]??'·')+'</span>');
@@ -223,29 +245,70 @@ function sequencePanel(){
     output.dataset.invalid=String(failed);
     byId('entryFeedback').textContent=failed?'순서를 다시 확인해 보세요.':'';
     undo.disabled=!run.entry.length;
-    if(retry)retry.hidden=!failed;
   }
   for(const key of puzzle.keys){
-    const label=books?key+'번 책':RESET_KEYS[key];
+    const label=RESET_KEYS[key];
     const button=action(byId('sequenceKeys'),label,()=>{
       if(countdown.check()||run.entry.length>=puzzle.answer.length)return;
       run.entry.push(key);draw();changed();
     });
-    button.innerHTML=books?'<b aria-hidden="true">'+key+'</b>':'<b aria-hidden="true">'+RESET_GLYPHS[key]+'</b><span>'+label+'</span>';
-    if(books){
-      button.setAttribute('aria-label',label);
-      button.dataset.command=key;
-    }
+    button.innerHTML='<b aria-hidden="true">'+RESET_GLYPHS[key]+'</b><span>'+label+'</span>';
   }
-  const tools=actions();
-  const undo=action(tools,books?'한 권 지우기':'한 단계 지우기',()=>{
+  const undo=action(actions(),'한 단계 지우기',()=>{
     if(countdown.check())return;
     run.entry.pop();draw();changed();
   });
-  const retry=books?action(tools,'다시 입력',()=>{
-    if(countdown.check())return;
-    run.entry=[];draw();changed();
-  }):null;
+  draw();
+}
+
+function shelfPanel(){
+  const hasMemo=run.found.includes('loanSlip');
+  modal(puzzle.title,deviceInstructions()+
+    '<div class="shelf-ticket"><span id="loanTarget"></span><span id="shelfCount"></span></div>'+
+    '<div class="shelf-row" id="shelfRow" role="group" tabindex="-1" aria-label="왼쪽부터 번호순으로 꽂힌 일곱 권"></div>'+
+    '<p class="shelf-feedback" id="shelfFeedback" role="status"></p>','shelf');
+  byId('loanTarget').textContent=hasMemo?'대출 메모 · '+LOAN_NUMBER+'번':'대출 메모 미확인';
+  const feedback=byId('shelfFeedback'),row=byId('shelfRow');
+  const buttons=SHELF_BINDINGS.map((color,slot)=>{
+    const button=action(row,'',()=>{
+      if(!hasMemo||opening||run.solved||button.disabled||countdown.check())return;
+      run.entry.push(slot);
+      world.setDigits(deviceEntry());draw();
+      if(run.shelf[slot]===LOAN_NUMBER){solve(850);return}
+      save();
+      if(retry.hidden)row.focus({preventScroll:true});
+      else retry.focus({preventScroll:true});
+    });
+    button.dataset.command='book-'+slot;
+    button.style.setProperty('--binding',color);
+    return button;
+  });
+  const retry=action(content,'새 서가로 다시 찾기',()=>{
+    if(countdown.check()||run.solved||opening)return;
+    run.shelf=makeLibraryShelf();run.entry=[];
+    world.setDigits(deviceEntry());save();draw();
+    row.focus({preventScroll:true});
+  });
+  retry.className='shelf-retry';
+  function draw(){
+    const last=run.shelf[run.entry.at(-1)],found=last===LOAN_NUMBER;
+    const remaining=SHELF_LIMIT-run.entry.length;
+    byId('shelfCount').textContent='남은 기회 '+remaining+'회';
+    for(const [slot,button] of buttons.entries()){
+      const opened=run.entry.includes(slot);
+      button.dataset.state=opened?'opened':'closed';
+      button.textContent=opened?run.shelf[slot]:'';
+      const description=opened?run.shelf[slot]+'번':'번호 가림';
+      button.setAttribute('aria-label','왼쪽에서 '+(slot+1)+'번째 책, '+description);
+      button.disabled=!hasMemo||!canOpenLibraryBook(run.shelf,run.entry,slot);
+    }
+    retry.hidden=remaining>0||found;
+    if(found)feedback.textContent=LOAN_NUMBER+'번 책을 찾았어요!';
+    else if(!hasMemo)feedback.textContent='열람대에서 대출 메모를 먼저 찾아보세요.';
+    else if(last===undefined)feedback.textContent='';
+    else if(!remaining)feedback.textContent=last+'번이에요. 세 권을 모두 펼쳤어요.';
+    else feedback.textContent=last+'번 책을 펼쳤어요.';
+  }
   draw();
 }
 
@@ -493,7 +556,7 @@ function ballLockerPanel(){
 function inspectLock(){
   if(run.solved||!countdown||countdown.check())return;
   const panels={sequence:sequencePanel,selection:selectionPanel,dial:dialPanel,routing:routingPanel,debug:mixerPanel,
-    water:waterPanel,balls:ballLockerPanel};
+    water:waterPanel,balls:ballLockerPanel,shelf:shelfPanel};
   panels[puzzle.control]();
   appendRoomTextHint(content,countdown,puzzle.hint);
 }
@@ -511,7 +574,7 @@ function restart(){
   close();
   run=newRun();opening=false;save();byId('bag').hidden=true;byId('escape').hidden=true;
   roomHead.inert=false;byId('spots').inert=false;
-  movement.hidden=false;world.reset(false,run.entry);
+  movement.hidden=false;world.reset(false,deviceEntry());
   countdown?.reset();
 }
 function beginTimer(){
@@ -531,7 +594,7 @@ function intro(){
     const progress=book();
     if(schoolEscapeTimer(progress)&&schoolRoute(progress)){location.reload();return}
     if(!beginSchoolAttempt(plan))return false;
-    run=newRun();world.reset(false,run.entry);byId('bag').hidden=true;
+    run=newRun();world.reset(false,deviceEntry());byId('bag').hidden=true;
     close();beginTimer();
   }});
 }
@@ -582,7 +645,7 @@ function start(){
       else if(id!=='doorGuide')inspectClue(id);
     }
   }).then(created=>{
-    world=created;world.reset(run.solved,run.entry);byId('bag').hidden=!run.found.length;
+    world=created;world.reset(run.solved,deviceEntry());byId('bag').hidden=!run.found.length;
     if(run.awaitingCount)world.setDigits(run.entry,{pending:true});
     if(story&&!plan){intro();return}
     if(beginTimer()&&run.solved)showExit();

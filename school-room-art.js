@@ -110,16 +110,16 @@ function branchingDiagram(){
     box(373,254,132,'□','#faf9f1')+box(517,254,132,ROUTE_NAMES[no.no],'#f1f2ec');
 }
 
-function libraryExampleDiagram(){
-  const probes=bookSearch(SHELF_NUMBERS,SEARCH_EXAMPLE);
-  return svgText(300,56,SEARCH_EXAMPLE+'번을 찾는 예',29)+
-    SHELF_NUMBERS.map((number,i)=>{
-      const x=62+i*79,checked=probes.includes(String(number));
-      return '<rect x="'+(x-29)+'" y="111" width="58" height="109" rx="5" fill="'+
-        (checked?'#f6c549':'#e1eaff')+'" stroke="#6d88a7"/>'+svgText(x,177,number,30);
-    }).join('')+
-    svgText(300,272,probes[0]+' 먼저 확인 → 더 작은 번호 쪽으로',22)+
-    svgText(300,312,'남은 책의 가운데 '+probes[1]+' 확인',22);
+function libraryGuideDiagram(){
+  const spines=SHELF_BINDINGS.map((color,i)=>{
+    const x=72+i*68;
+    return '<rect x="'+x+'" y="103" width="45" height="110" rx="4" fill="'+color+'"/>'+
+      '<path d="M'+(x+8)+' 122h29m-29 71h29" fill="none" stroke="#e9d6ab" stroke-width="3"/>';
+  }).join('');
+  return svgText(300,59,'책은 왼쪽부터 번호순',31)+spines+
+    '<path d="M60 219h482" stroke="#8a6d4d" stroke-width="9"/>'+
+    svgText(157,275,'← 작은 번호',25)+svgText(448,275,'큰 번호 →',25)+
+    svgText(300,323,'책을 펼치면 번호가 보여요.',21);
 }
 
 function waterCycleDiagram(){
@@ -164,7 +164,7 @@ function schoolClueSvg(id){
     ballLine:[()=>ballDiagram(BALLS),BALLS.join(' ')+' 순서로 놓인 공'],
     ballOrder:[()=>ballDiagram(BALL_PICKUP),BALL_PICKUP.join(', ')+' 순으로 회수'],
     loanSlip:[()=>svgText(300,121,'찾을 책의 대출 번호',32)+svgText(300,256,LOAN_NUMBER,102,'#3459a4'),'찾을 책 번호 '+LOAN_NUMBER],
-    shelfGuide:[libraryExampleDiagram,'가운데 책을 보고 찾는 번호와 비교합니다. 번호가 작은 쪽이나 큰 쪽에 남은 책의 가운데부터 다시 확인합니다. 예시로 24를 찾을 때 49, 24 순으로 확인합니다.'],
+    shelfGuide:[libraryGuideDiagram,'책은 왼쪽부터 작은 번호순입니다. 책을 펼치면 번호를 알 수 있습니다.'],
     waterCycle:[waterCycleDiagram,'물을 '+WATER_CYCLE.fill+'칸 넣고 '+WATER_CYCLE.drain+'칸 이상이면 '+WATER_CYCLE.drain+'칸을 뺍니다. 남은 물 높이를 적습니다. '+WATER_CYCLE.cycles+'회 반복합니다.'],
     waterStart:[waterStartDiagram,'시작 물 높이 '+WATER_CYCLE.initial+'칸'],
     broadcastRules:[broadcastRulesDiagram,Object.values(BROADCAST_COMMANDS).map(({label,before})=>before+'에서 '+label).join('. ')],
