@@ -249,11 +249,24 @@ test('the puzzle answers come from the displayed sequence, printing, queue and d
  assert.equal(ctx.puzzles.sports.answer.join(''),'2331');
  assert.equal(ctx.routeSignal({reply:false,power:true,code:true}),'link');
  assert.equal(ctx.puzzles.computer.answer.join(','),'link,code,send');
- assert.equal(ctx.puzzles.science.answer.join(''),'4203');
+ assert.equal(ctx.puzzles.science.answer.join(''),'90');
  const broken=ctx.broadcastTrace(['mic','record','save','save']);
  assert.equal(broken.passed,false);
  assert.equal(broken.trace.length,2);
  assert.equal(ctx.broadcastTrace(ctx.puzzles.broadcast.answer).passed,true);
+});
+
+test('the two balances follow the individual beads, including beads moved between scales',()=>{
+ const ctx=layoutContext,scales=vm.runInContext('BALANCE_SCALES',ctx),places=ctx.initialBeadPlaces();
+ const read=i=>ctx.readBalance(scales[i],places);
+ assert.equal(ctx.validBeadPlaces(places),true);
+ assert.equal(ctx.validBeadPlaces(places.slice(1)),false);
+ const invalid=places.slice();invalid[3]='missing pan';assert.equal(ctx.validBeadPlaces(invalid),false);
+ assert.equal(read(0).angle,0);assert.equal(read(1).angle,0);
+ places[4]='tray';assert.ok(read(1).right>read(1).left&&read(1).angle>0);
+ places[8]='tray';assert.equal(read(1).angle,0);assert.equal(read(1).left,30);
+ places[4]='1L';assert.ok(read(0).angle<0);assert.equal(read(1).angle,0);
+ places[8]='1R';assert.equal(read(0).angle,0);
 });
 
 test('the covered shelf can hold the requested book in any slot and a midpoint search always fits the allowance',()=>{

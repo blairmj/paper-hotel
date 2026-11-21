@@ -122,22 +122,6 @@ function libraryGuideDiagram(){
     svgText(300,323,'책을 펼치면 번호가 보여요.',21);
 }
 
-function waterCycleDiagram(){
-  const steps=['물 '+WATER_CYCLE.fill+'칸 넣기',WATER_CYCLE.drain+'칸 이상이면 '+WATER_CYCLE.drain+'칸 빼기','남은 물 높이 적기'];
-  return steps.map((item,i)=>{
-    const y=37+i*98;
-    return '<rect x="95" y="'+y+'" width="410" height="58" rx="7" fill="#dff4f4"/>'+
-      svgText(300,y+37,item,26)+(i<2?svgText(300,y+89,'↓',29):'');
-  }).join('')+svgText(300,337,'총 '+WATER_CYCLE.cycles+'회 반복',22);
-}
-
-function waterStartDiagram(){
-  const filled=WATER_CYCLE.initial;
-  return svgText(363,143,'시작할 때',25)+svgText(363,205,'물 '+filled+'칸',43,'#197d9e')+
-    Array.from({length:5},(_,i)=>'<rect x="110" y="'+(240-i*40)+'" width="95" height="40" fill="'+
-      (i<filled?'#60c9e2':'#e8f7fa')+'" stroke="#5e9eb4" stroke-width="2"/>').join('');
-}
-
 function broadcastRulesDiagram(){
   return Object.values(BROADCAST_COMMANDS).map(({label,before},i)=>{
     const y=30+i*78;
@@ -165,8 +149,6 @@ function schoolClueSvg(id){
     ballOrder:[()=>ballDiagram(BALL_PICKUP),BALL_PICKUP.join(', ')+' 순으로 회수'],
     loanSlip:[()=>svgText(300,121,'찾을 책의 대출 번호',32)+svgText(300,256,LOAN_NUMBER,102,'#3459a4'),'찾을 책 번호 '+LOAN_NUMBER],
     shelfGuide:[libraryGuideDiagram,'책은 왼쪽부터 작은 번호순입니다. 책을 펼치면 번호를 알 수 있습니다.'],
-    waterCycle:[waterCycleDiagram,'물을 '+WATER_CYCLE.fill+'칸 넣고 '+WATER_CYCLE.drain+'칸 이상이면 '+WATER_CYCLE.drain+'칸을 뺍니다. 남은 물 높이를 적습니다. '+WATER_CYCLE.cycles+'회 반복합니다.'],
-    waterStart:[waterStartDiagram,'시작 물 높이 '+WATER_CYCLE.initial+'칸'],
     broadcastRules:[broadcastRulesDiagram,Object.values(BROADCAST_COMMANDS).map(({label,before})=>before+'에서 '+label).join('. ')],
     broadcastLog:[broadcastLogDiagram,'녹음 중 상태에서 3단계가 멈췄습니다.'],
     recordA:[signalsDiagram,'출입 신호 기록'],

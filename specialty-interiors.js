@@ -10,7 +10,6 @@ const SpecialtyInteriors = (() => {
     {x:1.75,z:2.77,w:1.81,d:2.62}
   ];
   const labSeats = [[-.58,4.68],[.46,3.64],[.56,2.31]];
-  const tank = {x:-1.59,z:3.67,w:.92,d:.70,h:.59,bottom:.92};
   const anchor = {x:-2.05,z:1.47,w:2.28,d:.80};
   const consoleDesk = {x:3.22,z:3.16,w:1.25,d:4.13};
   const deskReturn = {x:2.54,z:1.24,w:1.48,d:.79};
@@ -59,9 +58,9 @@ const SpecialtyInteriors = (() => {
     science:{
       size:[9.1,7.9,3.48], trim:'#2c5a9e',
       entrance:{side:'right',x:-1.82,width:1.34,height:2.30,moldingColor:'#2a5187',opensOut:true},
-      lock:{id:'waterTank',center:[tank.x,tank.bottom+tank.h/2,tank.z],width:tank.w,height:tank.h,depth:tank.d,
-        approach:{x:-1.20,z:5.17},inspectionView:{wide:[tank.x+.35,1.14,tank.z+.05],compact:[tank.x-.15,1.03,tank.z+.22]}},
-      statusLamp:{xyz:[4.45,1.29,3.21],angle:-quarterTurn},doorReveal:{x:2.12,z:1.17},
+      lock:{id:'lock',center:[4.45,1.34,3.22],width:.43,height:.26,depth:.045,rotationY:-quarterTurn,
+        approach:{x:3.32,z:3.48}},
+      statusLamp:{xyz:[4.45,1.64,3.22],angle:-quarterTurn},doorReveal:{x:2.12,z:1.17},
       start:[-.15,1.55,7.59],view:[-.075,1.26,1.38],viewAngle:58,
       obstacles:[
         ...lab.map(table=>boundsOf(table)),
@@ -69,10 +68,8 @@ const SpecialtyInteriors = (() => {
         [-3.77,3.77,.22,.99]
       ],
       clues:[
-        {id:'waterCycle',name:'실험대의 급수 순서',xyz:[.96,1.63,.079],
-          surface:{width:.58,height:.48},approach:{x:.64,z:1.24}},
-        {id:'waterStart',name:'물통의 시작 눈금',xyz:[tank.x,1.18,tank.z+tank.d/2+.012],
-          surface:{width:tank.w,height:tank.h},approach:{x:-.58,z:4.18},placement:'instrument'}
+        {id:'balanceBench',name:'실험대의 양팔저울',xyz:[lab[0].x,1.16,3.94],placement:'bench',
+          surface:{width:1.63,height:.51,depth:.70},inspectFromAnySide:true,approach:{x:-1.65,z:5.26}}
       ],
       build:science
     },
@@ -106,9 +103,9 @@ const SpecialtyInteriors = (() => {
       {id:lock.id??'lock',name:SCHOOL_PUZZLES[kind].title,xyz:lock.center,surface:lock,
         rotationY:lock.rotationY,approach:lock.approach,inspectionView:lock.inspectionView,
         inspectFromAnySide:lock.inspectFromAnySide},
-      ...clues.filter(clue=>clue.placement!=='instrument'),
-      SchoolInterior.doorGuide(design.statusLamp.xyz,design.statusLamp.angle)
+      ...clues.filter(clue=>clue.placement!=='instrument')
     ];
+    if(lock.id!=='lock')targets.push(SchoolInterior.doorGuide(design.statusLamp.xyz,design.statusLamp.angle));
     return {
       ...RECOVERY_ROOMS.find(room=>room.kind===kind),depth,interior:true,
       wall:{width,height,z:0,back:depth},ceilingMinimum:height,entrance,door,doorReveal:design.doorReveal,lock,clues,targets,obstacles,
@@ -420,66 +417,6 @@ const SpecialtyInteriors = (() => {
     }
   }
 
-  function waterTank(scene){
-    const {x,z,w,d,h,bottom}=tank;
-    const glass=new THREE.MeshPhysicalMaterial({
-      color:'#c9e1ec',transparent:true,opacity:.13,roughness:.11,clearcoat:.57,
-      clearcoatRoughness:.13,depthWrite:false
-    });
-    const edge=standard('#b8d6df',.22,.18);
-    const liquid=new THREE.MeshPhysicalMaterial({
-      color:'#139ac5',roughness:.18,clearcoat:.46,transparent:true,opacity:.69
-    });
-    const meniscus=new THREE.MeshPhysicalMaterial({
-      color:'#66c9e2',roughness:.13,clearcoat:.89,transparent:true,opacity:.83
-    });
-    const step=(h-.082)/WATER_CYCLE.drain,base=bottom+.023;
-    box(scene,w,.019,d,x,bottom+.009,z,edge);
-    const water=box(scene,w-.030,1,d-.032,x,base,z,[liquid,liquid,meniscus,liquid,liquid,liquid]);
-    for(const side of [-1,1]){
-      const outerZ=z+side*d/2;
-      box(scene,w,h,.009,x,bottom+h/2,outerZ,glass);
-      box(scene,.009,h,d,x+side*w/2,bottom+h/2,z,glass);
-      rod(scene,[x-w/2,bottom+h,outerZ],[x+w/2,bottom+h,outerZ],.008,edge);
-      rod(scene,[x+side*w/2,bottom+h,z-d/2],[x+side*w/2,bottom+h,z+d/2],.008,edge);
-      for(const dz of [-d/2,d/2]){
-        rod(scene,[x+side*w/2,bottom,z+dz],[x+side*w/2,bottom+h,z+dz],.007,edge);
-      }
-    }
-    const ruler=positionGroup(scene,x-w*.345,0,z+d/2+.022);
-    const scaleFrame=standard('#355777',.57),ticks=standard('#284d6a',.64);
-    const neutral=standard('#e4edf5',.59),selected=standard('#9ac8ed',.54);
-    const top=base+WATER_CYCLE.drain*step;
-    rounded(ruler,.146,top-base+.057,.031,0,(base+top)/2+.01,0,scaleFrame,.012);
-    const commandPads=WATER_HEIGHTS.map((level,i)=>{
-      const mark=base+i*step,y=i===0?mark+.023:mark;
-      const pad=rounded(ruler,.119,.069,.024,0,y,.024,neutral,.008);
-      pad.userData.command=level;
-      const number=InteriorArtwork.canvasMap(104,66,(g,w,h)=>{
-        g.fillStyle='#274b6b';g.font='bold 49px sans-serif';g.textAlign='center';g.textBaseline='middle';
-        g.fillText(level,w/2,h/2+3);
-      });
-      patchPlane(ruler,.102,.059,0,y,.037,number,true);
-      box(ruler,.081,.008,.012,.113,mark,.007,ticks);
-      return pad;
-    });
-    const startMark=InteriorArtwork.canvasMap(144,51,(g,w,h)=>{
-      g.fillStyle='#e6f2fb';g.fillRect(0,0,w,h);
-      g.fillStyle='#285986';g.font='bold 31px sans-serif';g.textAlign='center';g.textBaseline='middle';
-      g.fillText('시작',w/2,h/2+1);
-    });
-    patchPlane(ruler,.123,.043,.207,base+WATER_CYCLE.initial*step,.019,startMark);
-    function setDigits(_values,level=String(WATER_CYCLE.initial)){
-      const height=Number(level)*step;
-      water.visible=height>0;
-      water.scale.y=height;
-      water.position.y=base+height/2;
-      for(const pad of commandPads)pad.material=pad.userData.command===level?selected:neutral;
-    }
-    setDigits();
-    return {commandPads,setDigits};
-  }
-
   function microscope(parent,x,z,cream,dark,steel){
     const unit=positionGroup(parent,x,.925,z,-.28);
     rounded(unit,.32,.051,.28,0,.028,0,dark,.019);
@@ -507,7 +444,7 @@ const SpecialtyInteriors = (() => {
       stool(scene,x,z,stoolYellow,legs);
       shadow(.63,.63,x,z,.006,.57);
     }
-    const tankDevice=waterTank(scene);
+    const balances=ScienceBalance.build(scene,room);
     microscope(scene,2.11,lab[1].z+.18,enamel,dark,steel);
     const measureGlass=new THREE.MeshPhysicalMaterial({
       color:'#c6e7f2',roughness:.13,clearcoat:.58,transparent:true,opacity:.29,depthWrite:false
@@ -543,7 +480,7 @@ const SpecialtyInteriors = (() => {
     const tiles=new THREE.Mesh(new THREE.PlaneGeometry(7.14,1.40),
       new THREE.MeshStandardMaterial({map:art.surface('tile',7.14,1.40),roughness:.48,envMapIntensity:.55}));
     tiles.position.set(0,1.570,.013);scene.add(tiles);
-    return tankDevice;
+    return balances;
   }
 
   function studioFinish(art,name,levels,roughness){
@@ -997,7 +934,7 @@ const SpecialtyInteriors = (() => {
   function addCard(scene,clue,card){
     if(clue.placement==='instrument')return;
     const {width,height}=clue.surface,group=positionGroup(scene,...clue.xyz,clue.rotationY??0);
-    const frame=standard(clue.id==='waterCycle'?'#d7b14f':'#d7c498',.82);
+    const frame=standard('#d7c498',.82);
     rounded(group,width+.037,height+.035,.037,0,0,-.022,frame,.012);
     if(clue.placement==='stand'){
       box(group,width+.05,.026,.132,0,-height/2+.001,-.041,frame);
@@ -1008,7 +945,7 @@ const SpecialtyInteriors = (() => {
 
   async function build(scene,room){
     const design=designs[room.kind];
-    const cards=room.clues.filter(clue=>clue.placement!=='instrument');
+    const cards=room.clues.filter(clue=>clue.placement!=='instrument'&&clue.placement!=='bench');
     const [art,cardImages]=await Promise.all([InteriorArtwork.load(room.kind),Promise.all(cards.map(clueBoardArt))]);
     lightRoom(scene,room);
     enclosure(scene,room,art,design.trim,(map,surface)=>architectureMaterial(art,room,map,surface));
@@ -1027,7 +964,7 @@ const SpecialtyInteriors = (() => {
       if(mesh.isMesh && mesh.material.isMeshStandardMaterial)mesh.receiveShadow=true;
     });
     const canvas=document.getElementById('roomView');
-    const version={library:'shelf-v45',science:'water-v35',broadcast:'studio-v34'}[room.kind];
+    const version={library:'shelf-v45',science:'balance-v1',broadcast:'studio-v34'}[room.kind];
     Object.assign(canvas.dataset,{interior:room.kind,artwork:version});
     const updateDoorStatus=statusLamp(scene,design.statusLamp);
     return {

@@ -86,10 +86,15 @@ async function createMusicWorld({onInspect,onReadyToMove,deviceInstructions,room
   if(deviceInstructions){
     deviceGuide=document.createElement('p');
     deviceGuide.className='device-guide';
+    deviceGuide.id='roomProblem';
     deviceGuide.hidden=true;
     deviceGuide.setAttribute('role','status');
     deviceGuide.textContent=deviceInstructions;
     document.getElementById('spots').append(deviceGuide);
+    for(const {button} of devices){
+      button.setAttribute('aria-describedby',deviceGuide.id);
+      for(const type of ['pointerenter','pointerleave','focus','blur'])button.addEventListener(type,queue);
+    }
   }
   let width=1,height=1,yaw=0,pitch=0,openness=0,journey,trail,drag,finale,raf=0,previousTime=0;
   const clamp=THREE.MathUtils.clamp, wrap=angle=>Math.atan2(Math.sin(angle),Math.cos(angle));
@@ -128,7 +133,6 @@ async function createMusicWorld({onInspect,onReadyToMove,deviceInstructions,room
     canvas.dataset.position=[eye.x,eye.y,eye.z].map(n=>n.toFixed(3)).join(',');
     canvas.dataset.heading=yaw.toFixed(3);
     canvas.dataset.door=openness.toFixed(3);
-    if(deviceGuide)deviceGuide.hidden=openness>0||!!journey?.door||!!trail?.automatic||!devices.some(nearDevice);
     for(const target of targets){
       point.copy(target.point);
       const v=point.project(camera),px=width*(1+v.x)/2,py=height*(1-v.y)/2;
@@ -153,6 +157,11 @@ async function createMusicWorld({onInspect,onReadyToMove,deviceInstructions,room
       }
       b.style.width=Math.max(44,2*halfWidth)+'px';b.style.height=Math.max(44,2*halfHeight)+'px';
       b.style.left=px+'px';b.style.top=py+'px';b.classList.toggle('label-left',px>width-95);
+    }
+    if(deviceGuide){
+      const show=devices.some(target=>nearDevice(target)||(!target.button.hidden&&
+        (target.button.matches(':hover')||target.button===document.activeElement)));
+      deviceGuide.hidden=openness>0||!!journey?.door||!!trail?.automatic||!show;
     }
   }
   function queue(){if(!raf)raf=requestAnimationFrame(frame)}
@@ -344,6 +353,7 @@ async function createMusicWorld({onInspect,onReadyToMove,deviceInstructions,room
   return {
     clearKeys,walkTo,commandAt,lookAtPiano(){inspectTarget('paper')},
     setDigits(digits,level){model.setDigits(digits,level);queue()},
+    setBalance(places){model.setBalance(places);queue()},
     facingDoor(done){
       clearKeys();
       const open=()=>look(room.door,true,done);

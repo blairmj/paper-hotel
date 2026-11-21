@@ -15,10 +15,11 @@ const outdated=saved?.revision!==puzzle.revision;
 
 function newRun(){
   if(puzzle.control==='shelf')return {revision:puzzle.revision,found:[],entry:[],shelf:makeLibraryShelf(),solved:false};
-  let entry=Array(puzzle.answer.length).fill(['routing','debug','water'].includes(puzzle.control)?'':'0');
+  let entry=Array(puzzle.answer.length).fill(['routing','debug'].includes(puzzle.control)?'':'0');
   if(['sequence','balls'].includes(puzzle.control))entry=[];
   const restoration={revision:puzzle.revision,found:[],entry,solved:false};
   if(puzzle.control==='balls')restoration.awaitingCount=false;
+  if(room.kind==='science')restoration.beadPlaces=initialBeadPlaces();
   return restoration;
 }
 let run=newRun(),world,countdown,attempt,reviewJump,opening=false,finished=false;
@@ -26,6 +27,7 @@ if(saved&&(!outdated||puzzle.control==='shelf')){
   run.found=Array.isArray(saved.found)?saved.found.filter(id=>room.clues.some(clue=>clue.id===id)):[];
 }
 if(saved&&!outdated){
+  if(room.kind==='science'&&validBeadPlaces(saved.beadPlaces))run.beadPlaces=saved.beadPlaces.slice();
   if(Array.isArray(saved.entry)){
     if(puzzle.control==='shelf'){
       if(validLibraryShelf(saved.shelf)){
@@ -50,7 +52,6 @@ if(saved&&!outdated){
       if(puzzle.control==='selection')valid=stored==='0'||stored==='1';
       else if(puzzle.control==='dial')valid=typeof stored==='string'&&/^\d$/.test(stored);
       else if(puzzle.control==='debug')valid=Object.hasOwn(BROADCAST_COMMANDS,stored);
-      else if(puzzle.control==='water')valid=puzzle.keys.includes(stored);
       else valid=Object.hasOwn(ROUTE_NAMES,stored);
       return valid?stored:value;
     });
@@ -106,6 +107,10 @@ function actions(){const host=document.createElement('div');host.className='acti
 function correct(){return run.entry.length===puzzle.answer.length&&puzzle.answer.every((value,i)=>run.entry[i]===value)}
 function deviceEntry(){
   return run.shelf?run.shelf.map((number,slot)=>run.entry.includes(slot)?number:null):run.entry;
+}
+function resetWorld(){
+  world.reset(run.solved,deviceEntry());
+  if(run.beadPlaces)world.setBalance(run.beadPlaces);
 }
 
 function showFinish(){
@@ -217,6 +222,16 @@ function inspectClue(id){
   if(!clue)return;
   collectClue(id);
   switch(id){
+    case 'balanceBench':
+      modal(clue.name,'','balance');
+      ScienceBalance.open(content,run.beadPlaces,places=>{
+        if(countdown.check()||run.solved)return false;
+        run.beadPlaces=places;
+        world.setBalance(places);
+        save();
+        return true;
+      });
+      break;
     case 'paper':modal(clue.name,scoreSheet());break;
     case 'recordA':modal(clue.name,signalRecords());break;
     default:modal(clue.name,'<div class="school-clue">'+schoolClueSvg(id)+'</div>');
@@ -422,60 +437,6 @@ function mixerPanel(){
   draw(result());
 }
 
-function waterPanel(){
-  collectClue('waterStart');
-  if(correct()){solve();return}
-  modal(puzzle.title,deviceInstructions('water-guide')+
-    '<div class="water-readings"><span>시작 눈금 <b>'+WATER_CYCLE.initial+'칸</b></span>'+
-    '<span>현재 눈금 <b id="waterReading" aria-live="polite"></b></span></div>'+
-    '<div class="water-order" id="waterOrder" role="group" aria-label="회차별 물 높이"></div>'+
-    '<div class="water-levels" id="waterLevels" role="group" aria-label="물 높이 조절"></div>'+
-    '<p class="water-feedback" id="entryFeedback" role="status"></p>','water');
-  const firstIncorrect=()=>run.entry.every(Boolean)?run.entry.findIndex((level,i)=>level!==puzzle.answer[i]):-1;
-  let round=run.entry.indexOf('');
-  if(round<0)round=firstIncorrect();
-  const feedback=byId('entryFeedback'),reading=byId('waterReading');
-  const rounds=run.entry.map((_,i)=>{
-    const slot=action(byId('waterOrder'),(i+1)+'회차',()=>{
-      round=i;previewRound();draw();
-    });
-    slot.innerHTML='<small aria-hidden="true">'+(i+1)+'회차</small><span></span>';
-    return slot;
-  });
-  function preview(level){
-    world.setDigits(run.entry,level);
-    reading.textContent=level+'칸';
-  }
-  function previewRound(){
-    preview(run.entry[round]||run.entry[round-1]||String(WATER_CYCLE.initial));
-  }
-  function draw(){
-    const incorrect=firstIncorrect();
-    for(const [i,slot] of rounds.entries()){
-      const level=run.entry[i];
-      slot.lastElementChild.textContent=level?level+'칸':'—';
-      slot.setAttribute('aria-label',(i+1)+'회차 '+(level?level+'칸':'비어 있음'));
-      slot.setAttribute('aria-pressed',String(i===round));
-      slot.dataset.result=i===incorrect?'failed':'';
-    }
-    feedback.textContent=incorrect<0?'':(incorrect+1)+'회차 물 높이를 다시 확인해 보세요.';
-  }
-  for(const level of puzzle.keys){
-    const key=action(byId('waterLevels'),level+'칸',()=>{
-      if(countdown.check())return;
-      run.entry[round]=level;preview(level);
-      if(correct()){solve();return}
-      const next=run.entry.findIndex((value,i)=>!value&&i>round);
-      const incorrect=firstIncorrect();
-      round=incorrect<0?(next<0?run.entry.indexOf(''):next):incorrect;
-      if(incorrect>=0)previewRound();
-      save();draw();
-    });
-    key.dataset.command=level;
-  }
-  previewRound();draw();
-}
-
 function ballLockerPanel(){
   collectClue('ballLine');
   if(correct()){solve();return}
@@ -556,7 +517,7 @@ function ballLockerPanel(){
 function inspectLock(){
   if(run.solved||!countdown||countdown.check())return;
   const panels={sequence:sequencePanel,selection:selectionPanel,dial:dialPanel,routing:routingPanel,debug:mixerPanel,
-    water:waterPanel,balls:ballLockerPanel,shelf:shelfPanel};
+    balls:ballLockerPanel,shelf:shelfPanel};
   panels[puzzle.control]();
   appendRoomTextHint(content,countdown,puzzle.hint);
 }
@@ -574,7 +535,7 @@ function restart(){
   close();
   run=newRun();opening=false;save();byId('bag').hidden=true;byId('escape').hidden=true;
   roomHead.inert=false;byId('spots').inert=false;
-  movement.hidden=false;world.reset(false,deviceEntry());
+  movement.hidden=false;resetWorld();
   countdown?.reset();
 }
 function beginTimer(){
@@ -594,7 +555,7 @@ function intro(){
     const progress=book();
     if(schoolEscapeTimer(progress)&&schoolRoute(progress)){location.reload();return}
     if(!beginSchoolAttempt(plan))return false;
-    run=newRun();world.reset(false,deviceEntry());byId('bag').hidden=true;
+    run=newRun();resetWorld();byId('bag').hidden=true;
     close();beginTimer();
   }});
 }
@@ -627,7 +588,7 @@ function start(){
     if(event.target!==dialog||mandatoryDialog())return;
     const r=dialog.getBoundingClientRect();
     if(event.clientX>=r.left&&event.clientX<=r.right&&event.clientY>=r.top&&event.clientY<=r.bottom)return;
-    const command=['mixer','water','shelf','ball-locker'].includes(dialog.dataset.panel)&&world.commandAt?.(event.clientX,event.clientY);
+    const command=['mixer','shelf','ball-locker'].includes(dialog.dataset.panel)&&world.commandAt?.(event.clientX,event.clientY);
     if(command){
       content.querySelector('[data-command="'+command+'"]')?.click();
       return;
@@ -642,10 +603,11 @@ function start(){
     onInspect:id=>{
       if(!countdown||countdown.check())return;
       if(id===(room.lock?.id??'lock'))inspectLock();
-      else if(id!=='doorGuide')inspectClue(id);
+      else if(id==='doorGuide')modal(room.place+' 문제',deviceInstructions(),'door-question');
+      else inspectClue(id);
     }
   }).then(created=>{
-    world=created;world.reset(run.solved,deviceEntry());byId('bag').hidden=!run.found.length;
+    world=created;resetWorld();byId('bag').hidden=!run.found.length;
     if(run.awaitingCount)world.setDigits(run.entry,{pending:true});
     if(story&&!plan){intro();return}
     if(beginTimer()&&run.solved)showExit();
