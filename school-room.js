@@ -584,6 +584,16 @@ function start(){
   byId('dismiss').onclick=close;byId('bag').onclick=inventory;byId('map').onclick=directory;
   byId('replay').onclick=restart;
   dialog.addEventListener('cancel',event=>{if(mandatoryDialog())event.preventDefault()});
+  // A touch released in the room can open this dialog before the browser sends its click.
+  let pressStartedInDialog=false;
+  document.addEventListener('pointerdown',event=>{
+    if(event.isPrimary)pressStartedInDialog=dialog.contains(event.target);
+  },true);
+  dialog.addEventListener('click',event=>{
+    if(event.detail>0&&!pressStartedInDialog){
+      event.preventDefault();event.stopImmediatePropagation();
+    }
+  },true);
   dialog.addEventListener('click',event=>{
     if(event.target!==dialog||mandatoryDialog())return;
     const r=dialog.getBoundingClientRect();

@@ -30,7 +30,9 @@ const SportsComputerInteriors = (() => {
     ].map(slot => {
       const position = lockerPosition(banks[slot.bank],slot.column,slot.tier,slot.span);
       const [x,,z] = position;
-      return {...slot,position,trigger:[x+.04,x+1.97,z-.88,z+.88]};
+      const halfFront=LOCKER.column*slot.span/2+.12;
+      const oppositeFace=banks[slot.bank+1].x-LOCKER.width/2;
+      return {...slot,position,trigger:[x,oppositeFace,z-halfFront,z+halfFront]};
     });
     const clues = compartments.map(({bank,id,name,span,position:[x,y,z]}) => ({
       id,name,xyz:[x+.044,y,z],rotationY:Math.PI/2,
@@ -303,8 +305,11 @@ const SportsComputerInteriors = (() => {
         box(compartment,slotW-.02,slotH,.034,0,0,-.40,inside);
         for (const yy of [-slotH/2,slotH/2]) box(compartment,slotW,.018,.41,0,yy,-.212,aluminum);
         for (const xx of [-slotW/2,slotW/2]) box(compartment,.015,slotH,.41,xx,0,-.212,metal);
-        if(open.id==='ballLine')ballDevice=ballRackDevice(compartment,slotW);
-        else patchPlane(compartment,.40,.235,.012,-.025,-.115,orderCard);
+        const contents=new THREE.Group();
+        contents.visible=false;
+        compartment.add(contents);
+        if(open.id==='ballLine')ballDevice=ballRackDevice(contents,slotW);
+        else patchPlane(contents,.40,.235,.012,-.025,-.115,orderCard);
         const doorW=column-.023, doorH=TIER_HEIGHT-.025;
         const flaps=[];
         for(let offset=0;offset<open.span;offset++){
@@ -328,7 +333,8 @@ const SportsComputerInteriors = (() => {
           }
           flaps.push({flap,hinge});
         }
-        leaves.push({id:open.id,trigger:open.trigger,flaps,requested:false,progress:0});
+        const targetId=open.id==='ballLine'?BALL_LOCKER_ID:open.id;
+        leaves.push({id:targetId,trigger:open.trigger,flaps,contents,requested:false,progress:0});
       }
     }
     return {
@@ -339,14 +345,12 @@ const SportsComputerInteriors = (() => {
           if (!leaf.requested && passesLocker(leaf.trigger,fromX,fromZ,toX,toZ)) leaf.requested=true;
         }
       },
-      onInspect(id){
-        if(id===BALL_LOCKER_ID)leaves.find(leaf=>leaf.id==='ballLine').requested=true;
-      },
       animate(dt,reducedMotion) {
         let moving=ballDevice.animate(dt,reducedMotion);
         for (const leaf of leaves) {
           if (!leaf.requested || leaf.progress===1) continue;
           leaf.progress=reducedMotion?1:Math.min(1,leaf.progress+dt/.22);
+          leaf.contents.visible=leaf.progress>0;
           for(const {flap,hinge} of leaf.flaps)flap.rotation.y=hinge*1.58*(1-(1-leaf.progress)**3);
           moving=moving||leaf.progress<1;
         }
@@ -359,6 +363,7 @@ const SportsComputerInteriors = (() => {
         for (const leaf of leaves) {
           leaf.requested=false;
           leaf.progress=0;
+          leaf.contents.visible=false;
           for(const {flap} of leaf.flaps)flap.rotation.y=0;
         }
       }

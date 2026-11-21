@@ -63,6 +63,10 @@ for(const kind of ['classroom','music','art','sports','computer','library','scie
   assert.equal(new Set(compartments.map(slot=>slot.bank)).size,2);
   for(const [i,slot] of compartments.entries()){
    const {x,z}=room.clues[i].approach;
+   const [left,right,front,back]=slot.trigger;
+   assert.ok(x>left&&x<right&&z>front&&z<back,'walking up to the compartment crosses its trigger');
+   assert.ok(room.start[2]>back,'the starting position cannot reveal a compartment');
+   assert.ok(left>banks[slot.bank].x&&right<banks[slot.bank+1].x,'only the aisle facing this door opens it');
    assert.ok(x>banks[slot.bank].x&&x<banks[slot.bank+1].x&&open(x,z),'find each clue in a different internal aisle');
   }
  }
