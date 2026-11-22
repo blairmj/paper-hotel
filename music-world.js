@@ -1,9 +1,19 @@
 'use strict';
 
+function wallPanelClearance(wall,target){
+  const {x,z}=target.point,half=wall.width/2,span=target.surface.width/2+.40;
+  // The strip is local to the panel so the rest of a narrow aisle stays walkable.
+  if(z-wall.z<.35)return [x-span,x+span,wall.z-.02,z+.85];
+  if(wall.back-z<.35)return [x-span,x+span,z-.85,wall.back+.02];
+  if(half-x<.35)return [x-.85,half+.02,z-span,z+span];
+  if(x+half<.35)return [-half-.02,x+.85,z-span,z+span];
+  return null;
+}
+
 async function createMusicWorld({onInspect,onReadyToMove,deviceInstructions,room=paintedRoom,buildRoom=buildPaintedRoom}){
   // Each interior supplies the same metre-based limits as its geometry.
   const roomLimits = room.bounds ?? {left:-9.06, right:9.06, front:-7.54, back:4.94};
-  const obstacles = room.obstacles ?? [[-3.96,-1.10,-4.96,-1.96],[1.10,3.96,-4.96,-1.96]];
+  const obstacles = [...(room.obstacles ?? [[-3.96,-1.10,-4.96,-1.96],[1.10,3.96,-4.96,-1.96]])];
   const occluders = (room.occluders ?? []).map(([left,right,bottom,top,front,back]) =>
     new THREE.Box3(new THREE.Vector3(left,bottom,front),new THREE.Vector3(right,top,back)));
   function onOpenFloor(x,z) {
@@ -60,13 +70,13 @@ async function createMusicWorld({onInspect,onReadyToMove,deviceInstructions,room
   const reducedMotion=matchMedia('(prefers-reduced-motion: reduce)');
   const keys=new Set(),point=new THREE.Vector3(),corner=new THREE.Vector3();
   const sight = new THREE.Ray(), hit = new THREE.Vector3();
-  function targetOccluded(target) {
+  function targetOccluded(target,from=eye) {
     if(!occluders.length)return false;
-    sight.origin.copy(eye);
-    sight.direction.subVectors(target.point,eye);
+    sight.origin.copy(from);
+    sight.direction.subVectors(target.point,from);
     const distance = sight.direction.length();
     sight.direction.divideScalar(distance);
-    return occluders.some(block => sight.intersectBox(block,hit) && hit.distanceToSquared(eye)<(distance-.01)**2);
+    return occluders.some(block => sight.intersectBox(block,hit) && hit.distanceToSquared(from)<(distance-.01)**2);
   }
   const targets=room.targets.map(o=>{
     const button=document.createElement('button'),label=document.createElement('span');
@@ -82,6 +92,17 @@ async function createMusicWorld({onInspect,onReadyToMove,deviceInstructions,room
   const stopPoints=room.stops;
   const puzzleTarget=room.lock?.id??'lock';
   const devices=targets.filter(target=>target.id===puzzleTarget||target.id==='doorGuide');
+  // Leave room to stand at wall-mounted controls, including when approaching by floor click or keyboard.
+  const wallTargets=[];
+  if(room.interior){
+    for(const target of targets){
+      const area=wallPanelClearance(room.wall,target);
+      if(area){
+        obstacles.push(area);
+        wallTargets.push({target,area});
+      }
+    }
+  }
   let deviceGuide;
   if(deviceInstructions){
     deviceGuide=document.createElement('p');
@@ -208,16 +229,58 @@ async function createMusicWorld({onInspect,onReadyToMove,deviceInstructions,room
     if(face){yaw=heading(face);pitch=tilt(face)}
     done?.();
   }
-  function inspectTarget(id){
-    if(model.canInspect?.(id)===false)return;
-    const object=targets.find(t=>t.id===id), [x,,z]=object.xyz;
-    const approachX=id==='paper'?x+.65:x;
-    const approach=object.approach || {x:clamp(approachX,-5.3,5.3),z:clamp(z+2.35,-6.2,-5.16)};
+  function standingPlace(object,approach,nearDoor){
+    if(!room.interior)return approach;
+    // Start on the authored side of the object so a desk, shelf or adjacent locker aisle is never crossed.
+    const [x,,z]=object.inspectionView?.compact??object.xyz;
+    const authoredDistance=Math.hypot(approach.x-x,approach.z-z);
+    const straight=Math.atan2(approach.x-x,approach.z-z);
+    // In a tight aisle, favour the side that keeps the door beyond the panel in view.
+    const doorToRight=nearDoor&&(room.door[0]-x)*Math.cos(straight)>(room.door[2]-z)*Math.sin(straight);
+    const firstSide=doorToRight?-1:1;
+    const halfView=Math.tan(THREE.MathUtils.degToRad(camera.fov/2))*camera.aspect;
+    const frontDistance=Math.max(1.85,authoredDistance);
+    const fit=object.surface.width/(2*halfView*.78)+(object.surface.depth??0)*.25;
+    const desired=Math.max(frontDistance,Math.min(2.6,fit));
+    const from=new THREE.Vector3(0,eye.y,0);
+    for(const distance of new Set([desired,(desired+frontDistance)/2,frontDistance])){
+      for(const degrees of [0,15,-15,30,-30,45,-45,60,-60,75,-75]){
+        const angle=straight+firstSide*THREE.MathUtils.degToRad(degrees);
+        if(!object.inspectFromAnySide&&Math.cos(angle-(object.rotationY??0))<.15)continue;
+        const spot={x:x+Math.sin(angle)*distance,z:z+Math.cos(angle)*distance};
+        if(!onOpenFloor(spot.x,spot.z)||!clearSegment(approach,spot))continue;
+        from.set(spot.x,eye.y,spot.z);
+        if(!targetOccluded(object,from))return spot;
+      }
+    }
+    return approach;
+  }
+  function approachObject(object,inspect){
+    if(model.canInspect?.(object.id)===false)return;
+    const [x,,z]=object.xyz;
+    const approachX=object.id==='paper'?x+.65:x;
+    const authored=object.approach??{x:clamp(approachX,-5.3,5.3),z:clamp(z+2.35,-6.2,-5.16)};
     const sideBySide=width>=800&&width/height>=1.25;
-    const inspectionView=sideBySide?object.inspectionView?.wide:object.inspectionView?.compact;
-    walkTo(approach,inspectionView??object.xyz,()=>{model.onInspect?.(id);onInspect(id)});
+    let face=(sideBySide?object.inspectionView?.wide:object.inspectionView?.compact)??object.xyz;
+    const doorDistance=Math.hypot(x-room.door[0],z-room.door[2]);
+    const nearDoor=room.interior&&devices.includes(object)&&doorDistance<1.75;
+    const stand=standingPlace(object,authored,nearDoor);
+    if(nearDoor&&doorDistance>0){
+      const distance=Math.hypot(stand.x-x,stand.z-z);
+      const halfWidth=distance*Math.tan(THREE.MathUtils.degToRad(camera.fov/2))*camera.aspect;
+      const spareWidth=Math.max(0,halfWidth*.70-object.surface.width/2);
+      const towardDoor=Math.min(.40,spareWidth/doorDistance);
+      face=object.xyz.map((v,i)=>v+(room.door[i]-v)*towardDoor);
+    }
+    const visit=inspect?()=>{model.onInspect?.(object.id);onInspect(object.id)}:null;
+    walkTo(stand,face,visit);
+  }
+  function inspectTarget(id){
+    const object=targets.find(t=>t.id===id);
+    if(object)approachObject(object,true);
   }
   const raycaster=new THREE.Raycaster(),mousePoint=new THREE.Vector2(),destination=new THREE.Vector3();
+  const surfaceNormal=new THREE.Vector3(),normalMatrix=new THREE.Matrix3();
   const roomBox=new THREE.Box3(
     new THREE.Vector3(-room.wall.width/2,0,room.wall.z),
     new THREE.Vector3(room.wall.width/2,room.wall.height,room.wall.back??5.4)
@@ -229,27 +292,41 @@ async function createMusicWorld({onInspect,onReadyToMove,deviceInstructions,room
   function walkToPixel(x,y){
     aimRay(x,y);
     if(!raycaster.ray.intersectBox(roomBox,destination))return;
-    for(const block of occluders){
-      if(raycaster.ray.intersectBox(block,hit)&&hit.distanceToSquared(eye)<destination.distanceToSquared(eye)){
-        destination.copy(hit);
+    // A click on a table, chair or door should stop at the surface the student actually saw.
+    const meshes=[];
+    scene.traverseVisible(obj=>{if(obj.isMesh)meshes.push(obj)});
+    const first=raycaster.intersectObjects(meshes,false)[0];
+    const surface=first&&first.distance<=eye.distanceTo(destination)+.005?first:null;
+    if(surface)destination.copy(surface.point);
+    if(destination.y>=(room.ceilingMinimum??room.wall.height)-.02)return;
+    const {x:hitX,y:hitY,z:hitZ}=destination;
+    for(const {target,area:[left,right,front,back]} of wallTargets){
+      if(hitX>=left&&hitX<=right&&hitZ>=front&&hitZ<=back&&openness===0){
+        approachObject(target,false);return;
       }
     }
-    if(destination.y>=room.wall.height-.001)return;
-    let goal={
-      x:clamp(destination.x,roomLimits.left,roomLimits.right),
-      z:clamp(destination.z,roomLimits.front,roomLimits.back)
-    };
-    for(const [left,right,front,back] of obstacles){
-      if(goal.x<=left||goal.x>=right||goal.z<=front||goal.z>=back)continue;
-      const approaches=[
-        {x:left-.10,z:goal.z},{x:right+.10,z:goal.z},
-        {x:goal.x,z:front-.10},{x:goal.x,z:back+.10}
-      ].filter(({x,z})=>onOpenFloor(x,z));
-      approaches.sort((a,b)=>Math.hypot(a.x-eye.x,a.z-eye.z)-Math.hypot(b.x-eye.x,b.z-eye.z));
-      if(!approaches.length)return;
-      goal=approaches[0];
+    const floor=hitY<.08;
+    const goal={x:clamp(hitX,roomLimits.left,roomLimits.right),z:clamp(hitZ,roomLimits.front,roomLimits.back)};
+    if(floor&&onOpenFloor(goal.x,goal.z)){walkTo(goal);return}
+    const dx=eye.x-hitX,dz=eye.z-hitZ,distance=Math.hypot(dx,dz);
+    const face=floor?null:[hitX,hitY,hitZ];
+    const standBack=1.55;
+    if(face&&surface?.face){
+      surfaceNormal.copy(surface.face.normal).applyNormalMatrix(normalMatrix.getNormalMatrix(surface.object.matrixWorld));
+      // A sideways click on a wall or cabinet should still land in front of its face.
+      if(Math.abs(surfaceNormal.y)<.2){
+        surfaceNormal.y=0;
+        if(surfaceNormal.x*dx+surfaceNormal.z*dz<0)surfaceNormal.negate();
+        surfaceNormal.normalize();
+        const spot={x:hitX+surfaceNormal.x*standBack,z:hitZ+surfaceNormal.z*standBack};
+        if(walkTo(spot,face))return;
+      }
     }
-    walkTo(goal);
+    for(let offset=standBack;offset<distance;offset+=.20){
+      const spot={x:hitX+dx*offset/distance,z:hitZ+dz*offset/distance};
+      if(walkTo(spot,face))return;
+    }
+    if(face)look(face);
   }
   function commandAt(clientX,clientY){
     if(!model.commandPads)return null;

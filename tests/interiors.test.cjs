@@ -78,6 +78,24 @@ for(const kind of ['classroom','music','art','sports','computer','library','scie
  }
 });
 
+test('the science dial clearance blocks the former landing point and leaves its approach aisle free',()=>{
+ const cameraCode=vm.createContext({});
+ vm.runInContext(fs.readFileSync(path.join(root,'music-world.js'),'utf8'),cameraCode);
+ const room=layoutContext.specialty.definition('science');
+ const clearance=target=>cameraCode.wallPanelClearance(room.wall,{
+  point:{x:target.xyz[0],z:target.xyz[2]},surface:target.surface
+ });
+ const dial=room.targets.find(t=>t.id==='lock');
+ const [left,right,front,back]=clearance(dial);
+ const inside=(x,z)=>x>left&&x<right&&z>front&&z<back;
+ const [x,,z]=dial.xyz;
+ assert.ok(inside(room.bounds.right,z),'the former landing at 17 cm from the dial is blocked');
+ assert.ok(inside(x-.55,z+dial.surface.width/2+.10),'a near miss beside the panel has the same clearance');
+ assert.ok(!inside(dial.approach.x,dial.approach.z),'the approach aisle stays walkable');
+ assert.ok(!inside(room.doorReveal.x,room.doorReveal.z),'the automatic doorway sequence stays reachable');
+ assert.equal(clearance(room.targets.find(t=>t.id==='balanceBench')),null,'a freestanding table uses its own geometry');
+});
+
 test('the default enclosure preserves the colors of painted textures',()=>{
  const THREE=require('../three.min.js');
  layoutContext.THREE=THREE;
