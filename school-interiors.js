@@ -62,10 +62,10 @@ const SchoolInterior = (() => {
   }
 
   const standard = (color, roughness = .7, metalness = 0) =>
-    new THREE.MeshStandardMaterial({color, roughness, metalness});
+    new School3D.MeshStandardMaterial({color, roughness, metalness});
 
   function painted(map, intensity = 1) {
-    return new THREE.MeshBasicMaterial({map, color: new THREE.Color().setScalar(intensity), side: THREE.DoubleSide});
+    return new School3D.MeshBasicMaterial({map, color: new School3D.Color().setScalar(intensity), side: School3D.DoubleSide});
   }
 
   function faces(map, top = 1.05, side = .75) {
@@ -74,14 +74,14 @@ const SchoolInterior = (() => {
   }
 
   function box(parent, width, height, depth, x, y, z, material) {
-    const mesh = new THREE.Mesh(new THREE.BoxGeometry(width, height, depth), material);
+    const mesh = new School3D.Mesh(new School3D.BoxGeometry(width, height, depth), material);
     mesh.position.set(x, y, z);
     parent.add(mesh);
     return mesh;
   }
 
   function rounded(parent, width, height, depth, x, y, z, material, radius) {
-    const shape = new THREE.Shape();
+    const shape = new School3D.Shape();
     const halfW = width / 2 - radius;
     const halfH = height / 2 - radius;
     const r = Math.min(.035, halfW * .5, halfH * .5);
@@ -95,11 +95,11 @@ const SchoolInterior = (() => {
     shape.lineTo(-halfW, -halfH + r);
     shape.quadraticCurveTo(-halfW, -halfH, -halfW + r, -halfH);
     const inset = depth - 2 * radius;
-    const geometry = new THREE.ExtrudeGeometry(shape, {
+    const geometry = new School3D.ExtrudeGeometry(shape, {
       depth: inset, bevelEnabled: true, bevelThickness: radius, bevelSize: radius, bevelSegments: 3, curveSegments: 5
     });
     geometry.translate(0, 0, -inset / 2);
-    const mesh = new THREE.Mesh(geometry, material);
+    const mesh = new School3D.Mesh(geometry, material);
     mesh.position.set(x, y, z);
     parent.add(mesh);
     return mesh;
@@ -109,7 +109,7 @@ const SchoolInterior = (() => {
     const material = painted(map);
     material.transparent = transparent;
     material.alphaTest = transparent ? .03 : 0;
-    const mesh = new THREE.Mesh(new THREE.PlaneGeometry(width, height), material);
+    const mesh = new School3D.Mesh(new School3D.PlaneGeometry(width, height), material);
     mesh.position.set(x, y, z);
     parent.add(mesh);
     return mesh;
@@ -122,42 +122,42 @@ const SchoolInterior = (() => {
   }
 
   function quad(parent, points, material, uv = [0, 0, 1, 0, 1, 1, 0, 1]) {
-    const geometry = new THREE.BufferGeometry();
-    geometry.setAttribute('position', new THREE.Float32BufferAttribute(points.flat(), 3));
-    geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+    const geometry = new School3D.BufferGeometry();
+    geometry.setAttribute('position', new School3D.Float32BufferAttribute(points.flat(), 3));
+    geometry.setAttribute('uv', new School3D.Float32BufferAttribute(uv, 2));
     geometry.setIndex([0, 1, 2, 0, 2, 3]);
     geometry.computeVertexNormals();
-    const mesh = new THREE.Mesh(geometry, material);
+    const mesh = new School3D.Mesh(geometry, material);
     parent.add(mesh);
     return mesh;
   }
 
   function cylinder(parent, top, bottom, height, x, y, z, material, sides = 28) {
-    const mesh = new THREE.Mesh(new THREE.CylinderGeometry(top, bottom, height, sides), material);
+    const mesh = new School3D.Mesh(new School3D.CylinderGeometry(top, bottom, height, sides), material);
     mesh.position.set(x, y, z);
     parent.add(mesh);
     return mesh;
   }
 
   function rod(parent, from, to, radius, material) {
-    const a = new THREE.Vector3(...from);
-    const b = new THREE.Vector3(...to);
+    const a = new School3D.Vector3(...from);
+    const b = new School3D.Vector3(...to);
     const direction = b.clone().sub(a);
     const midpoint = a.add(b).multiplyScalar(.5);
     const mesh = cylinder(parent, radius, radius, direction.length(), ...midpoint, material, 12);
-    mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), direction.normalize());
+    mesh.alignY(direction.normalize());
     return mesh;
   }
 
   function tube(parent, points, radius, material) {
-    const curve = new THREE.CatmullRomCurve3(points.map(p => new THREE.Vector3(...p)));
-    const mesh = new THREE.Mesh(new THREE.TubeGeometry(curve, 24, radius, 10, false), material);
+    const curve = new School3D.CatmullRomCurve3(points.map(p => new School3D.Vector3(...p)));
+    const mesh = new School3D.Mesh(new School3D.TubeGeometry(curve, 24, radius, 10, false), material);
     parent.add(mesh);
     return mesh;
   }
 
   function torus(parent, radius, thickness, x, y, z, material, arc = Math.PI * 2) {
-    const mesh = new THREE.Mesh(new THREE.TorusGeometry(radius, thickness, 10, 40, arc), material);
+    const mesh = new School3D.Mesh(new School3D.TorusGeometry(radius, thickness, 10, 40, arc), material);
     mesh.position.set(x, y, z);
     parent.add(mesh);
     return mesh;
@@ -239,7 +239,7 @@ const SchoolInterior = (() => {
         }
       }
       const lampFrame = standard('#6b5a51', .42, .1);
-      const emitter = new THREE.MeshBasicMaterial({color:'#fff5e8'});
+      const emitter = new School3D.MeshBasicMaterial({color:'#fff5e8'});
       for (const x of [-1.78, 1.78]) {
         for (const z of [2.67, 6.46]) {
           box(scene,.126,.061,3.12,x,h-.083,z,lampFrame);
@@ -253,7 +253,7 @@ const SchoolInterior = (() => {
         box(scene, Math.hypot(w, h - low), .164, .19, 0, (low + h)/2 - .08, z, beam).rotation.z = slope;
       }
       const rail = standard('#3a3b38', .44, .18);
-      const emitter = new THREE.MeshBasicMaterial({color:'#fffff8'});
+      const emitter = new School3D.MeshBasicMaterial({color:'#fffff8'});
       for (const x of [-3.2, 2.7]) {
         const y = roofAt(x) - .195;
         box(scene, .054, .042, d - .9, x, y, d/2, rail);
@@ -300,7 +300,7 @@ const SchoolInterior = (() => {
     }
     box(scene, width+trim+.038, trim+.024, .34, x, height-.011, -.044, casing);
     const leafW = width-trim-.017, leafH = height-trim/2-.009;
-    const hinge = new THREE.Group();
+    const hinge = new School3D.Group();
     hinge.position.set(x+width/2-.048, .009, .06);
     scene.add(hinge);
     box(hinge, leafW, leafH, .073, -leafW/2, leafH/2, 0, leafMaterial);
@@ -423,7 +423,7 @@ const SchoolInterior = (() => {
     const foot = standard('#292827', .87);
     const cloth = artwork.patch('chair', (path, w, h) => path.roundRect(0, 0, w, h, 10));
 
-    const trayShape = new THREE.Shape();
+    const trayShape = new School3D.Shape();
     trayShape.moveTo(-.244, -.143);
     trayShape.lineTo(.244, -.143);
     trayShape.lineTo(.244, .127);
@@ -433,22 +433,22 @@ const SchoolInterior = (() => {
     trayShape.closePath();
     for (const y of [-.075, 0, .075]) {
       for (const x of [-.17, -.102, -.034, .034, .102, .17]) {
-        const hole = new THREE.Path();
+        const hole = new School3D.Path();
         hole.absarc(x, y, .013, 0, Math.PI * 2, true);
         trayShape.holes.push(hole);
       }
     }
-    const trayGeometry = new THREE.ExtrudeGeometry(trayShape, {
+    const trayGeometry = new School3D.ExtrudeGeometry(trayShape, {
       depth: .007, bevelEnabled: false, curveSegments: 10
     });
 
     for (const {x, z} of REHEARSAL_SEATS) {
-      const chair = new THREE.Group();
+      const chair = new School3D.Group();
       chair.position.set(x, 0, z);
       scene.add(chair);
       rounded(chair,.51,.076,.445,0,.465,0,fabric,.023);
       flat(chair,.462,.394,0,.505,0,artwork.sample('chair'));
-      const back = new THREE.Group();
+      const back = new School3D.Group();
       back.position.set(0,.737,.176);
       back.rotation.x = .12;
       chair.add(back);
@@ -469,11 +469,11 @@ const SchoolInterior = (() => {
         rod(scene,[standX,.234,standZ],[standX+dx,.028,standZ+dz],.012,standFrame);
         cylinder(scene,.014,.017,.021,standX+dx,.014,standZ+dz,foot,16);
       }
-      const tray = new THREE.Group();
+      const tray = new School3D.Group();
       tray.position.set(standX,1.163,standZ);
       tray.rotation.x = -.32;
       scene.add(tray);
-      tray.add(new THREE.Mesh(trayGeometry, standFrame));
+      tray.add(new School3D.Mesh(trayGeometry, standFrame));
       rounded(tray,.493,.026,.067,0,-.140,.025,standFrame,.008);
       if(x===REHEARSAL_SEATS[0].x){
         patchPlane(tray,MUSIC_SAMPLE.width,MUSIC_SAMPLE.height,0,0,MUSIC_SAMPLE.offset,sampleMap);
@@ -526,7 +526,7 @@ const SchoolInterior = (() => {
     deck(0,5.119,1.37,.306,[[709,550],[963,550],[974,580],[696,580]]);
     deck(-.993,5.132,.635,.28,[[565,550],[672,550],[659,581],[541,581]]);
 
-    const phones = new THREE.Group();
+    const phones = new School3D.Group();
     phones.position.set(.945, .978, 5.12);
     phones.rotation.y = -.32;
     scene.add(phones);
@@ -571,7 +571,7 @@ const SchoolInterior = (() => {
       }
     }
 
-    const mic = new THREE.Group();
+    const mic = new School3D.Group();
     mic.position.set(3.40,0,3.60);
     scene.add(mic);
     for (const [dx,dz] of [[-.28,.16],[.28,.16],[.025,-.265]]) {
@@ -635,7 +635,7 @@ const SchoolInterior = (() => {
         for (const dz of [-1.03,1.03]) {
           const sx=x+dx,sz=4.80+dz;
           cylinder(scene,.251,.249,.065,sx,.557,sz,woodFace,44);
-          const seat = new THREE.Mesh(new THREE.CircleGeometry(.248,48),painted(stoolTop,1.10));
+          const seat = new School3D.Mesh(new School3D.CircleGeometry(.248,48),painted(stoolTop,1.10));
           seat.position.set(sx,.590,sz);
           seat.rotation.x = -Math.PI/2;
           scene.add(seat);
@@ -782,11 +782,11 @@ const SchoolInterior = (() => {
     const [artwork,clueArt]=await Promise.all([
       music?InteriorArtwork.load(room.kind):ArtRoomFinish.load(room),Promise.all(cards.map(clueBoardArt))
     ]);
-    scene.add(new THREE.HemisphereLight(music ? '#fff1e3' : '#fbffff', music ? '#a18c80' : '#aebdbc', 2.72));
-    const fill = new THREE.DirectionalLight(music ? '#ffe8d4' : '#fff9ee', 1.19);
+    scene.add(new School3D.HemisphereLight(music ? '#fff1e3' : '#fbffff', music ? '#a18c80' : '#aebdbc', 2.72));
+    const fill = new School3D.DirectionalLight(music ? '#ffe8d4' : '#fff9ee', 1.19);
     fill.position.set(-3.4,3.25,5.1);
     scene.add(fill);
-    const rim = new THREE.DirectionalLight('#edf2f3', .81);
+    const rim = new School3D.DirectionalLight('#edf2f3', .81);
     rim.position.set(3.6,2.75,-1.8);
     scene.add(rim);
 

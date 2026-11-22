@@ -47,7 +47,7 @@ function mazeSvg(){
  return '<svg class="map" viewBox="0 0 250 250" role="img" aria-label="종이 미로. 삼각형에서 동그라미로 이어진 길을 따라 글자를 읽으세요."><rect width="250" height="250" fill="#647368"/>'+paths+labels.map(([n,t])=>{let [x,y]=xy(n);return '<text x="'+x+'" y="'+(y+5)+'" text-anchor="middle" font-size="15" fill="#48342c">'+t+'</text>'}).join('')+'</svg>';
 }
 function doorView() {
- const center=hinge.parent.localToWorld(new THREE.Vector3(0,1.35,0));
+ const center=hinge.parent.localToWorld(new School3D.Vector3(0,1.35,0));
  center.sub(camera.position);
  return {yaw:Math.atan2(center.x,-center.z),pitch:Math.atan2(center.y,Math.hypot(center.x,center.z))};
 }
@@ -106,7 +106,7 @@ function journal(){if(opening)return;const s=progress();modal(tag(),'단서 수�
 function directory(){if(opening)return;modal('학교  /  2층','학교 안내도','<div class="rooms"></div>',true);const g=body.querySelector('.rooms');for(const r of SCHOOL_ROOMS){const e=document.createElement('button');e.className='roomcard'+(r===room?' current':'');e.innerHTML='<img src="rooms/'+r.n+'.webp" alt=""><small>'+r.n+'호 · '+(progress(r.n).escaped?'탈출 완료':r===room?'현재 교실':'입장')+'</small><b>'+r.place+'</b><span>'+r.name+'</span>';e.onclick=()=>{closeSheet();enter(r.n)};g.append(e)}}
 function help(){if(opening)return;modal('학교 탈출','놀이 방법','<p>교실을 돌아다니며 물건을 조사하고 그 방의 퍼즐을 풀어 보세요.</p><ul><li>화면을 좌우로 끌면 몸을 돌리고, 위아래로 끌면 천장과 바닥을 봅니다.</li><li>← → ↑ ↓ 키로도 자유롭게 시선을 돌릴 수 있어요. 아래의 ‹ › 는 옆 벽으로 90° 회전해요.</li><li>W A S D로 걷거나 ‘한 걸음 ↑’를 누르세요.</li><li>물건 이름을 누르면 자세히 살펴봅니다. 수집한 단서는 수첩에서 다시 읽을 수 있어요.</li><li>방마다 퍼즐이 하나예요. 정답을 맞히면 교실 문이 저절로 열려요.</li></ul>');btn('탐색 시작',closeSheet,row(),true)}
 function interact(id){if(opening)return;if(id==='station')puzzle();else findClue(id)}
-function mark(p,x,y,z,id){const anchor=group(p,x,y,z);const el=document.createElement('button');el.type='button';el.className='mark';const name=id==='station'?room.station:room.clues.find(c=>c[0]===id)[1];const icon=document.createElement('i');icon.setAttribute('aria-hidden','true');el.append(icon,document.createTextNode(name));el.onclick=()=>interact(id);$('marks').append(el);markers.push({anchor,id,el,pos:new THREE.Vector3()})}
+function mark(p,x,y,z,id){const anchor=group(p,x,y,z);const el=document.createElement('button');el.type='button';el.className='mark';const name=id==='station'?room.station:room.clues.find(c=>c[0]===id)[1];const icon=document.createElement('i');icon.setAttribute('aria-hidden','true');el.append(icon,document.createTextNode(name));el.onclick=()=>interact(id);$('marks').append(el);markers.push({anchor,id,el,pos:new School3D.Vector3()})}
 function enter(n){
  const review=REVIEW_ROOMS.find(r=>r.n===n);
  if(review){book.room=n;save();location.assign(review.href);return}
@@ -157,6 +157,6 @@ const firstRoom=SCHOOL_ROOMS.some(r=>r.n===requestedRoom)?requestedRoom:203;
 const firstReview=REVIEW_ROOMS.find(r=>r.n===firstRoom);
 if(firstReview){location.replace(firstReview.href)}
 else try{
- renderer=new THREE.WebGLRenderer({canvas,antialias:true,powerPreference:'high-performance'});renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;renderer.shadowMap.autoUpdate=false;
- scene=new THREE.Scene();scene.background=new THREE.Color(0x46313c);camera=new THREE.PerspectiveCamera(64,1,.055,40);resize();window.addEventListener('resize',resize);enter(firstRoom);if(requestedRoom===firstRoom)history.replaceState(null,'',location.pathname);requestAnimationFrame(tick);
+ renderer=SchoolWebGL.create(canvas);
+ scene=new School3D.Scene();scene.background=new School3D.Color(0x46313c);camera=new School3D.PerspectiveCamera(64,1,.055,40);resize();window.addEventListener('resize',resize);enter(firstRoom);if(requestedRoom===firstRoom)history.replaceState(null,'',location.pathname);requestAnimationFrame(tick);
 }catch(err){$('fatal').hidden=false;$('fatal').innerHTML='<b>3D 교실을 열 수 없어요.</b><p>WebGL을 지원하는 브라우저에서 하드웨어 가속을 켠 뒤 다시 열어 주세요.</p>';console.error(err)}

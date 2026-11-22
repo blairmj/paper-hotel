@@ -116,7 +116,7 @@ const SpecialtyInteriors = (() => {
   }
 
   function positionGroup(parent,x,y,z,angle=0){
-    const group=new THREE.Group();
+    const group=new School3D.Group();
     group.position.set(x,y,z);
     group.rotation.y=angle;
     parent.add(group);
@@ -128,7 +128,7 @@ const SpecialtyInteriors = (() => {
     rug:['cloth',.013], red:['wood',.008], blue:['paint',.003], door:['paint',.003]
   };
   function materialFrom(art,name,roughness=.78){
-    const material=new THREE.MeshStandardMaterial({map:art.sample(name),roughness,envMapIntensity:.72});
+    const material=new School3D.MeshStandardMaterial({map:art.sample(name),roughness,envMapIntensity:.72});
     const bump=materialBumps[name];
     if(bump){
       material.bumpMap=art.relief(bump[0]);
@@ -137,7 +137,7 @@ const SpecialtyInteriors = (() => {
     return material;
   }
 
-  function roundedOutline(width,height,radius,shape=new THREE.Shape()){
+  function roundedOutline(width,height,radius,shape=new School3D.Shape()){
     const l=-width/2,r=width/2,b=-height/2,t=height/2;
     shape.moveTo(l+radius,b);
     shape.lineTo(r-radius,b);shape.quadraticCurveTo(r,b,r,b+radius);
@@ -148,7 +148,7 @@ const SpecialtyInteriors = (() => {
   }
 
   function panelGeometry(shape,width,height,depth,bevel=0){
-    const geometry=new THREE.ExtrudeGeometry(shape,{
+    const geometry=new School3D.ExtrudeGeometry(shape,{
       depth:depth-2*bevel,bevelEnabled:bevel>0,bevelThickness:bevel,bevelSize:bevel,
       bevelSegments:3,curveSegments:15
     });
@@ -169,9 +169,9 @@ const SpecialtyInteriors = (() => {
     const outline=roundedOutline(width-2*bevel,height-2*bevel,radius-bevel);
     if(hole){
       const [w,h,r]=hole;
-      outline.holes.push(roundedOutline(w+2*bevel,h+2*bevel,r+bevel,new THREE.Path()));
+      outline.holes.push(roundedOutline(w+2*bevel,h+2*bevel,r+bevel,new School3D.Path()));
     }
-    const mesh=new THREE.Mesh(panelGeometry(outline,width,height,depth,bevel),material);
+    const mesh=new School3D.Mesh(panelGeometry(outline,width,height,depth,bevel),material);
     mesh.position.set(x,y,z-depth/2);
     parent.add(mesh);
     return mesh;
@@ -195,17 +195,17 @@ const SpecialtyInteriors = (() => {
       g.fillStyle='#ffffff93';g.fillRect(w*.43,h*.22,w*.14,h*.33);
       g.fillStyle='#3333334c';g.fillRect(w*.71,h*.26,w*.07,h*.22);
     });
-    return new THREE.MeshStandardMaterial({map,roughness:.82});
+    return new School3D.MeshStandardMaterial({map,roughness:.82});
   }
 
   function packedBooks(parent,books,cover){
-    const geometry=new THREE.BoxGeometry(1,1,1);
-    const spines=new THREE.InstancedMesh(geometry,cover,books.length);
-    const labels=new THREE.InstancedMesh(geometry,standard('#f0e9dd',.91),books.length);
-    const pose=new THREE.Object3D();
+    const geometry=new School3D.BoxGeometry(1,1,1);
+    const spines=new School3D.InstancedMesh(geometry,cover,books.length);
+    const labels=new School3D.InstancedMesh(geometry,standard('#f0e9dd',.91),books.length);
+    const pose=new School3D.Object3D();
     for(const [i,{x,y,z,w,h,d,angle,color}] of books.entries()){
       pose.position.set(x,y+h/2,z);pose.rotation.set(0,angle,0);pose.scale.set(w,h,d);pose.updateMatrix();
-      spines.setMatrixAt(i,pose.matrix);spines.setColorAt(i,new THREE.Color(color));
+      spines.setMatrixAt(i,pose.matrix);spines.setColorAt(i,new School3D.Color(color));
       pose.position.set(x+Math.sin(angle)*(d/2+.002),y+.044,z+Math.cos(angle)*(d/2+.002));
       pose.scale.set(w*.65,.026+(i%4)*.004,.004);pose.updateMatrix();labels.setMatrixAt(i,pose.matrix);
     }
@@ -216,7 +216,7 @@ const SpecialtyInteriors = (() => {
     const unit=positionGroup(scene,x,0,z,angle),height=2.88,depth=.48;
     const bays=Math.max(1,Math.round(width/.99)),bayWidth=width/bays;
     const books=[];
-    const light=new THREE.MeshBasicMaterial({color:'#ffebbd'});
+    const light=new School3D.MeshBasicMaterial({color:'#ffebbd'});
     box(unit,width,height,.030,0,height/2,-depth/2,gold);
     for(let bay=0;bay<bays;bay++){
       const left=bay*bayWidth-width/2,center=left+bayWidth/2;
@@ -240,7 +240,7 @@ const SpecialtyInteriors = (() => {
   }
 
   function arcBoard(scene,inner,outer,y,thickness,material){
-    const shape=new THREE.Shape(),steps=32;
+    const shape=new School3D.Shape(),steps=32;
     for(const [r,clockwise] of [[outer,true],[inner,false]]){
       for(let i=0;i<=steps;i++){
         const portion=clockwise?i/steps:1-i/steps;
@@ -251,7 +251,7 @@ const SpecialtyInteriors = (() => {
       }
     }
     shape.closePath();
-    const mesh=new THREE.Mesh(panelGeometry(shape,outer*2,outer*2,thickness,.005),material);
+    const mesh=new School3D.Mesh(panelGeometry(shape,outer*2,outer*2,thickness,.005),material);
     mesh.rotation.x=-quarterTurn;mesh.position.set(bookArc.x,y,bookArc.z);scene.add(mesh);
   }
 
@@ -329,7 +329,7 @@ const SpecialtyInteriors = (() => {
 
   function library(scene,room,art,shadow){
     const wood=materialFrom(art,'wood',.64), fabric=materialFrom(art,'fabric',.92);
-    const gold=new THREE.MeshStandardMaterial({color:'#dbaf56',roughness:.83,emissive:'#d39931',emissiveIntensity:.12});
+    const gold=new School3D.MeshStandardMaterial({color:'#dbaf56',roughness:.83,emissive:'#d39931',emissiveIntensity:.12});
     const blue=standard('#284b83',.86), red=standard('#c84735',.75);
     const cushion=standard('#eeb938',.90);
     cushion.bumpMap=art.relief('cloth');cushion.bumpScale=.016;
@@ -370,11 +370,11 @@ const SpecialtyInteriors = (() => {
     for(const [side,angle] of [[-1,-.19],[1,.17]]){
       shapedPanel(scene,.41,.37,.144,.086,alcoveX+side*1.00,.765,.398,cushion,undefined,.034).rotation.z=angle;
     }
-    box(scene,2.18,.015,.034,alcoveX,2.174,.381,new THREE.MeshBasicMaterial({color:'#ffedc5'}));
-    const shelfLight=new THREE.PointLight('#ffdfad',2.7,4.5,2);
+    box(scene,2.18,.015,.034,alcoveX,2.174,.381,new School3D.MeshBasicMaterial({color:'#ffedc5'}));
+    const shelfLight=new School3D.PointLight('#ffdfad',2.7,4.5,2);
     shelfLight.position.set(-3.39,2.63,3.81);
     scene.add(shelfLight);
-    const rug=new THREE.Mesh(new THREE.CircleGeometry(1,64),materialFrom(art,'rug',.95));
+    const rug=new School3D.Mesh(new School3D.CircleGeometry(1,64),materialFrom(art,'rug',.95));
     rug.rotation.x=-quarterTurn;rug.scale.set(1.80,.75,1);rug.position.set(alcoveX,.005,1.11);
     scene.add(rug);
 
@@ -395,7 +395,7 @@ const SpecialtyInteriors = (() => {
       rod(parent,[x+dx*.152,.441,z+dz*.152],[x+dx*.213,.031,z+dz*.213],.023,frame);
       cylinder(parent,.029,.029,.048,x+dx*.213,.028,z+dz*.213,seat,12);
     }
-    const brace=new THREE.Mesh(new THREE.TorusGeometry(.182,.013,8,40),frame);
+    const brace=new School3D.Mesh(new School3D.TorusGeometry(.182,.013,8,40),frame);
     brace.rotation.x=-quarterTurn;brace.position.set(x,.216,z);parent.add(brace);
   }
 
@@ -446,7 +446,7 @@ const SpecialtyInteriors = (() => {
     }
     const balances=ScienceBalance.build(scene,room);
     microscope(scene,2.11,lab[1].z+.18,enamel,dark,steel);
-    const measureGlass=new THREE.MeshPhysicalMaterial({
+    const measureGlass=new School3D.MeshPhysicalMaterial({
       color:'#c6e7f2',roughness:.13,clearcoat:.58,transparent:true,opacity:.29,depthWrite:false
     });
     const measureZ=lab[1].z-.35;
@@ -477,8 +477,8 @@ const SpecialtyInteriors = (() => {
     tube(scene,[[0,.884,.161],[0,1.204,.161],[0,1.301,.268],[0,1.266,.395],[0,1.174,.420]],.024,steel);
     cylinder(scene,.03,.029,.025,0,1.177,.42,steel);
     rounded(scene,.116,.021,.030,.085,.938,.162,steel,.008);
-    const tiles=new THREE.Mesh(new THREE.PlaneGeometry(7.14,1.40),
-      new THREE.MeshStandardMaterial({map:art.surface('tile',7.14,1.40),roughness:.48,envMapIntensity:.55}));
+    const tiles=new School3D.Mesh(new School3D.PlaneGeometry(7.14,1.40),
+      new School3D.MeshStandardMaterial({map:art.surface('tile',7.14,1.40),roughness:.48,envMapIntensity:.55}));
     tiles.position.set(0,1.570,.013);scene.add(tiles);
     return balances;
   }
@@ -520,7 +520,7 @@ const SpecialtyInteriors = (() => {
         g.fillStyle='#a0a5ac87';g.fillRect(x-1,y+1.87,2.2,.85);
       }
     });
-    const perforated=new THREE.MeshStandardMaterial({map:punched,roughness:.74});
+    const perforated=new School3D.MeshStandardMaterial({map:punched,roughness:.74});
     const {width,back}=room.wall;
     for(const side of [-1,1]){
       const wall=positionGroup(scene,side*(width/2-.052),0,back/2,-side*quarterTurn);
@@ -548,7 +548,7 @@ const SpecialtyInteriors = (() => {
       g.fillText('ON AIR',w/2,h*.69);
     });
     patchPlane(scene,.449,.104,-2.13,2.56,.132,sign);
-    const indicatorGlow=new THREE.PointLight('#ff6a48',.41,.90,2);
+    const indicatorGlow=new School3D.PointLight('#ff6a48',.41,.90,2);
     indicatorGlow.position.set(-2.13,2.56,.186);scene.add(indicatorGlow);
   }
 
@@ -646,8 +646,8 @@ const SpecialtyInteriors = (() => {
   }
 
   function hardwareBatch(parent,geometry,material,positions){
-    const mesh=new THREE.InstancedMesh(geometry,material,positions.length);
-    const matrix=new THREE.Matrix4();
+    const mesh=new School3D.InstancedMesh(geometry,material,positions.length);
+    const matrix=new School3D.Matrix4();
     for(const [index,[x,y,z]] of positions.entries())mesh.setMatrixAt(index,matrix.makeTranslation(x,y,z));
     parent.add(mesh);
   }
@@ -712,16 +712,16 @@ const SpecialtyInteriors = (() => {
     const channels=Array.from({length:12},(_,i)=>-.535+i*.078);
     patchPlane(panel,1.18,.554,0,.047,0,mixerSurface(channels)).rotation.x=-quarterTurn;
     const dials=standard('#14191f',.49),faders=standard('#79838d',.44,.14);
-    const dialGeometry=new THREE.CylinderGeometry(.0155,.019,.021,18);
-    const markerGeometry=new THREE.BoxGeometry(.004,.002,.015);
+    const dialGeometry=new School3D.CylinderGeometry(.0155,.019,.021,18);
+    const markerGeometry=new School3D.BoxGeometry(.004,.002,.015);
     const levels=[.104,.154,.099,.191,.119,.163,.140,.176,.112,.201,.157,.138];
-    const lamp=new THREE.MeshBasicMaterial({color:'#64d4ae'});
+    const lamp=new School3D.MeshBasicMaterial({color:'#64d4ae'});
     for(const [z,color] of [[-.151,'#dadfe3'],[-.087,'#73adc3'],[-.023,'#c2a56e']]){
       hardwareBatch(panel,dialGeometry,dials,channels.map(x=>[x,.058,z]));
       hardwareBatch(panel,markerGeometry,standard(color,.55),channels.map(x=>[x,.069,z-.004]));
     }
-    hardwareBatch(panel,new THREE.BoxGeometry(.030,.017,.032),faders,channels.map((x,i)=>[x,.056,levels[i]]));
-    hardwareBatch(panel,new THREE.BoxGeometry(.028,.007,.020),lamp,channels.filter((_,i)=>i%3!==2).map(x=>[x,.051,.035]));
+    hardwareBatch(panel,new School3D.BoxGeometry(.030,.017,.032),faders,channels.map((x,i)=>[x,.056,levels[i]]));
+    hardwareBatch(panel,new School3D.BoxGeometry(.028,.007,.020),lamp,channels.filter((_,i)=>i%3!==2).map(x=>[x,.051,.035]));
     const pilots=['#77c4df','#ed7c70','#bbcad0','#77d8b3'];
     const commandPads=Object.entries(BROADCAST_COMMANDS).map(([command,{display}],i)=>{
       const x=.417+(i%2)*.078,z=.139+Math.floor(i/2)*.068;
@@ -777,7 +777,7 @@ const SpecialtyInteriors = (() => {
       cylinder(unit,radius*.84,radius*.84,.014,0,y,.124,rubber,32).rotation.x=quarterTurn;
       cylinder(unit,radius*.38,radius*.43,.010,0,y,.134,edge,28).rotation.x=quarterTurn;
     }
-    box(unit,.020,.006,.004,.067,.043,.117,new THREE.MeshBasicMaterial({color:'#68c6a6'}));
+    box(unit,.020,.006,.004,.067,.043,.117,new School3D.MeshBasicMaterial({color:'#68c6a6'}));
   }
 
   function headphones(scene,x,z,shell,edge){
@@ -847,7 +847,7 @@ const SpecialtyInteriors = (() => {
   function statusLamp(scene,{xyz,angle}){
     const base=positionGroup(scene,...xyz,angle);
     rounded(base,.134,.167,.037,0,0,0,standard('#3b424a',.56),.012);
-    const indicator=new THREE.MeshBasicMaterial({color:'#f38d72'});
+    const indicator=new School3D.MeshBasicMaterial({color:'#f38d72'});
     cylinder(base,.025,.026,.01,0,0,.024,indicator,28).rotation.x=quarterTurn;
     return open=>indicator.color.set(open?'#74d5a9':'#f38d72');
   }
@@ -856,7 +856,7 @@ const SpecialtyInteriors = (() => {
     const {width,back,height}=room.wall;
     const circular=room.kind==='library';
     const shade=standard(circular?'#daa869':room.kind==='broadcast'?'#535a66':'#d8d7d3',.57);
-    const emitter=new THREE.MeshBasicMaterial({color:circular?'#fff6df':'#fffdf7'});
+    const emitter=new School3D.MeshBasicMaterial({color:circular?'#fff6df':'#fffdf7'});
     for(const x of [-width*.255,width*.255]){
       for(const part of [.20,.49,.79]){
         const z=back*part;
@@ -883,11 +883,11 @@ const SpecialtyInteriors = (() => {
       g.fillStyle=warm?'#fff1d6':'#fffcf6';
       for(const [x,y] of [[31,27],[86,35],[142,26],[209,36]])g.fillRect(x,y,27,8);
     });
-    scene.environment.mapping=THREE.EquirectangularReflectionMapping;
+    scene.environment.mapping=School3D.EquirectangularReflectionMapping;
 
-    const fill=new THREE.HemisphereLight(warm?'#fff4df':'#fcfdff',warm?'#c6a787':'#bdc4ce',1.48);
+    const fill=new School3D.HemisphereLight(warm?'#fff4df':'#fcfdff',warm?'#c6a787':'#bdc4ce',1.48);
     const lampColor=warm?'#fff2d7':'#fff9ef';
-    const key=new THREE.DirectionalLight(lampColor,.98);
+    const key=new School3D.DirectionalLight(lampColor,.98);
     key.position.set(width*.38,height+1.65,back*.81);
     key.target.position.set(-.25,.52,back*.33);
     key.castShadow=true;
@@ -896,22 +896,21 @@ const SpecialtyInteriors = (() => {
     key.shadow.normalBias=.027;
     const span=Math.hypot(width,back)*.56;
     Object.assign(key.shadow.camera,{left:-span,right:span,top:span,bottom:-span,near:.15,far:span*2.8});
-    key.shadow.camera.updateProjectionMatrix();
     // Furniture is static. The opening door is outside this cached shadow pass.
     key.shadow.autoUpdate=false;
     key.shadow.needsUpdate=true;
-    const overhead=new THREE.DirectionalLight(lampColor,1.21);
+    const overhead=new School3D.DirectionalLight(lampColor,1.21);
     overhead.position.set(width*.28,height+2.65,back*.75);
     overhead.target=key.target;
-    const bounce=new THREE.DirectionalLight(warm?'#f9e9d9':'#e6efff',.76);
+    const bounce=new School3D.DirectionalLight(warm?'#f9e9d9':'#e6efff',.76);
     bounce.position.set(-width*.38,height*.64,back*.43);
     scene.add(fill,key,key.target,overhead,bounce);
   }
 
   function architectureMaterial(art,room,map,surface){
     const floor=surface==='floor',ceiling=surface==='ceiling';
-    const material=new THREE.MeshStandardMaterial({
-      map,side:THREE.DoubleSide,envMapIntensity:.6,
+    const material=new School3D.MeshStandardMaterial({
+      map,side:School3D.DoubleSide,envMapIntensity:.6,
       roughness:floor&&room.kind==='science'?.61:.90,
       emissiveMap:map,emissive:'#ffffff',emissiveIntensity:ceiling?.56:.11
     });
@@ -923,7 +922,7 @@ const SpecialtyInteriors = (() => {
     if(floor){
       const pattern={library:'wood',science:'paint',broadcast:'cloth'}[room.kind];
       const relief=art.relief(pattern).clone();
-      relief.wrapS=relief.wrapT=THREE.RepeatWrapping;
+      relief.wrapS=relief.wrapT=School3D.RepeatWrapping;
       relief.repeat.set(room.wall.width/2,room.depth/2);
       material.bumpMap=relief;
       material.bumpScale=room.kind==='science'?.003:.013;

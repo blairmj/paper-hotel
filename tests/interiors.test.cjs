@@ -122,14 +122,16 @@ test('the science dial clearance blocks the former landing point and leaves its 
 });
 
 test('the default enclosure preserves the colors of painted textures',()=>{
- const THREE=require('../three.min.js');
- layoutContext.THREE=THREE;
- const scene=new THREE.Scene();
- const artwork=new THREE.Texture();
+ for(const file of ['vendor/gl-matrix.min.js','vendor/earcut.min.js','webgl/model.js','webgl/geometry.js']){
+   vm.runInContext(fs.readFileSync(path.join(root,file),'utf8'),layoutContext);
+ }
+ const native=vm.runInContext('School3D',layoutContext);
+ const scene=new native.Scene();
+ const artwork=new native.Texture();
  layoutContext.interior.enclosure(scene,layoutContext.interior.definition('art'),{surface:()=>artwork},'#cab797');
  const paintedSurfaces=scene.children.filter(object=>object.material?.map===artwork);
  assert.equal(paintedSurfaces.length,8);
- for(const {material} of paintedSurfaces)assert.deepEqual(material.color.toArray(),[1,1,1]);
+ for(const {material} of paintedSurfaces)assert.deepEqual(Array.from(material.color.toArray()),[1,1,1]);
 });
 
 function timerHarness(){

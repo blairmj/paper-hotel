@@ -44,7 +44,7 @@ async function createMusicWorld({onInspect,onReadyToMove,deviceInstructions,room
   const roomLimits = room.bounds ?? {left:-9.06, right:9.06, front:-7.54, back:4.94};
   const obstacles = [...(room.obstacles ?? [[-3.96,-1.10,-4.96,-1.96],[1.10,3.96,-4.96,-1.96]])];
   const occluders = (room.occluders ?? []).map(([left,right,bottom,top,front,back]) =>
-    new THREE.Box3(new THREE.Vector3(left,bottom,front),new THREE.Vector3(right,top,back)));
+    new School3D.Box3(new School3D.Vector3(left,bottom,front),new School3D.Vector3(right,top,back)));
   function onOpenFloor(x,z) {
     return x>=roomLimits.left && x<=roomLimits.right && z>=roomLimits.front && z<=roomLimits.back &&
       !obstacles.some(([l,r,f,b])=>x>l && x<r && z>f && z<b);
@@ -78,18 +78,15 @@ async function createMusicWorld({onInspect,onReadyToMove,deviceInstructions,room
     return prev[1]<0?[]:path;
   }
 
-  const canvas=document.getElementById('roomView'),scene=new THREE.Scene();
-  scene.background=new THREE.Color(0xe6ebef);
+  const canvas=document.getElementById('roomView'),scene=new School3D.Scene();
+  scene.background=new School3D.Color(0xe6ebef);
   const viewAngle=room.viewAngle??55;
-  const camera=new THREE.PerspectiveCamera(viewAngle,1,.04,42);
+  const camera=new School3D.PerspectiveCamera(viewAngle,1,.04,42);
   camera.rotation.order='YXZ';
   let renderer,model,photos;
   try {
-    renderer=new THREE.WebGLRenderer({canvas,antialias:true,alpha:false,powerPreference:'high-performance'});
-    renderer.outputColorSpace=THREE.SRGBColorSpace;
-    renderer.shadowMap.enabled=!!room.interior;
-    renderer.shadowMap.type=THREE.PCFSoftShadowMap;
-  }catch{renderer=null}
+    renderer=SchoolWebGL.create(canvas);
+  }catch(error){if(room.interior)throw error;renderer=null}
   model=await buildRoom(scene,room);
   if(!renderer){
     if(room.interior)throw new Error('WebGL is required for this interior');
@@ -97,8 +94,8 @@ async function createMusicWorld({onInspect,onReadyToMove,deviceInstructions,room
   }
   const eye=camera.position;
   const reducedMotion=matchMedia('(prefers-reduced-motion: reduce)');
-  const keys=new Set(),keyVelocity=new THREE.Vector2(),point=new THREE.Vector3(),corner=new THREE.Vector3();
-  const sight = new THREE.Ray(), hit = new THREE.Vector3();
+  const keys=new Set(),keyVelocity=new School3D.Vector2(),point=new School3D.Vector3(),corner=new School3D.Vector3();
+  const sight = new School3D.Ray(), hit = new School3D.Vector3();
   function targetOccluded(target,from=eye) {
     if(!occluders.length)return false;
     sight.origin.copy(from);
@@ -116,7 +113,7 @@ async function createMusicWorld({onInspect,onReadyToMove,deviceInstructions,room
     button.onpointerdown=e=>startPointer(e,o.id);
     document.getElementById('spots').append(button);
     const surface=o.surface || (o.id==='clock'?room.clock:o.id==='lock'?room.lock:{width:.79,height:.50});
-    return {...o,point:new THREE.Vector3(...o.xyz),surface,button};
+    return {...o,point:new School3D.Vector3(...o.xyz),surface,button};
   });
   const stopPoints=room.stops;
   const puzzleTarget=room.lock?.id??'lock';
@@ -148,7 +145,7 @@ async function createMusicWorld({onInspect,onReadyToMove,deviceInstructions,room
   }
   let width=1,height=1,yaw=0,pitch=0,openness=0,journey,trail,drag,finale,raf=0,previousTime=0;
   let fullRatio=1,movingRatio=1,wasMoving=false,slowFrames=0;
-  const clamp=THREE.MathUtils.clamp, wrap=angle=>Math.atan2(Math.sin(angle),Math.cos(angle));
+  const clamp=School3D.MathUtils.clamp, wrap=angle=>Math.atan2(Math.sin(angle),Math.cos(angle));
   function heading(position,from=eye){return Math.atan2(position[0]-from.x,from.z-position[2])}
   function tilt(position,from=eye){return Math.atan2(position[1]-eye.y,Math.hypot(position[0]-from.x,position[2]-from.z))}
   function resize(){
@@ -158,7 +155,7 @@ async function createMusicWorld({onInspect,onReadyToMove,deviceInstructions,room
     camera.aspect=width/height;
     // Keep furniture at the same relative height across landscape screens.
     // Portrait screens get a wider vertical view within a comfortable limit.
-    camera.fov=clamp(THREE.MathUtils.radToDeg(
+    camera.fov=clamp(School3D.MathUtils.radToDeg(
       2*Math.atan(Math.tan(viewAngle*Math.PI/360)/Math.min(camera.aspect,1))
     ),viewAngle,74);
     camera.updateProjectionMatrix();queue();
@@ -202,8 +199,8 @@ async function createMusicWorld({onInspect,onReadyToMove,deviceInstructions,room
       const v=point.project(camera),px=width*(1+v.x)/2,py=height*(1-v.y)/2;
       const b=target.button;
       const sin=Math.sin(target.rotationY||0),cos=Math.cos(target.rotationY||0);
-      const viewNormal=new THREE.Vector3(sin,0,cos);
-      const behindSurface=!target.inspectFromAnySide&&viewNormal.dot(new THREE.Vector3().subVectors(eye,target.point))<.025;
+      const viewNormal=new School3D.Vector3(sin,0,cos);
+      const behindSurface=!target.inspectFromAnySide&&viewNormal.dot(new School3D.Vector3().subVectors(eye,target.point))<.025;
       b.hidden=behindSurface||v.z<0||v.z>=1||px<20||px>width-20||py<55||py>height-56||!!journey||
         (openness===1&&devices.includes(target))||model.canInspect?.(target.id)===false||targetOccluded(target);
       target.px=px;target.py=py;
@@ -297,14 +294,14 @@ async function createMusicWorld({onInspect,onReadyToMove,deviceInstructions,room
     // In a tight aisle, favour the side that keeps the door beyond the panel in view.
     const doorToRight=nearDoor&&(room.door[0]-x)*Math.cos(straight)>(room.door[2]-z)*Math.sin(straight);
     const firstSide=doorToRight?-1:1;
-    const halfView=Math.tan(THREE.MathUtils.degToRad(camera.fov/2))*camera.aspect;
+    const halfView=Math.tan(School3D.MathUtils.degToRad(camera.fov/2))*camera.aspect;
     const frontDistance=Math.max(1.85,authoredDistance);
     const fit=object.surface.width/(2*halfView*.78)+(object.surface.depth??0)*.25;
     const desired=Math.max(frontDistance,Math.min(2.6,fit));
-    const from=new THREE.Vector3(0,eye.y,0);
+    const from=new School3D.Vector3(0,eye.y,0);
     for(const distance of new Set([desired,(desired+frontDistance)/2,frontDistance])){
       for(const degrees of [0,15,-15,30,-30,45,-45,60,-60,75,-75]){
-        const angle=straight+firstSide*THREE.MathUtils.degToRad(degrees);
+        const angle=straight+firstSide*School3D.MathUtils.degToRad(degrees);
         if(!object.inspectFromAnySide&&Math.cos(angle-(object.rotationY??0))<.15)continue;
         const spot={x:x+Math.sin(angle)*distance,z:z+Math.cos(angle)*distance};
         if(!onOpenFloor(spot.x,spot.z)||!clearSegment(approach,spot))continue;
@@ -326,7 +323,7 @@ async function createMusicWorld({onInspect,onReadyToMove,deviceInstructions,room
     const stand=standingPlace(object,authored,nearDoor);
     if(nearDoor&&doorDistance>0){
       const distance=Math.hypot(stand.x-x,stand.z-z);
-      const halfWidth=distance*Math.tan(THREE.MathUtils.degToRad(camera.fov/2))*camera.aspect;
+      const halfWidth=distance*Math.tan(School3D.MathUtils.degToRad(camera.fov/2))*camera.aspect;
       const spareWidth=Math.max(0,halfWidth*.70-object.surface.width/2);
       const towardDoor=Math.min(.40,spareWidth/doorDistance);
       face=object.xyz.map((v,i)=>v+(room.door[i]-v)*towardDoor);
@@ -338,11 +335,11 @@ async function createMusicWorld({onInspect,onReadyToMove,deviceInstructions,room
     const object=targets.find(t=>t.id===id);
     if(object)approachObject(object,true);
   }
-  const raycaster=new THREE.Raycaster(),mousePoint=new THREE.Vector2(),destination=new THREE.Vector3();
-  const surfaceNormal=new THREE.Vector3(),normalMatrix=new THREE.Matrix3();
-  const roomBox=new THREE.Box3(
-    new THREE.Vector3(-room.wall.width/2,0,room.wall.z),
-    new THREE.Vector3(room.wall.width/2,room.wall.height,room.wall.back??5.4)
+  const raycaster=new School3D.Raycaster(),mousePoint=new School3D.Vector2(),destination=new School3D.Vector3();
+  const surfaceNormal=new School3D.Vector3(),normalMatrix=new School3D.Matrix3();
+  const roomBox=new School3D.Box3(
+    new School3D.Vector3(-room.wall.width/2,0,room.wall.z),
+    new School3D.Vector3(room.wall.width/2,room.wall.height,room.wall.back??5.4)
   );
   function aimRay(x,y){
     mousePoint.set(2*x/width-1,1-2*y/height);
@@ -368,7 +365,8 @@ async function createMusicWorld({onInspect,onReadyToMove,deviceInstructions,room
     const goal={x:clamp(hitX,roomLimits.left,roomLimits.right),z:clamp(hitZ,roomLimits.front,roomLimits.back)};
     if(floor&&onOpenFloor(goal.x,goal.z)){
       const dx=goal.x-eye.x,dz=goal.z-eye.z;
-      if(Math.hypot(dx,dz)>.08)walkTo(goal,[goal.x+dx,eye.y,goal.z+dz]);
+      // As in B-0, a floor click moves the player while keeping their gaze steady.
+      if(Math.hypot(dx,dz)>.08)walkTo(goal);
       return;
     }
     const dx=eye.x-hitX,dz=eye.z-hitZ,distance=Math.hypot(dx,dz);

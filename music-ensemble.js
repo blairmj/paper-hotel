@@ -44,7 +44,7 @@ async function studioSeats(scene, panel) {
   return function updateSeatViews(eye){
     for(const seat of seats){
       const p=seat.mesh.position,heading=Math.atan2(eye.x-p.x,eye.z-p.z);
-      const relative=THREE.MathUtils.euclideanModulo(heading-seat.angle+Math.PI,Math.PI*2)-Math.PI;
+      const relative=School3D.MathUtils.euclideanModulo(heading-seat.angle+Math.PI,Math.PI*2)-Math.PI;
       const degrees=Math.abs(relative)*180/Math.PI;
       const index=degrees<12?1:degrees<74?0:degrees<102?2:degrees<158?3:4;
       seat.mesh.material.map=maps[index];seat.mesh.rotation.y=heading;

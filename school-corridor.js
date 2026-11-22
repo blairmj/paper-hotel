@@ -3,7 +3,7 @@
 // The corridor is rendered beyond the real door frame, in the door's local coordinates.
 function buildSchoolCorridor(parent,x,hinge,leafWidth){
   const {box,flat,patchPlane,standard}=SchoolInterior;
-  const corridor=new THREE.Group();
+  const corridor=new School3D.Group();
   corridor.name='학교 복도';
   corridor.position.x=x;
   corridor.visible=false;
@@ -12,7 +12,7 @@ function buildSchoolCorridor(parent,x,hinge,leafWidth){
   const half=width/2;
   const plaster=standard('#ebe5d8'),base=standard('#aebed0'),wood=standard('#b68e64');
   const rail=standard('#887768'),frame=standard('#dfded5'),trim=standard('#758594');
-  const lamp=new THREE.MeshBasicMaterial({color:'#fff8e3'});
+  const lamp=new School3D.MeshBasicMaterial({color:'#fff8e3'});
 
   const floor=InteriorArtwork.canvasMap(448,1408,(g,w,h)=>{
     const shade=g.createLinearGradient(0,0,w,0);
@@ -59,7 +59,7 @@ function buildSchoolCorridor(parent,x,hinge,leafWidth){
     }
   });
   function windowWall(sideX,z,angle,span,panes){
-    const wall=new THREE.Group();wall.position.set(sideX,0,z);wall.rotation.y=angle;corridor.add(wall);
+    const wall=new School3D.Group();wall.position.set(sideX,0,z);wall.rotation.y=angle;corridor.add(wall);
     const sill=.90,head=2.48,glassHeight=head-sill;
     box(wall,span,sill,.13,0,sill/2,-.065,base);
     box(wall,span,height-head,.13,0,(head+height)/2,-.065,plaster);
@@ -76,7 +76,7 @@ function buildSchoolCorridor(parent,x,hinge,leafWidth){
   windowWall(-half,-length/2,Math.PI/2,length,bays*2);
   windowWall(0,-length,0,width,4);
 
-  const inner=new THREE.Group();inner.position.set(half,0,-length/2);inner.rotation.y=-Math.PI/2;
+  const inner=new School3D.Group();inner.position.set(half,0,-length/2);inner.rotation.y=-Math.PI/2;
   corridor.add(inner);
   box(inner,length,height,.13,0,height/2,-.07,plaster);
   box(inner,length,.92,.04,0,.46,.005,base);
@@ -110,12 +110,12 @@ function buildSchoolCorridor(parent,x,hinge,leafWidth){
     }
   });
   function projection(color,y,order){
-    const geometry=new THREE.BufferGeometry();
-    geometry.setAttribute('position',new THREE.Float32BufferAttribute(new Float32Array(12),3));
-    geometry.setAttribute('uv',new THREE.Float32BufferAttribute([0,0,1,0,1,1,0,1],2));
+    const geometry=new School3D.BufferGeometry();
+    geometry.setAttribute('position',new School3D.Float32BufferAttribute(new Float32Array(12),3));
+    geometry.setAttribute('uv',new School3D.Float32BufferAttribute([0,0,1,0,1,1,0,1],2));
     geometry.setIndex([0,1,2,0,2,3]);
-    const material=new THREE.MeshBasicMaterial({map:feather,color,transparent:true,depthWrite:false,side:THREE.DoubleSide});
-    const mesh=new THREE.Mesh(geometry,material);mesh.position.y=y;mesh.renderOrder=order;
+    const material=new School3D.MeshBasicMaterial({map:feather,color,transparent:true,depthWrite:false,side:School3D.DoubleSide});
+    const mesh=new School3D.Mesh(geometry,material);mesh.position.y=y;mesh.renderOrder=order;
     mesh.frustumCulled=false;corridor.add(mesh);
     return (x1,z1,x2,z2,dx,dz,opacity)=>{
       const positions=geometry.getAttribute('position');

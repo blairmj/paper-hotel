@@ -1,6 +1,6 @@
 /* All objects, including the wall-mounted puzzles, are meshes inside the room.
    Room thumbnails are used in the directory only. */
-const PI=Math.PI, unitBox=new THREE.BoxGeometry(1,1,1);
+const PI=Math.PI, unitBox=new School3D.BoxGeometry(1,1,1);
 const sharedGeometry=new Map(), materials=new Map(), printed=[];
 const earth={cream:0xffe9bd,ink:0x432c31,gold:0xdaac62,edge:0x765043,leaf:0x858654,teal:0x365e61,red:0xa4524c,blue:0x586e88};
 const grain=(()=>{
@@ -8,17 +8,17 @@ const grain=(()=>{
  const rand=()=>((seed=(Math.imul(seed,1664525)+1013904223)>>>0)/4294967296);
  for(let k=0;k<d.data.length;k+=4){const g=236+rand()*19;d.data[k]=g;d.data[k+1]=g;d.data[k+2]=g;d.data[k+3]=255}ctx.putImageData(d,0,0);
  for(let i=0;i<3500;i++){const x=rand()*256,y=rand()*256;ctx.strokeStyle=rand()>.5?'rgba(63,40,23,.13)':'rgba(255,255,255,.5)';ctx.lineWidth=.55;ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x+rand()*3-1,y+rand()*3);ctx.stroke()}
- const t=new THREE.CanvasTexture(c);t.wrapS=t.wrapT=THREE.RepeatWrapping;t.colorSpace=THREE.SRGBColorSpace;return t;
+ const t=new School3D.CanvasTexture(c);t.wrapS=t.wrapT=School3D.RepeatWrapping;t.colorSpace=School3D.SRGBColorSpace;return t;
 })();
-function mat(color){if(!materials.has(color))materials.set(color,new THREE.MeshStandardMaterial({color,map:grain,roughness:.94,metalness:0}));return materials.get(color)}
+function mat(color){if(!materials.has(color))materials.set(color,new School3D.MeshStandardMaterial({color,map:grain,roughness:.94,metalness:0}));return materials.get(color)}
 function geometry(id,make){if(!sharedGeometry.has(id))sharedGeometry.set(id,make());return sharedGeometry.get(id)}
-function group(p,x=0,y=0,z=0){const g=new THREE.Group();g.position.set(x,y,z);p.add(g);return g}
-function mesh(p,geom,col,x,y,z){const m=new THREE.Mesh(geom,typeof col==='object'?col:mat(col));m.position.set(x,y,z);p.add(m);m.castShadow=true;m.receiveShadow=true;return m}
+function group(p,x=0,y=0,z=0){const g=new School3D.Group();g.position.set(x,y,z);p.add(g);return g}
+function mesh(p,geom,col,x,y,z){const m=new School3D.Mesh(geom,typeof col==='object'?col:mat(col));m.position.set(x,y,z);p.add(m);m.castShadow=true;m.receiveShadow=true;return m}
 function box(p,x,y,z,w,h,d,col){const m=mesh(p,unitBox,col,x,y,z);m.scale.set(w,h,d);return m}
-function cone(p,x,y,z,top,bot,height,col,sides=24){return mesh(p,geometry('c'+[top,bot,height,sides],()=>new THREE.CylinderGeometry(top,bot,height,sides)),col,x,y,z)}
+function cone(p,x,y,z,top,bot,height,col,sides=24){return mesh(p,geometry('c'+[top,bot,height,sides],()=>new School3D.CylinderGeometry(top,bot,height,sides)),col,x,y,z)}
 function frontDisc(p,x,y,z,r,depth,col,sides=32){const m=cone(p,x,y,z,r,r,depth,col,sides);m.rotation.x=PI/2;return m}
-function sphere(p,x,y,z,a,b,d,col){const m=mesh(p,geometry('sphere',()=>new THREE.SphereGeometry(1,18,12)),col,x,y,z);m.scale.set(a,b,d);return m}
-function print(p,x,y,z,w,h,draw,ratio=1){const c=document.createElement('canvas');c.width=512;c.height=Math.max(48,Math.round(512/ratio));draw(c.getContext('2d'),c.width,c.height);const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;t.anisotropy=4;const m=new THREE.MeshBasicMaterial({map:t,transparent:true,depthWrite:false});printed.push(t,m);const v=mesh(p,geometry('plane',()=>new THREE.PlaneGeometry(1,1)),m,x,y,z);v.scale.set(w,h,1);v.castShadow=false;return v}
+function sphere(p,x,y,z,a,b,d,col){const m=mesh(p,geometry('sphere',()=>new School3D.SphereGeometry(1,18,12)),col,x,y,z);m.scale.set(a,b,d);return m}
+function print(p,x,y,z,w,h,draw,ratio=1){const c=document.createElement('canvas');c.width=512;c.height=Math.max(48,Math.round(512/ratio));draw(c.getContext('2d'),c.width,c.height);const t=new School3D.CanvasTexture(c);t.colorSpace=School3D.SRGBColorSpace;t.anisotropy=4;const m=new School3D.MeshBasicMaterial({map:t,transparent:true,depthWrite:false});printed.push(t,m);const v=mesh(p,geometry('plane',()=>new School3D.PlaneGeometry(1,1)),m,x,y,z);v.scale.set(w,h,1);v.castShadow=false;return v}
 function textPlate(p,x,y,z,w,h,text,bg='#dcb576',fg='#4b322c'){
  return print(p,x,y,z,w,h,(c,W,H)=>{c.fillStyle=bg;c.fillRect(0,0,W,H);c.strokeStyle=fg;c.lineWidth=Math.max(2,H*.015);c.strokeRect(6,6,W-12,H-12);c.fillStyle=fg;c.font='bold '+Math.floor(Math.min(H*.70,W/(text.length*.75)))+'px Georgia, Malgun Gothic, serif';c.textAlign='center';c.textBaseline='middle';c.fillText(text,W/2,H*.53)},w/h)}
 function table(p,x,w=2.15,d=.93,h=.96,col=earth.edge){const g=group(p,x,0,.62);box(g,0,h,0,w,.12,d,col);box(g,0,h-.14,0,w-.12,.20,d-.1,col);for(const s of [-1,1])for(const j of [-1,1])box(g,s*(w/2-.13),h*.48,j*(d/2-.13),.12,h,.12,col);return g}
@@ -70,7 +70,7 @@ function observationDesk(wall) {
  scope.rotation.z = -.94;
  paper(desk, .28, .94, .19, .48);
 }
-function sconce(p,x,y){const g=group(p,x,y,.13);frontDisc(g,0,0,0,.19,.1,earth.gold);box(g,0,-.02,.17,.06,.11,.32,earth.gold);cone(g,0,.13,.35,.17,.30,.40,0xffdda2,14);cone(g,0,-.07,.35,.30,.30,.018,earth.gold,14);const lamp=new THREE.PointLight(0xffd7a0,6,7,2);lamp.position.set(x,y+.07,.9);p.add(lamp)}
+function sconce(p,x,y){const g=group(p,x,y,.13);frontDisc(g,0,0,0,.19,.1,earth.gold);box(g,0,-.02,.17,.06,.11,.32,earth.gold);cone(g,0,.13,.35,.17,.30,.40,0xffdda2,14);cone(g,0,-.07,.35,.30,.30,.018,earth.gold,14);const lamp=new School3D.PointLight(0xffd7a0,6,7,2);lamp.position.set(x,y+.07,.9);p.add(lamp)}
 const doorway = {x:2.50, width:1.51, height:2.70, angle:-Math.PI*.49};
 function door(p,n,wood){
  const frame=group(p,doorway.x,0,.06);
@@ -100,7 +100,7 @@ function corridor(front,w,h) {
    box(g,x+.16,.80,-.554,.037,.14,.035,earth.gold);
  }
  textPlate(g,2.45,2.03,-.93,1.30,.40,'2층 복도','#387268','#fff1cf');
- const light=new THREE.PointLight(0xffedca,15,7,2);
+ const light=new School3D.PointLight(0xffedca,15,7,2);
  light.position.set(2.45,2.65,.42);g.add(light);
 }
 function lock(p,x,y,z,digits=3,letters=false){const w=Math.max(.58,digits*.121+.18);box(p,x,y,z,w,.25,.10,earth.ink);textPlate(p,x,y,z+.06,w-.05,.17,(letters?'A':'0').repeat(digits),'#e6c48b','#372b2c')}
@@ -126,7 +126,7 @@ function computer(parent,x,display){
  sphere(g,.49,1.06,.32,.07,.05,.10,earth.ink);
 }
 function trayGrid(p,x,y,z,cols,rows){for(let i=0;i<cols;i++)for(let j=0;j<rows;j++){box(p,x+i*.19,y+j*.17,z,.168,.143,.075,0xb19069);textPlate(p,x+i*.19,y+j*.17,z+.045,.14,.11,['ㄱ','ㅅ','ㅁ','ㅍ','ㅇ','ㅏ','ㄹ','ㅣ'][(i+j*3)%8],'#c8a982','#573d38')}}
-function ball(p,x,y,z,r,col,kind){sphere(p,x,y,z,r*(kind===1?1.55:1),r,r,col);const ring=mesh(p,geometry('ring',()=>new THREE.TorusGeometry(1,.026,5,40)),earth.cream,x,y,z);ring.scale.set(r*(kind===1?1.55:1),r,r);ring.rotation.y=.34;return ring}
+function ball(p,x,y,z,r,col,kind){sphere(p,x,y,z,r*(kind===1?1.55:1),r,r,col);const ring=mesh(p,geometry('ring',()=>new School3D.TorusGeometry(1,.026,5,40)),earth.cream,x,y,z);ring.scale.set(r*(kind===1?1.55:1),r,r);ring.rotation.y=.34;return ring}
 function furniture(walls,r,mark){
  const [f,rt,b,l]=walls,C=earth;const set=(parent,x,y,z,id)=>mark(parent,x,y,z,id);const main=(x,y,z)=>set(f,x,y,z,'station');schoolBoard(f,r);const d=door(f,r.n,r.wood);
  if(r.n===203){clock(f);main(0,1.92,.53);table(f,0,1.92,.69,.67,r.wood);piano(b);set(b,-.35,1.35,.98,'record');musicScore(f,-2.60,1.16,.18,1.45,.31);const t=table(rt,.30,1.75);box(t,0,1.15,0,1.24,.27,.54,C.teal);frontDisc(t,-.3,1.17,.31,.116,.10,C.gold);box(t,.37,1.42,0,.065,.36,.075,C.gold).rotation.z=-.38;sphere(t,.44,1.59,0,.074,.074,.074,C.red);paper(t,-.29,1.31,-.01,.43);set(rt,.3,1.61,.85,'test')}
@@ -145,7 +145,7 @@ function furniture(walls,r,mark){
    textPlate(board,0,0,.06,1.38,.83,'픽셀 출력 기록','#e5d4ae','#4c635d');
    set(b,.25,1.60,.26,'apron');
  }
- if(r.n===210){const p=cabinet(f,-.32,1.46,.87,0x564a6e,1);const star=mesh(p,geometry('ico',()=>new THREE.IcosahedronGeometry(.54,1)),0x504a6c,0,1.51,0);for(let j=0;j<7;j++){const a=PI*2*j/7;frontDisc(star,.38*Math.sin(a),.34*Math.cos(a),.37,.038,.01,C.gold,5)}for(let k=0;k<4;k++)box(p,(k-1.5)*.23,.66,.58,.17,.09,.07,C.gold);main(-.32,1.6,1.12);observationDesk(rt);set(rt,.38,1.05,.88,'stencil');const shelf=cabinet(b,0,1.36,.97,C.edge);paper(shelf,0,1.07,.04,.58);set(b,0,1.3,.85,'trace')}
+ if(r.n===210){const p=cabinet(f,-.32,1.46,.87,0x564a6e,1);const star=mesh(p,geometry('ico',()=>new School3D.IcosahedronGeometry(.54,1)),0x504a6c,0,1.51,0);for(let j=0;j<7;j++){const a=PI*2*j/7;frontDisc(star,.38*Math.sin(a),.34*Math.cos(a),.37,.038,.01,C.gold,5)}for(let k=0;k<4;k++)box(p,(k-1.5)*.23,.66,.58,.17,.09,.07,C.gold);main(-.32,1.6,1.12);observationDesk(rt);set(rt,.38,1.05,.88,'stencil');const shelf=cabinet(b,0,1.36,.97,C.edge);paper(shelf,0,1.07,.04,.58);set(b,0,1.3,.85,'trace')}
  // Non-interactive furnishing on a quiet wall makes the reverse view recognisable.
  const spare=r.n===203?l:(r.n===207?null:([204,206,209].includes(r.n)?rt:l));
  if(spare && ![205,208].includes(r.n)){const a=cabinet(spare,-1.48,1.12,.73,r.wood,2);books(a,-.31,.77,0)}
@@ -173,8 +173,8 @@ function buildRoom(scene,r,mark){
  }
  box(root,0,-.105,0,w+.20,.20,w+.20,r.floor);box(root,0,h+.09,0,w+.20,.20,w+.20,r.wall);
  const rug=box(root,0,.01,.20,3.36,.025,2.55,r.trim);box(root,0,.027,.2,3.18,.012,2.37,earth.gold);box(root,0,.036,.2,3.12,.012,2.31,r.trim);
- const amb=new THREE.HemisphereLight(0xffecd1,0xe6beb3,1.55);root.add(amb);
- const key=new THREE.PointLight(0xffdfae,28,14,2);key.position.set(-1.65,3.40,.55);root.add(key);
+ const amb=new School3D.HemisphereLight(0xffecd1,0xe6beb3,1.55);root.add(amb);
+ const key=new School3D.PointLight(0xffdfae,28,14,2);key.position.set(-1.65,3.40,.55);root.add(key);
  key.castShadow=true;key.shadow.mapSize.set(512,512);key.shadow.camera.near=.3;key.shadow.camera.far=13;key.shadow.bias=-.003;
  furniture(walls,r,mark);root.updateMatrixWorld(true);return root;
 }

@@ -119,9 +119,9 @@ const SportsComputerInteriors = (() => {
     const sports = room.kind === 'sports', h = room.wall.height;
     enclosure(scene,room,artwork,sports ? '#676b6e' : '#526c88');
     const housing = standard(sports ? '#63676a' : '#b5bec8',.65);
-    const glow = new THREE.MeshBasicMaterial({color:sports ? '#fdf6e9' : '#f6fbff'});
+    const glow = new School3D.MeshBasicMaterial({color:sports ? '#fdf6e9' : '#f6fbff'});
     if (sports) {
-      const beam = new THREE.MeshBasicMaterial({map:artwork.sample('ceiling'),color:'#e0dfdc'});
+      const beam = new School3D.MeshBasicMaterial({map:artwork.sample('ceiling'),color:'#e0dfdc'});
       const pipe = standard('#41484c',.52,.22);
       for (const z of [1.03,4.18,7.34]) box(scene,width,.176,.31,0,h-.088,z,beam);
       for (const x of [-4.79,4.79]) {
@@ -210,7 +210,7 @@ const SportsComputerInteriors = (() => {
     const tray=standard('#576568',.61,.20);
     box(compartment,width-.065,.026,.30,0,-.145,-.213,tray);
     box(compartment,width-.089,.021,.023,0,-.123,-.071,tray);
-    const geometry=new THREE.SphereGeometry(radius,36,24);
+    const geometry=new School3D.SphereGeometry(radius,36,24);
     const balls=BALLS.map((label,i)=>{
       const map=InteriorArtwork.canvasMap(512,256,(g,w,h)=>{
         g.fillStyle=BALL_COLORS[i];g.fillRect(0,0,w,h);
@@ -224,7 +224,7 @@ const SportsComputerInteriors = (() => {
         g.fillStyle='#26303a';g.font='bold 60px sans-serif';g.textAlign='center';g.textBaseline='middle';
         g.fillText(label,w*.25,h/2+3);
       });
-      const mesh=new THREE.Mesh(geometry,new THREE.MeshStandardMaterial({map,roughness:.63}));
+      const mesh=new School3D.Mesh(geometry,new School3D.MeshStandardMaterial({map,roughness:.63}));
       mesh.userData.command=label;
       mesh.position.set(0,y,z);
       compartment.add(mesh);
@@ -250,7 +250,7 @@ const SportsComputerInteriors = (() => {
         if(progress===1)return false;
         progress=reducedMotion?1:Math.min(1,progress+dt/.46);
         const t=progress*progress*(3-2*progress);
-        for(const {mesh,from,to} of balls)if(mesh.visible)mesh.position.x=THREE.MathUtils.lerp(from,to,t);
+        for(const {mesh,from,to} of balls)if(mesh.visible)mesh.position.x=School3D.MathUtils.lerp(from,to,t);
         return progress<1;
       }
     };
@@ -297,7 +297,7 @@ const SportsComputerInteriors = (() => {
           .rotation.y = side*Math.PI/2;
         if (!open) continue;
         const [faceX,y,z] = open.position;
-        const compartment = new THREE.Group();
+        const compartment = new School3D.Group();
         compartment.position.set(faceX,y,z);
         compartment.rotation.y = Math.PI/2;
         scene.add(compartment);
@@ -305,7 +305,7 @@ const SportsComputerInteriors = (() => {
         box(compartment,slotW-.02,slotH,.034,0,0,-.40,inside);
         for (const yy of [-slotH/2,slotH/2]) box(compartment,slotW,.018,.41,0,yy,-.212,aluminum);
         for (const xx of [-slotW/2,slotW/2]) box(compartment,.015,slotH,.41,xx,0,-.212,metal);
-        const contents=new THREE.Group();
+        const contents=new School3D.Group();
         contents.visible=false;
         compartment.add(contents);
         if(open.id==='ballLine')ballDevice=ballRackDevice(contents,slotW);
@@ -314,7 +314,7 @@ const SportsComputerInteriors = (() => {
         const flaps=[];
         for(let offset=0;offset<open.span;offset++){
           const hinge=open.span===2&&offset===0?-1:1;
-          const flap=new THREE.Group();
+          const flap=new School3D.Group();
           flap.position.set((offset-(open.span-1)/2)*column+hinge*doorW/2,0,.009);
           compartment.add(flap);
           const panelX=-hinge*doorW/2, doorNumber=numberAt(open.column+open.span-1-offset,open.tier);
@@ -433,12 +433,12 @@ const SportsComputerInteriors = (() => {
         g.fill();
       }
     });
-    const ballMaterials=[orange,volleyball].map(map=>new THREE.MeshStandardMaterial({map,roughness:.83}));
-    const sphere=new THREE.SphereGeometry(1,28,18);
+    const ballMaterials=[orange,volleyball].map(map=>new School3D.MeshStandardMaterial({map,roughness:.83}));
+    const sphere=new School3D.SphereGeometry(1,28,18);
     for (const [dx,shelf,r,type,turn] of [
       [-.60,2,.122,0,.40],[-.31,2,.122,0,1.72],[.34,2,.108,1,1.14],[-.43,1,.105,1,2.07],[.45,1,.107,1,3.0]
     ]) {
-      const ball=new THREE.Mesh(sphere,ballMaterials[type]);
+      const ball=new School3D.Mesh(sphere,ballMaterials[type]);
       ball.scale.setScalar(r);
       ball.position.set(x+dx,shelves[shelf]+.028+r,z+.018);
       ball.rotation.set(.12,turn,.16);
@@ -464,7 +464,7 @@ const SportsComputerInteriors = (() => {
     const hoopColors=['#ab604e','#c3a64b','#5e8069'];
     for (const [i,color] of hoopColors.entries()) {
       const z=4.73+i*.69, y=1.59, x=-width/2+.102;
-      const hoop=new THREE.Mesh(new THREE.TorusGeometry(.30,.014,10,48),standard(color,.53));
+      const hoop=new School3D.Mesh(new School3D.TorusGeometry(.30,.014,10,48),standard(color,.53));
       hoop.position.set(x,y,z);
       hoop.rotation.y=Math.PI/2;
       scene.add(hoop);
@@ -483,7 +483,7 @@ const SportsComputerInteriors = (() => {
   }
 
   function chairBack() {
-    const shape = new THREE.Shape();
+    const shape = new School3D.Shape();
     shape.moveTo(-.19,-.158);
     shape.quadraticCurveTo(-.239,-.11,-.235,.082);
     shape.quadraticCurveTo(-.236,.166,-.168,.174);
@@ -491,10 +491,10 @@ const SportsComputerInteriors = (() => {
     shape.quadraticCurveTo(.236,.166,.235,.082);
     shape.quadraticCurveTo(.239,-.11,.19,-.158);
     shape.quadraticCurveTo(0,-.183,-.19,-.158);
-    const grip = new THREE.Path();
+    const grip = new School3D.Path();
     grip.absellipse(0,.098,.086,.022,0,Math.PI*2,false);
     shape.holes.push(grip);
-    const geo = new THREE.ExtrudeGeometry(shape,{depth:.031,bevelEnabled:true,bevelSegments:3,
+    const geo = new School3D.ExtrudeGeometry(shape,{depth:.031,bevelEnabled:true,bevelSegments:3,
       bevelThickness:.010,bevelSize:.010,curveSegments:10});
     geo.translate(0,0,-.0155);
     return geo;
@@ -506,7 +506,7 @@ const SportsComputerInteriors = (() => {
     const laminate = standard('#d1d6dc',.57), blue = standard('#3b526e',.54,.18);
     const gray = standard('#a2acb8',.65), steel = standard('#a4adb5',.36,.43);
     const casework = standard('#252d37',.60), bezel = standard('#303946',.56);
-    const station = new THREE.Group();
+    const station = new School3D.Group();
     rounded(station,DESK.width,.053,DESK.depth,0,.749,0,laminate,.012);
     box(station,1.05,.055,.52,0,.70,0,blue);
     for (const x of [-.535,.535]) for (const z of [-.257,.257]) {
@@ -515,11 +515,11 @@ const SportsComputerInteriors = (() => {
     }
     rounded(station,.178,.477,.334,.421,.261,-.042,casework,.009);
     for (const y of [.413,.380,.139,.115]) box(station,.124,.007,.005,.421,y,.126,bezel);
-    box(station,.013,.010,.007,.460,.286,.126,new THREE.MeshBasicMaterial({color:'#a9c9df'}));
+    box(station,.013,.010,.007,.460,.286,.126,new School3D.MeshBasicMaterial({color:'#a9c9df'}));
     rounded(station,.224,.018,.154,0,.788,-.101,casework,.004);
     rounded(station,.047,.150,.035,0,.852,-.131,bezel,.008);
     rounded(station,.573,.348,.048,0,SCREEN.y,SCREEN.z-.026,bezel,.013);
-    box(station,.011,.004,.002,.242,.895,SCREEN.z+.002,new THREE.MeshBasicMaterial({color:'#92b6cf'}));
+    box(station,.011,.004,.002,.242,.895,SCREEN.z+.002,new School3D.MeshBasicMaterial({color:'#92b6cf'}));
     rounded(station,.433,.021,.147,-.061,.784,.146,casework,.007);
     const keyboard = InteriorArtwork.canvasMap(380,112,(g,w,h) => {
       g.fillStyle = '#2a323b';
@@ -530,14 +530,14 @@ const SportsComputerInteriors = (() => {
       g.fillRect(88,82,129,14);
     });
     flat(station,.415,.132,-.061,.796,.146,keyboard);
-    const mouse = new THREE.Mesh(new THREE.SphereGeometry(.5,18,12),casework);
+    const mouse = new School3D.Mesh(new School3D.SphereGeometry(.5,18,12),casework);
     mouse.position.set(.253,.785,.147);
     mouse.scale.set(.060,.039,.096);
     station.add(mouse);
 
     const chairZ = .612;
     rounded(station,.456,.068,.419,0,.455,chairZ,gray,.023);
-    const back = new THREE.Mesh(chairBack(),gray);
+    const back = new School3D.Mesh(chairBack(),gray);
     back.position.set(0,.745,chairZ+.185);
     back.rotation.x = .11;
     station.add(back);
@@ -547,10 +547,10 @@ const SportsComputerInteriors = (() => {
     }
 
     // The tables and hardware share geometry, with a separate transform for every seat.
-    const transform = new THREE.Matrix4();
+    const transform = new School3D.Matrix4();
     for (const part of station.children) {
       part.updateMatrix();
-      const copies = new THREE.InstancedMesh(part.geometry,part.material,stations.length);
+      const copies = new School3D.InstancedMesh(part.geometry,part.material,stations.length);
       for (const [i,{x,z}] of stations.entries()) {
         copies.setMatrixAt(i,transform.makeTranslation(x,0,z).multiply(part.matrix));
       }
@@ -587,11 +587,11 @@ const SportsComputerInteriors = (() => {
   async function build(scene, room) {
     const sports = room.kind === 'sports';
     const artwork = await InteriorArtwork.load(room.kind);
-    scene.add(new THREE.HemisphereLight('#fcfeff',sports?'#a19b93':'#b8c2cf',2.05));
-    const main = new THREE.DirectionalLight('#fffaf1',.91);
+    scene.add(new School3D.HemisphereLight('#fcfeff',sports?'#a19b93':'#b8c2cf',2.05));
+    const main = new School3D.DirectionalLight('#fffaf1',.91);
     main.position.set(-3.4,4.4,6.1);
     scene.add(main);
-    const back = new THREE.DirectionalLight('#d8edff',.46);
+    const back = new School3D.DirectionalLight('#d8edff',.46);
     back.position.set(4,3.2,-.4);
     scene.add(back);
     finishes(scene,room,artwork);
@@ -604,7 +604,7 @@ const SportsComputerInteriors = (() => {
       const furniture=await lockers(scene,room,artwork,shadow);
       const [x,y,z]=room.statusLamp.xyz;
       rounded(scene,.137,.168,.044,x,y,z-.027,standard('#434c55',.52),.009);
-      const indicator=new THREE.MeshBasicMaterial({color:'#f38d72'});
+      const indicator=new School3D.MeshBasicMaterial({color:'#f38d72'});
       cylinder(scene,.026,.026,.011,x,y,z,indicator,24).rotation.x=Math.PI/2;
       canvas.dataset.artwork='balls-v37';
       return {

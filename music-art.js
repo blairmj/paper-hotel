@@ -104,8 +104,8 @@ function dialArtwork(values) {
 }
 
 function imageMap(img){
-  const texture=new THREE.Texture(img);
-  texture.colorSpace=THREE.SRGBColorSpace;texture.anisotropy=4;texture.needsUpdate=true;
+  const texture=new School3D.Texture(img);
+  texture.colorSpace=School3D.SRGBColorSpace;texture.anisotropy=4;texture.needsUpdate=true;
   return texture;
 }
 
@@ -216,7 +216,7 @@ function buildEntrance(scene,panel,elevation,doorArt,room=paintedRoom,corridor=e
   // A solid leaf sits in the jamb rebate. Its faces share a single hinge,
   // and the small overlap behind the trim seals the closed door at any angle.
   const overlap=.012,leafWidth=opening+2*overlap,leafHeight=head+overlap,thickness=.044;
-  const hinge=new THREE.Group();hinge.position.set(jambRight+overlap,0,wall.z-.018);scene.add(hinge);
+  const hinge=new School3D.Group();hinge.position.set(jambRight+overlap,0,wall.z-.018);scene.add(hinge);
   function face(texture,w,h,xyz,color){
     const mesh=panel(texture,w,h,[0,0,0],false,color);
     hinge.add(mesh);mesh.position.fromArray(xyz);return mesh;
@@ -234,8 +234,8 @@ function buildEntrance(scene,panel,elevation,doorArt,room=paintedRoom,corridor=e
 }
 
 function placeRoomPanel(scene,map,w,h,xyz,transparent=false,color=0xffffff){
-  const material=new THREE.MeshBasicMaterial({map,color,transparent,side:THREE.DoubleSide,toneMapped:false,alphaTest:transparent ? .03 : 0});
-  const mesh=new THREE.Mesh(new THREE.PlaneGeometry(w,h),material);
+  const material=new School3D.MeshBasicMaterial({map,color,transparent,side:School3D.DoubleSide,toneMapped:false,alphaTest:transparent ? .03 : 0});
+  const mesh=new School3D.Mesh(new School3D.PlaneGeometry(w,h),material);
   mesh.position.fromArray(xyz);scene.add(mesh);return mesh;
 }
 

@@ -65,12 +65,12 @@ const ClassroomInterior=(()=>{
       [width,0,depth-.016,Math.PI],
       [depth,-width/2+.016,depth/2,Math.PI/2]
     ]){
-      const section=new THREE.Group();section.position.set(x,0,z);section.rotation.y=rotation;scene.add(section);
+      const section=new School3D.Group();section.position.set(x,0,z);section.rotation.y=rotation;scene.add(section);
       box(section,length,h,.035,0,h/2,0,panel);
       box(section,length,.029,.052,0,h,.008,lip);
       for(let x=-length/2+.87;x<length/2-.12;x+=.87)box(section,.006,h-.075,.002,x,h/2,.0185,seam);
     }
-    const trim=standard('#d4ced0',.58,.11), lamp=new THREE.MeshBasicMaterial({color:'#fffdfb'});
+    const trim=standard('#d4ced0',.58,.11), lamp=new School3D.MeshBasicMaterial({color:'#fffdfb'});
     for(const x of [-2.32,2.04])for(const z of [1.58,4.92]){
       box(scene,1.90,.037,.82,x,height-.023,z,trim);
       box(scene,1.80,.011,.72,x,height-.045,z,lamp);
@@ -78,20 +78,20 @@ const ClassroomInterior=(()=>{
   }
 
   function chairBack(){
-    const s=new THREE.Shape();
+    const s=new School3D.Shape();
     s.moveTo(-.142,-.164);s.quadraticCurveTo(-.214,-.052,-.220,.109);
     s.quadraticCurveTo(-.221,.165,-.169,.170);
     s.quadraticCurveTo(0,.193,.169,.170);
     s.quadraticCurveTo(.221,.165,.220,.109);
     s.quadraticCurveTo(.214,-.052,.142,-.164);
     s.quadraticCurveTo(0,-.188,-.142,-.164);
-    const slot=new THREE.Path();
+    const slot=new School3D.Path();
     slot.moveTo(-.064,.102);slot.lineTo(.064,.102);
     slot.quadraticCurveTo(.077,.102,.077,.115);
     slot.quadraticCurveTo(.077,.128,.064,.128);slot.lineTo(-.064,.128);
     slot.quadraticCurveTo(-.077,.128,-.077,.115);slot.quadraticCurveTo(-.077,.102,-.064,.102);
     s.holes.push(slot);
-    return new THREE.ExtrudeGeometry(s,{depth:.026,bevelEnabled:true,bevelSize:.009,
+    return new School3D.ExtrudeGeometry(s,{depth:.026,bevelEnabled:true,bevelSize:.009,
       bevelThickness:.008,bevelSegments:2,curveSegments:9}).translate(0,0,-.013);
   }
 
@@ -112,10 +112,10 @@ const ClassroomInterior=(()=>{
           cylinder(scene,.020,.022,.028,cx+dx*1.062,.018,z+dz*1.075,foot,12);
         }
         for(const side of [-1,1]){
-          const chair=new THREE.Group();
+          const chair=new School3D.Group();
           chair.position.set(cx,0,z+side*.61);chair.rotation.y=side<0?Math.PI:0;scene.add(chair);
           rounded(chair,.416,.053,.396,0,.435,0,plastic,.018);
-          const shell=new THREE.Mesh(back,plastic);
+          const shell=new School3D.Mesh(back,plastic);
           shell.position.set(0,.669,.168);shell.rotation.x=.12;chair.add(shell);
           for(const dx of [-.158,.158]){
             for(const dz of [-.133,.135])rod(chair,[dx,.420,dz],[dx*1.18,.025,dz*1.30],.013,frame);
@@ -129,7 +129,7 @@ const ClassroomInterior=(()=>{
   function readingCorner(scene,artwork,shadow,metal){
     const wood=faces(artwork.sample('millwork'),1.03,.92);
     const fronts=standard('#e2d5d2',.83), cubby=standard('#b9957c',.85);
-    const cabinet=new THREE.Group();
+    const cabinet=new School3D.Group();
     cabinet.position.set(-width/2+.36,0,1.49);cabinet.rotation.y=Math.PI/2;scene.add(cabinet);
     box(cabinet,1.56,2.86,.035,0,1.46,-.328,wood);
     for(const x of [-.759,.759])box(cabinet,.046,2.88,.70,x,1.46,0,wood);
@@ -156,7 +156,7 @@ const ClassroomInterior=(()=>{
       box(cabinet,.132,.014,.006,x,.863,.331,cubby);
     }
 
-    const bench=new THREE.Group();
+    const bench=new School3D.Group();
     bench.position.set(-width/2+.343,0,4.54);bench.rotation.y=Math.PI/2;scene.add(bench);
     shadow(.96,4.60,-width/2+.42,4.54,.006,.69);
     box(bench,4.42,.405,.672,0,.214,0,wood);
@@ -200,8 +200,8 @@ const ClassroomInterior=(()=>{
 
   async function build(scene,room){
     const [artwork,note]=await Promise.all([InteriorArtwork.load('classroom'),clueBoardArt(boardNote)]);
-    scene.add(new THREE.HemisphereLight('#fffaf7','#b9afc6',2.08));
-    const light=new THREE.DirectionalLight('#fff6ee',1.04);
+    scene.add(new School3D.HemisphereLight('#fffaf7','#b9afc6',2.08));
+    const light=new School3D.DirectionalLight('#fff6ee',1.04);
     light.position.set(1.9,4.4,3.1);scene.add(light);
     const surface=finish(artwork);
     enclosure(scene,room,surface,'#95809e');
@@ -241,17 +241,17 @@ const ClassroomInterior=(()=>{
 
 function buildSchoolFinale(){
   const {box,rounded,flat,patchPlane,standard}=SchoolInterior;
-  const scene=new THREE.Scene();
-  scene.background=new THREE.Color('#bdd7e4');
-  scene.add(new THREE.HemisphereLight('#f8fcff','#a8b2a5',2.1));
-  const light=new THREE.DirectionalLight('#fff4d9',1.42);
+  const scene=new School3D.Scene();
+  scene.background=new School3D.Color('#bdd7e4');
+  scene.add(new School3D.HemisphereLight('#f8fcff','#a8b2a5',2.1));
+  const light=new School3D.DirectionalLight('#fff4d9',1.42);
   light.position.set(-1.5,5.8,-6.7);scene.add(light);
   const wall=standard('#d5dad5',.86), rail=standard('#8ca4a0',.83);
   const trim=standard('#536661',.54,.19), ceiling=standard('#dde0d8',.92);
   const floor=standard('#b1b6b0',.89), leafMaterial=standard('#5e7e78',.58);
   const metal=standard('#b4c1ba',.34,.47);
   const outdoor=standard('#cbc8ad',.91), grass=standard('#8ca071',.88);
-  const camera=new THREE.PerspectiveCamera(56,1,.04,38);
+  const camera=new School3D.PerspectiveCamera(56,1,.04,38);
   camera.position.set(0,1.55,5.3);
   camera.lookAt(0,1.30,0);
 
@@ -281,7 +281,7 @@ function buildSchoolFinale(){
   box(scene,2.65,.515,.19,0,2.677,0,wall);
   box(scene,2.665,.115,.25,0,2.388,.003,trim);
   box(scene,2.59,.014,.24,0,.004,.014,metal);
-  const glow=new THREE.MeshBasicMaterial({color:'#f9fcf7'});
+  const glow=new School3D.MeshBasicMaterial({color:'#f9fcf7'});
   for(const z of [1.47,3.89]){
     box(scene,.206,.048,1.30,0,2.895,z,trim);
     box(scene,.160,.007,1.24,0,2.868,z,glow);
@@ -293,7 +293,7 @@ function buildSchoolFinale(){
   patchPlane(scene,.66,.184,0,2.63,.10,sign);
   const leaves=[];
   for(const side of [-1,1]){
-    const hinge=new THREE.Group();
+    const hinge=new School3D.Group();
     hinge.position.set(side*1.206,.018,.055);
     scene.add(hinge);
     const offset=-side*.597;
@@ -312,7 +312,7 @@ function buildSchoolFinale(){
   box(scene,13.05,.062,.27,0,.531,-13.8,border);
   const plants=[standard('#789978',.96),standard('#95ac80',.87),standard('#5d8169',.92)];
   for(const side of [-1,1])for(let i=0;i<7;i++){
-    const shrub=new THREE.Mesh(new THREE.IcosahedronGeometry(.51,2),plants[i%3]);
+    const shrub=new School3D.Mesh(new School3D.IcosahedronGeometry(.51,2),plants[i%3]);
     shrub.position.set(side*(2.38+(i%3)*.37),.39+(i%2)*.12,-2.25-i*1.18);
     shrub.scale.set(1.10+(i%2)*.33,1.15,1.14);
     scene.add(shrub);

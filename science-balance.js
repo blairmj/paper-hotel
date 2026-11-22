@@ -19,12 +19,12 @@ const ScienceBalance=(()=>{
   function build(scene,room){
     const {rounded,cylinder,rod,standard,patchPlane}=SchoolInterior;
     function group(parent,x,y,z){
-      const g=new THREE.Group();g.position.set(x,y,z);parent.add(g);return g;
+      const g=new School3D.Group();g.position.set(x,y,z);parent.add(g);return g;
     }
     const navy=standard('#245293',.36,.23),chrome=standard('#a7bdcc',.27,.57);
     const foot=standard('#344553',.51),brass=standard('#cd9c43',.28,.54);
     const glass={black:standard('#232a32',.22,.23),white:standard('#f3f0e8',.20,.16)};
-    const sphere=new THREE.SphereGeometry(.031,18,14),beads=BALANCE_BEADS.map(({color})=>new THREE.Mesh(sphere,glass[color]));
+    const sphere=new School3D.SphereGeometry(.031,18,14),beads=BALANCE_BEADS.map(({color})=>new School3D.Mesh(sphere,glass[color]));
     function tag(parent,label,w,h,x,y,z){
       const map=InteriorArtwork.canvasMap(240,96,(g,ww,hh)=>{
         g.fillStyle='#e8e6d8';g.fillRect(0,0,ww,hh);g.fillStyle='#26343b';

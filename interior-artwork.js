@@ -91,8 +91,8 @@ const InteriorArtwork = (() => {
     canvas.width = width;
     canvas.height = height;
     draw(canvas.getContext('2d'), width, height);
-    const map = new THREE.CanvasTexture(canvas);
-    map.colorSpace = THREE.SRGBColorSpace;
+    const map = new School3D.CanvasTexture(canvas);
+    map.colorSpace = School3D.SRGBColorSpace;
     map.anisotropy = 8;
     return map;
   }
@@ -202,7 +202,7 @@ const InteriorArtwork = (() => {
       }
       g.putImageData(image,0,0);
     });
-    map.colorSpace=THREE.NoColorSpace;
+    map.colorSpace=School3D.NoColorSpace;
     return map;
   }
 
@@ -359,14 +359,14 @@ const InteriorArtwork = (() => {
     }
 
     function facePixels(corners, pixels) {
-      const geo = new THREE.BufferGeometry();
-      geo.setAttribute('position', new THREE.Float32BufferAttribute(corners.flat(), 3));
-      geo.setAttribute('uv', new THREE.Float32BufferAttribute(
+      const geo = new School3D.BufferGeometry();
+      geo.setAttribute('position', new School3D.Float32BufferAttribute(corners.flat(), 3));
+      geo.setAttribute('uv', new School3D.Float32BufferAttribute(
         pixels.flatMap(([x, y]) => [x / image.width, 1 - y / image.height]), 2
       ));
       geo.setIndex([0, 1, 2, 0, 2, 3]);
       geo.computeVertexNormals();
-      return new THREE.Mesh(geo, new THREE.MeshBasicMaterial({map:atlas, side:THREE.DoubleSide}));
+      return new School3D.Mesh(geo, new School3D.MeshBasicMaterial({map:atlas, side:School3D.DoubleSide}));
     }
 
     return {patch, sample, surface, facePixels, relief};

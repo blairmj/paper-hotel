@@ -35,8 +35,8 @@
 
 ## 수정과 배포
 
-이 저장소의 main 브랜치 루트가 GitHub Pages의 게시 폴더입니다. 로컬에서는 이 폴더에서 `python -m http.server 8000`을 실행합니다. 3D 렌더링에는 [Three.js](./three-LICENSE.txt)를 사용합니다.
+이 저장소의 main 브랜치 루트가 GitHub Pages의 게시 폴더입니다. 로컬에서는 이 폴더에서 `python -m http.server 8000`을 실행합니다. 여덟 교실은 JavaScript로 WebGL을 직접 제어해 그립니다. `webgl/`에는 카메라, 클릭 위치 판정, 셰이더, 메시와 텍스처 그리기 코드가 있습니다. 행렬 계산에는 [gl-matrix](./vendor/gl-matrix-LICENSE.txt), 구멍이 있는 도형의 삼각분할에는 [earcut](./vendor/earcut-LICENSE.txt)을 사용합니다.
 
 `school-routes.js`의 복도 연결 정보는 안내도와 경로 생성에 함께 쓰입니다. 경로는 현재 위치와 방문한 교실을 함께 고려하는 너비 우선 탐색으로 구성합니다. `school-puzzles.js`는 교실의 퍼즐 자료와 풀이 규칙을 정의하고, `school-room.js`는 입력과 교실 이동을 처리합니다. `review-rooms.js`는 교실 목록, 진행 기록과 타이머를 관리합니다. 도서실·과학실·방송실의 내부는 `specialty-interiors.js`에서 구성합니다.
 
-교실 동선, 퍼즐과 진행 기록, 제한 시간은 `node --test tests/interiors.test.cjs`로 검사합니다.
+교실 동선, 퍼즐, 제한 시간과 WebGL 클릭 판정은 `node --test`로 검사합니다.
