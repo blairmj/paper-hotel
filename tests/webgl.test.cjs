@@ -5,18 +5,19 @@ const path=require('node:path');
 const vm=require('node:vm');
 const root=path.join(__dirname,'..');
 const runtime=vm.createContext({});
-for(const file of ['vendor/gl-matrix.min.js','vendor/earcut.min.js','webgl/model.js','webgl/geometry.js','webgl/picking.js']){
+for(const file of ['vendor/gl-matrix.min.js','vendor/earcut.min.js','webgl/model.js','webgl/geometry.js','webgl/picking.js','music-world.js']){
   vm.runInContext(fs.readFileSync(path.join(root,file),'utf8'),runtime,{filename:file});
 }
 const {Vector2,Vector3,Box3,Scene,Group,Shape,Path,ExtrudeGeometry,BoxGeometry,MeshBasicMaterial,
   Mesh,InstancedMesh,Matrix4,PerspectiveCamera,Raycaster}=vm.runInContext('School3D',runtime);
 
-test('a projected point picks the same moving cabinet door on portrait and landscape canvases',()=>{
+test('camera zoom scales the view and picks the same cabinet door on portrait and landscape canvases',()=>{
   const scene=new Scene(),hinge=new Group(),leaf=new Mesh(new BoxGeometry(.6,1,.03),new MeshBasicMaterial());
   hinge.add(leaf);scene.add(hinge);hinge.position.set(.3,1,0);leaf.position.x=.3;
   const camera=new PerspectiveCamera(55,1,.04,42);camera.position.set(.4,1.55,2.5);camera.lookAt(.6,1,0);
-  for(const aspect of [.48,1.77])for(const turn of [0,.85]){
-    camera.aspect=aspect;camera.updateProjectionMatrix();
+  for(const [aspect,baseFov] of [[.48,74],[1.77,55]])for(const zoom of [.7,1,1.2,2])for(const turn of [0,.85]){
+    camera.aspect=aspect;camera.fov=runtime.roomViewFov(55,aspect,zoom);camera.updateProjectionMatrix();
+    assert.ok(Math.abs(camera.projection[5]*Math.tan(baseFov*Math.PI/360)-zoom)<1e-6);
     hinge.rotation.y=turn;hinge.updateMatrix();scene.updateMatrixWorld();
     const center=leaf.localToWorld(new Vector3(0,0,.015));
     const pixel=center.clone().project(camera);

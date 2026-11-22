@@ -1,5 +1,11 @@
 'use strict';
 
+function roomViewFov(viewAngle,aspect,zoom){
+  // Portrait rooms keep their wider starting view. Zoom scales the focal length of that view.
+  const halfHeight=Math.min(Math.tan(74*Math.PI/360),Math.tan(viewAngle*Math.PI/360)/Math.min(aspect,1));
+  return Math.atan(halfHeight/zoom)*360/Math.PI;
+}
+
 function wallPanelClearance(wall,target){
   const {x,z}=target.point,half=wall.width/2,span=target.surface.width/2+.40;
   // The strip is local to the panel so the rest of a narrow aisle stays walkable.
@@ -78,7 +84,7 @@ async function createMusicWorld({onInspect,onReadyToMove,deviceInstructions,room
     return prev[1]<0?[]:path;
   }
 
-  const canvas=document.getElementById('roomView'),scene=new School3D.Scene();
+  const canvas=document.getElementById('roomView'),spots=document.getElementById('spots'),scene=new School3D.Scene();
   scene.background=new School3D.Color(0xe6ebef);
   const viewAngle=room.viewAngle??55;
   const camera=new School3D.PerspectiveCamera(viewAngle,1,.04,42);
@@ -111,7 +117,7 @@ async function createMusicWorld({onInspect,onReadyToMove,deviceInstructions,room
     button.dataset.object=o.id;button.setAttribute('aria-label',o.name);
     button.onclick=e=>{if(e.detail===0 && !journey?.door && onReadyToMove()) inspectTarget(o.id)};
     button.onpointerdown=e=>startPointer(e,o.id);
-    document.getElementById('spots').append(button);
+    spots.append(button);
     const surface=o.surface || (o.id==='clock'?room.clock:o.id==='lock'?room.lock:{width:.79,height:.50});
     return {...o,point:new School3D.Vector3(...o.xyz),surface,button};
   });
@@ -138,28 +144,33 @@ async function createMusicWorld({onInspect,onReadyToMove,deviceInstructions,room
     deviceGuide.hidden=true;
     deviceGuide.setAttribute('role','status');
     deviceGuide.textContent=deviceInstructions;
-    document.getElementById('spots').append(deviceGuide);
+    spots.append(deviceGuide);
     for(const {button} of devices){
       button.setAttribute('aria-describedby',deviceGuide.id);
       for(const type of ['pointerenter','pointerleave','focus','blur'])button.addEventListener(type,queue);
     }
   }
   let width=1,height=1,yaw=0,pitch=0,openness=0,journey,trail,drag,finale,raf=0,previousTime=0;
+  const zoomStep=1.2;
+  let zoom=1,targetZoom=1;
   let fullRatio=1,movingRatio=1,wasMoving=false,slowFrames=0;
   const clamp=School3D.MathUtils.clamp, wrap=angle=>Math.atan2(Math.sin(angle),Math.cos(angle));
   function heading(position,from=eye){return Math.atan2(position[0]-from.x,from.z-position[2])}
   function tilt(position,from=eye){return Math.atan2(position[1]-eye.y,Math.hypot(position[0]-from.x,position[2]-from.z))}
+  function updateProjection(){
+    camera.fov=roomViewFov(viewAngle,camera.aspect,zoom);
+    camera.updateProjectionMatrix();
+  }
+  function setZoom(value){
+    targetZoom=clamp(value,.7,2);
+    queue();
+  }
   function resize(){
-    width=canvas.clientWidth;height=canvas.clientHeight;
+    width=Math.max(1,canvas.clientWidth);height=Math.max(1,canvas.clientHeight);
     fullRatio=Math.min(devicePixelRatio||1,1.6);movingRatio=fullRatio;slowFrames=0;wasMoving=false;
     if(renderer){renderer.setPixelRatio(fullRatio);renderer.setSize(width,height,false)}
     camera.aspect=width/height;
-    // Keep furniture at the same relative height across landscape screens.
-    // Portrait screens get a wider vertical view within a comfortable limit.
-    camera.fov=clamp(School3D.MathUtils.radToDeg(
-      2*Math.atan(Math.tan(viewAngle*Math.PI/360)/Math.min(camera.aspect,1))
-    ),viewAngle,74);
-    camera.updateProjectionMatrix();queue();
+    updateProjection();queue();
   }
   function resolutionForMotion(moving,elapsed){
     if(!renderer)return;
@@ -418,6 +429,11 @@ async function createMusicWorld({onInspect,onReadyToMove,deviceInstructions,room
       }
       return;
     }
+    if(zoom!==targetZoom){
+      const gap=targetZoom-zoom;
+      zoom=reducedMotion.matches||Math.abs(gap)<.001 ? targetZoom : zoom+gap*(1-Math.exp(-20*dt));
+      updateProjection();
+    }
     if(journey){
       const j=journey,t=clamp((time-j.start)/j.duration,0,1);
       const aim=j.door?1-(1-clamp(t/.42,0,1))**3:walkingProgress(t);
@@ -441,8 +457,8 @@ async function createMusicWorld({onInspect,onReadyToMove,deviceInstructions,room
       move(keyVelocity.y*elapsed*2.2,keyVelocity.x*elapsed*2.2);
     }
     const animating=model.animate?.(dt,reducedMotion.matches);
-    resolutionForMotion(Boolean(trail||journey||keys.size||keyVelocity.lengthSq()||drag?.moved),elapsed);
-    draw();if(journey||trail||keys.size||keyVelocity.lengthSq()||animating)queue();
+    resolutionForMotion(Boolean(trail||journey||zoom!==targetZoom||keys.size||keyVelocity.lengthSq()||drag?.moved),elapsed);
+    draw();if(journey||trail||zoom!==targetZoom||keys.size||keyVelocity.lengthSq()||animating)queue();
   }
   function look(target,door=false,done){
     trail=null;keys.clear();keyVelocity.set(0,0);
@@ -487,8 +503,27 @@ async function createMusicWorld({onInspect,onReadyToMove,deviceInstructions,room
     walkToPixel(e.clientX-rect.left,e.clientY-rect.top);
   };
   canvas.onpointercancel=canvas.onlostpointercapture=()=>{drag=null;queue()};
+  function wheelZoom(e){
+    const mode=e.deltaMode;
+    if(e.defaultPrevented||!onReadyToMove()||journey?.door||!e.deltaY)return;
+    e.preventDefault();
+    let pixels=e.deltaY;
+    if(mode===WheelEvent.DOM_DELTA_LINE)pixels*=16;
+    if(mode===WheelEvent.DOM_DELTA_PAGE)pixels*=height;
+    const steps=clamp(-pixels/100,-2,2);
+    setZoom(targetZoom*(zoomStep**steps));
+  }
+  for(const surface of [canvas,spots])surface.addEventListener('wheel',wheelZoom,{passive:false});
   document.addEventListener('keydown',e=>{
-    if(!onReadyToMove()||journey?.door||e.metaKey||e.ctrlKey||e.altKey)return;
+    if(!onReadyToMove()||journey?.door||e.defaultPrevented||e.altKey)return;
+    if(e.ctrlKey||e.metaKey){
+      if(e.target.isContentEditable||e.target.closest?.('input,select,textarea,.review-jump[open]'))return;
+      if(e.key==='+'||e.key==='='||e.code==='Equal'||e.code==='NumpadAdd')setZoom(targetZoom*zoomStep);
+      else if(e.key==='-'||e.code==='Minus'||e.code==='NumpadSubtract')setZoom(targetZoom/zoomStep);
+      else if(e.key==='0')setZoom(1);
+      else return;
+      e.preventDefault();return;
+    }
     const k=e.key.toLowerCase();
     if(['w','s','a','d','arrowleft','arrowright','arrowup','arrowdown'].includes(k)){
       e.preventDefault();journey=null;trail=null;
@@ -527,6 +562,7 @@ async function createMusicWorld({onInspect,onReadyToMove,deviceInstructions,room
     setDigits(digits,level){model.setDigits(digits,level);queue()},
     setBalance(places){model.setBalance(places);queue()},
     facingDoor(done){
+      setZoom(1);
       clearKeys();
       const open=()=>look(room.door,true,done);
       if(room.doorReveal&&walkTo(room.doorReveal,room.door,open,true))return;
@@ -539,6 +575,7 @@ async function createMusicWorld({onInspect,onReadyToMove,deviceInstructions,room
     },
     reset(open=false,digits=[0,0]){
       clearKeys();journey=null;trail=null;finale=null;
+      zoom=targetZoom=1;updateProjection();
       eye.fromArray(room.start);openness=open?1:0;
       if(open&&room.doorReveal){eye.x=room.doorReveal.x;eye.z=room.doorReveal.z}
       const initial=open?room.door:(width/height<.85?room.portraitView:room.firstView);
