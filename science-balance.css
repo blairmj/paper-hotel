@@ -1,60 +1,30 @@
-#inspect[data-panel=balance]{
-  --panel-width:clamp(36rem,76vw,58rem);
-  border-color:#bbc9d4;
-  background:#f8fafb;
+#balanceWorkbench,#balanceTargets{position:absolute;inset:0}
+#balanceWorkbench{z-index:1;pointer-events:none}
+#balanceTargets{pointer-events:auto;touch-action:none;user-select:none;-webkit-user-select:none}
+body:has(#balanceWorkbench:not([hidden])) :is(#spots,.movement){display:none}
+#balanceTargets button{
+  position:absolute;left:0;top:0;transform:translate(-50%,-50%);margin:0;padding:0;
+  background:transparent;border:0;border-radius:50%;touch-action:none;-webkit-tap-highlight-color:transparent;
 }
-#inspect[data-panel=balance] .panel-top{padding-bottom:4px}
-.balance-experiment{color:#233a4a}
-.balance-experiment .balance-direction{font-size:.9375rem;color:#516472;margin:.125rem 0 .75rem}
-.balance-pair{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.75rem}
-.balance-station{
-  min-width:0;border:1px solid #c2cfd6;border-radius:8px;
-  background:linear-gradient(170deg,#fff 5%,#f0f4f4 73%,#e3e9e8);
+#balanceTargets [data-bead]{z-index:1;cursor:grab}
+#balanceTargets.carrying,#balanceTargets.carrying button{cursor:grabbing}
+#balanceTargets button:focus-visible{outline:2px solid #215991;outline-offset:2px}
+.bench-tools{
+  position:absolute;bottom:var(--edge-bottom);left:50%;transform:translateX(-50%);
+  display:grid;justify-items:center;gap:.4rem;width:max-content;max-width:calc(100% - 2 * var(--gutter));
 }
-.balance-station header{display:flex;align-items:center;justify-content:space-between;gap:.5rem;padding:.625rem .75rem 0}
-.balance-station h2{margin:0;color:#294f7e;font-size:1rem;font-weight:700}
-.balance-station output{font-size:.875rem;color:#50636e}
-.balance-machine{position:relative;aspect-ratio:320/166}
-.balance-machine canvas{display:block;width:100%;height:100%}
-.balance-experiment .pan-target{
-  position:absolute;transform:translate(-50%,-100%);width:38%;height:49%;margin:0;
-  border:2px dashed transparent;border-radius:15% 15% 25% 25%;background:transparent;
+.bench-tools p{
+  margin:0;padding:.35rem .65rem;border-radius:4px;color:#fff;background:#263745ec;
+  font-size:.86rem;line-height:1.4;text-align:center;
 }
-.balance-experiment.carrying .pan-target:is(:hover,:focus-visible),
-.balance-experiment .pan-target.drop-over{background:#417fb419;border-color:#5384ad}
-.balance-bead,.balance-ghost{
-  aspect-ratio:1;border-radius:50%;padding:0;
-  box-shadow:inset -1px -2px 3px #1124313d,0 2px 2px #1b293238;
+.bench-actions,#balanceScales{display:flex;justify-content:center;gap:.3rem;pointer-events:auto}
+.bench-tools button{
+  font:inherit;font-size:.86rem;min-height:2.4rem;padding:.35rem .72rem;border-radius:4px;
+  border:1px solid #aebcc6;color:#273d50;background:#f7f9fa;
 }
-.balance-machine .balance-bead{position:absolute;width:7.6%;transform:translate(-50%,-50%)}
-.balance-experiment .black{
-  border:1px solid #202a31;
-  background:radial-gradient(circle at 31% 25%,#a4adb3 1%,#65727b 10%,#35414b 26%,#232b33 61%,#131920 92%);
-}
-.balance-experiment .white{
-  border:1px solid #9b9f9c;
-  background:radial-gradient(circle at 31% 25%,#fff 3%,#fffef5 22%,#eae9df 54%,#babdb6 86%);
-}
-.balance-bead{cursor:grab;touch-action:none;user-select:none;-webkit-user-select:none;-webkit-tap-highlight-color:transparent}
-.balance-bead:focus-visible,.balance-bead[aria-pressed=true]{outline:2px solid #27669c;outline-offset:2px}
-.balance-bead.lifted{opacity:.25}
-.balance-ghost{position:fixed;transform:translate(-50%,-55%);pointer-events:none;z-index:5;cursor:grabbing}
-.balance-tray{
-  display:flex;align-items:center;gap:.75rem;position:relative;min-height:3.25rem;margin-top:.625rem;padding:.375rem .75rem;
-  border:1px solid #aebcc3;border-radius:8px;background:#e4eaeb;box-shadow:inset 0 2px 5px #51657024;
-}
-.balance-tray .tray-target{position:absolute;inset:0;width:100%;text-align:left;padding:3px 14px;border:2px solid transparent;
-  border-radius:7px;background:transparent;color:#475e6b;font-size:.875rem;font-weight:650}
-.balance-tray .tray-target.drop-over,.carrying .tray-target:is(:hover,:focus-visible){border:2px dashed #5384ad;background:#477bb011}
-.balance-loose{display:flex;gap:.3rem;align-items:center;flex-wrap:wrap;min-width:0;margin-left:4.75rem;pointer-events:none}
-.balance-loose .balance-bead{position:relative;flex:none;width:1.625rem;pointer-events:auto}
-.balance-tools{display:flex;justify-content:flex-end;margin-top:10px}
-.balance-tools button{padding:.45rem .75rem;min-height:var(--control-height);font-size:.875rem}
-@container (max-width:32rem){
-  .balance-pair{grid-template-columns:minmax(0,1fr);gap:8px}
-  .balance-station{width:100%;max-width:27rem;justify-self:center}
-  .balance-station header{padding:.4rem .75rem 0}
-  .balance-machine{max-width:22rem;margin:0 auto}
-  .balance-experiment .balance-direction{margin:0 0 .5rem}
-  .balance-tray{margin-top:8px}.balance-tools{margin-top:6px}
+.bench-tools button:is(:hover,:focus-visible){border-color:#36618b}
+#leaveBench,#balanceScales [aria-pressed=true]{color:white;background:#2e537b;border-color:#244868}
+@media(max-height:470px){
+  .bench-tools{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:.25rem .5rem}
+  .bench-tools button{min-height:2rem}
 }

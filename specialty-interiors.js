@@ -91,7 +91,7 @@ const SpecialtyInteriors = (() => {
       ],
       clues:[
         {id:'balanceBench',name:'실험대의 양팔저울',xyz:[lab[0].x,1.16,3.94],placement:'bench',
-          surface:{width:1.63,height:.51,depth:.70},inspectFromAnySide:true,approach:{x:-1.65,z:5.26}}
+          surface:{width:1.63,height:.51,depth:.70},inspectFromAnySide:true,approach:{x:lab[0].x,z:5.19}}
       ],
       build:science
     },
@@ -1007,7 +1007,7 @@ const SpecialtyInteriors = (() => {
       if(mesh.isMesh && mesh.material.isMeshStandardMaterial)mesh.receiveShadow=true;
     });
     const canvas=document.getElementById('roomView');
-    const version={library:'lending-v54',science:'balance-v1',broadcast:'studio-v34'}[room.kind];
+    const version={library:'lending-v54',science:'balance-bench-v57',broadcast:'studio-v34'}[room.kind];
     Object.assign(canvas.dataset,{interior:room.kind,artwork:version});
     const updateDoorStatus=statusLamp(scene,design.statusLamp);
     return {

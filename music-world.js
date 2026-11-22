@@ -94,6 +94,7 @@ async function createMusicWorld({onInspect,onReadyToMove,deviceInstructions,room
     renderer=SchoolWebGL.create(canvas);
   }catch(error){if(room.interior)throw error;renderer=null}
   model=await buildRoom(scene,room);
+  const workbench=model.workbench;
   if(!renderer){
     if(room.interior)throw new Error('WebGL is required for this interior');
     photos=paintedPhotoView(canvas,scene);
@@ -152,7 +153,7 @@ async function createMusicWorld({onInspect,onReadyToMove,deviceInstructions,room
   }
   let width=1,height=1,yaw=0,pitch=0,openness=0,journey,trail,drag,finale,raf=0,previousTime=0;
   const zoomStep=1.2;
-  let zoom=1,targetZoom=1;
+  let zoom=1,targetZoom=1,roomZoom=1;
   let fullRatio=1,movingRatio=1,wasMoving=false,slowFrames=0;
   const clamp=School3D.MathUtils.clamp, wrap=angle=>Math.atan2(Math.sin(angle),Math.cos(angle));
   function heading(position,from=eye){return Math.atan2(position[0]-from.x,from.z-position[2])}
@@ -197,6 +198,11 @@ async function createMusicWorld({onInspect,onReadyToMove,deviceInstructions,room
         finale.camera.updateProjectionMatrix();
       }
       renderer.render(finale.scene,finale.camera);
+      return;
+    }
+    if(workbench?.active){
+      renderer.render(scene,workbench.sizeCamera(width,height,zoom));
+      workbench.drawTargets();
       return;
     }
     camera.rotation.set(pitch,-yaw,0,'YXZ');camera.updateMatrixWorld();
@@ -332,7 +338,8 @@ async function createMusicWorld({onInspect,onReadyToMove,deviceInstructions,room
     let face=(sideBySide?object.inspectionView?.wide:object.inspectionView?.compact)??object.xyz;
     const doorDistance=Math.hypot(x-room.door[0],z-room.door[2]);
     const nearDoor=room.interior&&devices.includes(object)&&doorDistance<1.75;
-    const stand=standingPlace(object,authored,nearDoor);
+    const atBench=inspect&&object.id===workbench?.id;
+    const stand=atBench?authored:standingPlace(object,authored,nearDoor);
     if(nearDoor&&doorDistance>0){
       const distance=Math.hypot(stand.x-x,stand.z-z);
       const halfWidth=distance*Math.tan(School3D.MathUtils.degToRad(camera.fov/2))*camera.aspect;
@@ -469,15 +476,25 @@ async function createMusicWorld({onInspect,onReadyToMove,deviceInstructions,room
     queue();
   }
   function turn(direction){
-    if(!onReadyToMove()||journey?.door)return;
+    if(!onReadyToMove()||journey?.door||workbench?.active)return;
     const from=journey?journey.to:yaw;
     const ordered=stopPoints.map(target=>({target,angle:((heading(target)-from)*direction+Math.PI*2)%(Math.PI*2)}))
       .filter(stop=>stop.angle>.07).sort((a,b)=>a.angle-b.angle);
     if(ordered.length)look(ordered[0].target);
   }
   const clearKeys=()=>{keys.clear();keyVelocity.set(0,0);drag=null;if(!trail?.automatic)trail=null;queue()};
+  function openWorkbench(commit){
+    if(!workbench||workbench.active||!onReadyToMove())return;
+    clearKeys();journey=null;roomZoom=targetZoom;zoom=targetZoom=1;
+    workbench.enter({commit,refresh:queue,leave:leaveWorkbench});
+  }
+  function leaveWorkbench(){
+    if(!workbench?.active)return;
+    workbench.exit();zoom=targetZoom=roomZoom;updateProjection();
+    canvas.focus({preventScroll:true});queue();
+  }
   function startPointer(e,objectId=null){
-    if(!e.isPrimary||e.button!==0||!onReadyToMove()||journey?.door)return;
+    if(!e.isPrimary||e.button!==0||!onReadyToMove()||journey?.door||workbench?.active)return;
     clearKeys();journey=null;
     drag={x:e.clientX,y:e.clientY,yaw,pitch,moved:false,objectId,pointerId:e.pointerId};
     canvas.setPointerCapture(e.pointerId);canvas.focus({preventScroll:true});
@@ -513,7 +530,7 @@ async function createMusicWorld({onInspect,onReadyToMove,deviceInstructions,room
     const steps=clamp(-pixels/100,-2,2);
     setZoom(targetZoom*(zoomStep**steps));
   }
-  for(const surface of [canvas,spots])surface.addEventListener('wheel',wheelZoom,{passive:false});
+  for(const surface of [canvas,spots,workbench?.surface].filter(Boolean))surface.addEventListener('wheel',wheelZoom,{passive:false});
   document.addEventListener('keydown',e=>{
     if(!onReadyToMove()||journey?.door||e.defaultPrevented||e.altKey)return;
     if(e.ctrlKey||e.metaKey){
@@ -524,6 +541,7 @@ async function createMusicWorld({onInspect,onReadyToMove,deviceInstructions,room
       else return;
       e.preventDefault();return;
     }
+    if(workbench?.active)return;
     const k=e.key.toLowerCase();
     if(['w','s','a','d','arrowleft','arrowright','arrowup','arrowdown'].includes(k)){
       e.preventDefault();journey=null;trail=null;
@@ -541,7 +559,7 @@ async function createMusicWorld({onInspect,onReadyToMove,deviceInstructions,room
   movementButton('left',()=>turn(-1));
   movementButton('right',()=>turn(1));
   function step(distance){
-    if(!onReadyToMove()||journey?.door)return;
+    if(!onReadyToMove()||journey?.door||workbench?.active)return;
     const direction=Math.sign(distance),continuing=trail?.stepDirection===direction?trail:null;
     const from=continuing?.goal??eye;
     const increments=Math.ceil(Math.abs(distance)/.10);
@@ -558,11 +576,12 @@ async function createMusicWorld({onInspect,onReadyToMove,deviceInstructions,room
   movementButton('stepBack',()=>step(-1.2));
   new ResizeObserver(resize).observe(canvas);resize();
   return {
-    clearKeys,walkTo,commandAt,lookAtPiano(){inspectTarget('paper')},
+    clearKeys,walkTo,commandAt,inspectTarget,openWorkbench,leaveWorkbench,lookAtPiano(){inspectTarget('paper')},
     setDigits(digits,level){model.setDigits(digits,level);queue()},
     setBalls(picked,animate=false){model.setBalls(picked,animate);queue()},
-    setBalance(places){model.setBalance(places);queue()},
+    setBalance(places,animate=false){model.setBalance(places,animate);queue()},
     facingDoor(done){
+      leaveWorkbench();
       setZoom(1);
       clearKeys();
       const open=()=>look(room.door,true,done);
@@ -575,6 +594,7 @@ async function createMusicWorld({onInspect,onReadyToMove,deviceInstructions,room
       queue();
     },
     reset(open=false,digits=[0,0]){
+      leaveWorkbench();
       clearKeys();journey=null;trail=null;finale=null;
       zoom=targetZoom=1;updateProjection();
       eye.fromArray(room.start);openness=open?1:0;

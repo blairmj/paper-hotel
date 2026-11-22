@@ -84,6 +84,7 @@ function save(){
 
 function modal(title,html,panel='clue'){
   if(opening||finished)return;
+  world?.leaveWorkbench?.();
   world?.clearKeys();dialog.dataset.panel=panel;
   byId('panelTitle').textContent=title;content.innerHTML=html;
   if(byId('deviceInstructions'))dialog.setAttribute('aria-describedby','deviceInstructions');
@@ -234,12 +235,12 @@ function inspectClue(id){
   }
   switch(id){
     case 'balanceBench':
-      modal(clue.name,'','balance');
-      ScienceBalance.open(content,run.beadPlaces,places=>{
+      world.openWorkbench(places=>{
         if(countdown.check()||run.solved)return false;
+        const previous=run.beadPlaces;
         run.beadPlaces=places;
-        world.setBalance(places);
-        save();
+        if(!save()){run.beadPlaces=previous;return false}
+        world.setBalance(places,true);
         return true;
       });
       break;
@@ -251,7 +252,10 @@ function inspectClue(id){
 function inventory(){
   modal('찾은 단서','<div class="collected-clues" id="collectedClues"></div>');
   for(const clue of room.clues.filter(clue=>run.found.includes(clue.id))){
-    action(byId('collectedClues'),clue.name,()=>inspectClue(clue.id));
+    action(byId('collectedClues'),clue.name,()=>{
+      if(clue.id==='balanceBench'){close();world.inspectTarget(clue.id)}
+      else inspectClue(clue.id);
+    });
   }
 }
 
@@ -578,6 +582,7 @@ function restart(){
 function beginTimer(){
   if(story)attempt=schoolEscapeTimer(book())?.startedAt;
   countdown=setupSchoolTimer(room.n,{key:bookKey,isSolved:()=>run.solved,onExpire:()=>{
+    world.leaveWorkbench?.();
     world.clearKeys();opening=false;roomHead.inert=true;
     byId('escape').hidden=true;
     placeJumpInDialog();

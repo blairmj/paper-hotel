@@ -2,38 +2,28 @@
 
 const ScienceBalance=(()=>{
   const colors={black:'검은 구슬',white:'흰 구슬'};
-  const viewWidth=320,viewHeight=166,arm=90,pivotY=38,panOffset=77;
-
-  function panPoint(side,angle){
-    return {x:160+side*arm*Math.cos(angle),y:pivotY+side*arm*Math.sin(angle)};
-  }
-  function beadSlots(count,weighted){
-    const columns=weighted?3:4;
-    return Array.from({length:count},(_,i)=>{
-      const row=Math.floor(i/columns);
-      const occupied=Math.min(columns,count-row*columns);
-      return {x:((i%columns)-(occupied-1)/2)*25-(weighted?14:0),y:11+row*21};
-    });
-  }
+  const beadRadius=.031,halfArm=.214,axleHeight=.43;
 
   function build(scene,room){
     const {rounded,cylinder,rod,standard,patchPlane}=SchoolInterior;
     function group(parent,x,y,z){
       const g=new School3D.Group();g.position.set(x,y,z);parent.add(g);return g;
     }
-    const navy=standard('#245293',.36,.23),chrome=standard('#a7bdcc',.27,.57);
-    const foot=standard('#344553',.51),brass=standard('#cd9c43',.28,.54);
-    const glass={black:standard('#232a32',.22,.23),white:standard('#f3f0e8',.20,.16)};
-    const sphere=new School3D.SphereGeometry(.031,18,14),beads=BALANCE_BEADS.map(({color})=>new School3D.Mesh(sphere,glass[color]));
+    const navy=standard('#245293',.36,.23),chrome=standard('#a7bdcc',.34,.46);
+    const foot=standard('#344553',.51),brass=standard('#ce9b44',.35,.43);
+    const felt=standard('#547489',.90),hover=standard('#7eb9c4',.5,.14);
+    const glass={black:standard('#252e38',.25,.19),white:standard('#faf6ed',.26,.12)};
+    const sphere=new School3D.SphereGeometry(beadRadius,24,16);
+    const beads=BALANCE_BEADS.map(({color})=>new School3D.Mesh(sphere,glass[color]));
     function tag(parent,label,w,h,x,y,z){
       const map=InteriorArtwork.canvasMap(240,96,(g,ww,hh)=>{
-        g.fillStyle='#e8e6d8';g.fillRect(0,0,ww,hh);g.fillStyle='#26343b';
+        g.fillStyle='#f4efd9';g.fillRect(0,0,ww,hh);g.fillStyle='#26343b';
         g.textAlign='center';g.textBaseline='middle';g.font='bold 64px Arial';g.fillText(label,ww/2,hh*.53);
       });
-      patchPlane(parent,w,h,x,y,z,map);
+      return patchPlane(parent,w,h,x,y,z,map);
     }
     const [benchX,,benchZ]=room.clues.find(clue=>clue.id==='balanceBench').xyz;
-    const tableTop=.92,halfArm=.214,axleHeight=.43;
+    const tableTop=.92,holders=new Map();
     const devices=BALANCE_SCALES.map((scale,i)=>{
       const g=group(scene,benchX+(i===0?-.422:.422),tableTop,benchZ);
       rounded(g,.30,.034,.19,0,.021,0,foot,.009);
@@ -41,232 +31,285 @@ const ScienceBalance=(()=>{
       cylinder(g,.030,.065,.357,0,.247,-.017,navy);
       const beam=group(g,0,axleHeight,0);
       rounded(beam,.46,.026,.038,0,0,0,chrome,.005);
+      rounded(g,.070,.048,.01,0,axleHeight+.05,-.02,foot,.004);
+      rounded(g,.002,.040,.005,0,axleHeight+.05,-.010,chrome,.001);
+      rod(beam,[0,0,0],[0,.071,0],.003,brass);
       cylinder(g,.027,.027,.054,0,axleHeight,.017,brass).rotation.x=Math.PI/2;
-      tag(g,i===0?'I':'II',.058,.024,0,.051,.089);
-      const pans=[-1,1].map(side=>{
-        const pan=group(g,side*halfArm,axleHeight,0);
-        for(const [x,z] of [[-.126,.015],[.095,.072],[.058,-.109]])
-          rod(pan,[0,-.005,0],[x,-.177,z],.0038,chrome);
+      tag(g,i===0?'I':'II',.061,.030,0,.051,.090);
+      const pans=[scale.left,scale.right].map((place,j)=>{
+        const pan=group(g,(j===0?-1:1)*halfArm,axleHeight,0);
+        for(const [x,z] of [[-.123,.060],[.130,.036],[.006,-.123]])
+          rod(pan,[0,-.005,0],[x,-.177,z],.0033,chrome);
         cylinder(pan,.140,.093,.023,0,-.194,0,chrome,36);
-        cylinder(pan,.141,.140,.006,0,-.180,0,chrome,36);
-        if(side===1){
-          cylinder(pan,.043,.048,.085,.082,-.135,0,brass);
-          cylinder(pan,.025,.018,.025,.082,-.081,0,brass);
-          tag(pan,scale.weight+'g',.067,.031,.082,-.139,.045);
+        const surface=cylinder(pan,.141,.140,.006,0,-.180,0,chrome,36);
+        if(j===1){
+          cylinder(pan,.050,.054,.096,.080,-.129,.015,brass);
+          cylinder(pan,.026,.020,.024,.080,-.069,.015,brass);
+          tag(pan,scale.weight+' g',.106,.053,.080,-.128,.069).rotation.x=-.24;
         }
+        holders.set(place,{node:pan,surface,xHalf:.145,zHalf:.133,bottom:-.197,top:-.106,
+          label:scale.label+' '+(j?'오른쪽':'왼쪽')+' 접시'});
         return pan;
       });
-      return {beam,pans};
+      return {beam,pans,angle:0,goal:0};
     });
-    const tray=group(scene,benchX,tableTop,benchZ+.49);
-    rounded(tray,.69,.019,.20,0,.012,0,chrome,.006);
-    for(const s of [-1,1]){
-      rounded(tray,.69,.014,.012,0,.025,s*.096,chrome,.003);
-      rounded(tray,.012,.014,.19,s*.34,.025,0,chrome,.003);
+    const tray=group(scene,benchX,tableTop,benchZ+.43);
+    rounded(tray,.34,.026,.28,0,.016,0,chrome,.009);
+    const lining=rounded(tray,.320,.010,.256,0,.030,0,felt,.005);
+    for(const side of [-1,1]){
+      rounded(tray,.34,.020,.012,0,.034,side*.133,chrome,.004);
+      rounded(tray,.012,.020,.265,side*.164,.034,0,chrome,.004);
     }
+    holders.set('tray',{node:tray,surface:lining,xHalf:.17,zHalf:.14,bottom:.014,top:.066,label:'구슬 받침'});
     const dial=group(scene,...room.lock.center);dial.rotation.y=room.lock.rotationY;
     rounded(dial,room.lock.width+.024,room.lock.height+.023,.044,0,0,-.023,foot,.009);
     const screen=patchPlane(dial,room.lock.width,room.lock.height,0,0,.003,imageMap(schoolLockArt(room,[])));
-    function setBalance(places){
-      BALANCE_SCALES.forEach((scale,i)=>{
-        const {angle}=readBalance(scale,places),{beam,pans}=devices[i];
-        beam.rotation.z=-angle;
-        [scale.left,scale.right].forEach((place,j)=>{
-          const pan=pans[j],side=j===0?-1:1;
-          pan.position.set(side*halfArm*Math.cos(angle),axleHeight-side*halfArm*Math.sin(angle),0);
-          const ids=beads.map((_,id)=>id).filter(id=>places[id]===place);
-          const slots=beadSlots(ids.length,j===1);
-          ids.forEach((id,k)=>{
-            pan.add(beads[id]);
-            beads[id].position.set(slots[k].x*.00225,-.177+.031+Math.floor(k/(j===1?3:4))*.042,.019);
-          });
-        });
-      });
-      const loose=beads.map((_,id)=>id).filter(id=>places[id]==='tray');
-      loose.forEach((id,k)=>{
-        tray.add(beads[id]);beads[id].position.set((k-(loose.length-1)/2)*.067,.055,0);
+
+    const shadowLight=scene.parent?.children.find(item=>item.castShadow&&item.shadow);
+    let places=initialBeadPlaces(),held=null,shadowDirty=false;
+    function pose(device){
+      const {angle,beam,pans}=device;
+      beam.rotation.z=-angle;
+      pans.forEach((pan,j)=>{
+        const side=j===0?-1:1;
+        pan.position.set(side*halfArm*Math.cos(angle),axleHeight-side*halfArm*Math.sin(angle),0);
       });
     }
-    setBalance(initialBeadPlaces());
-    return {setBalance,setDigits(values){
+    function arrange(animate){
+      shadowDirty=true;
+      for(const [place,holder] of holders){
+        const ids=beads.map((_,id)=>id).filter(id=>id!==held&&places[id]===place);
+        const loose=place==='tray',weighted=place.endsWith('R');
+        const columns=loose?4:weighted?2:ids.length===4?4:3;
+        ids.forEach((id,k)=>{
+          const bead=beads[id],row=Math.floor(k/columns),occupied=Math.min(columns,ids.length-row*columns);
+          if(bead.parent!==holder.node)holder.node.add(bead);
+          const rows=Math.min(3,Math.ceil(ids.length/columns));
+          bead.position.set(((k%columns)-(occupied-1)/2)*.066-(weighted?.049:0),
+            (loose?.035:-.177)+beadRadius+Math.floor(row/3)*.054,
+            ((rows-1)/2-row%3)*.064+(loose?0:.012));
+        });
+      }
+      const loading=places.slice();
+      if(held!==null)loading[held]='tray';
+      devices.forEach((device,i)=>{
+        device.goal=readBalance(BALANCE_SCALES[i],loading).angle;
+        if(!animate){device.angle=device.goal;pose(device)}
+      });
+    }
+    function setBalance(next,animate=false){
+      if(held!==null)beads[held].castShadow=true;
+      held=null;places=next.slice();arrange(animate);
+    }
+    function lift(id){
+      if(held!==null)setBalance(places,true);
+      const bead=beads[id],position=bead.getWorldPosition(new School3D.Vector3());
+      // The furniture root uses room coordinates. Keep this same mesh under the pointer.
+      scene.add(bead);bead.position.copy(position);bead.position.y+=.065;bead.castShadow=false;
+      held=id;arrange(true);
+    }
+    function animate(dt,reduced){
+      let moving=false;
+      for(const device of devices){
+        if(device.angle===device.goal)continue;
+        const gap=device.goal-device.angle;
+        device.angle=reduced||Math.abs(gap)<.001?device.goal:device.angle+gap*(1-Math.exp(-14*dt));
+        pose(device);moving||=device.angle!==device.goal;
+      }
+      if(!moving&&shadowDirty){
+        if(shadowLight)shadowLight.shadow.needsUpdate=true;
+        shadowDirty=false;
+      }
+      return moving;
+    }
+    setBalance(places);
+    const workbench=controls({benchX,benchZ,beads,holders,
+      get places(){return places},get held(){return held},lift,putBack(){setBalance(places,true)},
+      highlight(place){
+        for(const [key,holder] of holders)holder.surface.material=place===key?hover:key==='tray'?felt:chrome;
+      }
+    });
+    return {workbench,setBalance,animate,setDigits(values){
       screen.material.map.image=schoolLockArt(room,values);screen.material.map.needsUpdate=true;
     }};
   }
 
-  function paint(canvas,scale,angle){
-    const g=canvas.getContext('2d');
-    g.setTransform(canvas.width/viewWidth,0,0,canvas.height/viewHeight,0,0);
-    g.clearRect(0,0,viewWidth,viewHeight);
-    function gradient(y1,y2,stops){
-      const fill=g.createLinearGradient(0,y1,0,y2);stops.forEach(([at,color])=>fill.addColorStop(at,color));return fill;
+  // These transparent controls follow the WebGL objects. The camera always draws the same classroom.
+  function controls(model){
+    const root=document.getElementById('balanceWorkbench'),layer=document.getElementById('balanceTargets');
+    const tabs=document.getElementById('balanceScales'),status=document.getElementById('balanceStatus');
+    const help=document.getElementById('balanceHelp'),initialHelp=help.textContent;
+    const camera=new School3D.PerspectiveCamera(52,1,.04,42),v=new School3D.Vector3();
+    let session=null,press=null,scaleIndex=0,width=1,height=1,dragDepth=0;
+    function target(data,value,label){
+      const button=document.createElement('button');button.type='button';
+      button.dataset[data]=value;button.setAttribute('aria-label',label);layer.append(button);return button;
     }
-    function path(points,fill,stroke,width=1){
-      g.beginPath();points(g);
-      if(fill){g.fillStyle=fill;g.fill()}
-      if(stroke){g.strokeStyle=stroke;g.lineWidth=width;g.stroke()}
+    const pans=new Map(Array.from(model.holders,([place,holder])=>[place,target('place',place,holder.label)]));
+    for(const scale of BALANCE_SCALES)pans.get(scale.right).setAttribute('aria-description',scale.weight+' g 추');
+    const beads=model.beads.map((_,id)=>target('bead',id,colors[BALANCE_BEADS[id].color]));
+    function announce(){
+      const loading=model.places.slice();
+      if(model.held!==null)loading[model.held]='tray';
+      const readings=BALANCE_SCALES.map(scale=>{
+        const {left,right}=readBalance(scale,loading);
+        return scale.label+' '+(left===right?'수평':left>right?'왼쪽이 무거움':'오른쪽이 무거움');
+      });
+      const selected=model.held===null?'':colors[BALANCE_BEADS[model.held].color]+' 선택. ';
+      status.textContent=selected+readings.join('. ')+'.';
     }
-    function rounded(x,y,w,h,r,fill){
-      path(p=>p.roundRect(x,y,w,h,r),fill);
+    function update(){
+      layer.classList.toggle('carrying',model.held!==null);
+      help.textContent=model.held===null?initialHelp:'놓을 접시나 구슬 받침을 누르세요.';
+      beads.forEach((el,id)=>{
+        el.setAttribute('aria-pressed',String(id===model.held));
+        el.setAttribute('aria-label',colors[BALANCE_BEADS[id].color]+', '+model.holders.get(model.places[id]).label);
+      });
+      announce();session?.refresh();
     }
-    const silver=gradient(27,51,[[0,'#657887'],[.43,'#eef2f1'],[.62,'#aec0cc'],[1,'#506776']]);
-    const metal=gradient(124,154,[[0,'#547ba5'],[.33,'#386296'],[.66,'#264d7d'],[1,'#193b60']]);
-    g.lineJoin='round';g.lineCap='round';
-    path(p=>p.ellipse(160,155,97,6,0,0,2*Math.PI),'#27405b18');
-    rounded(108,144,104,11,5,'#34444e');rounded(112,137,96,13,5,metal);
-    path(p=>{p.moveTo(153,39);p.lineTo(167,39);p.lineTo(174,131);p.quadraticCurveTo(185,132,189,140);
-      p.lineTo(131,140);p.quadraticCurveTo(135,132,146,131);p.closePath()},'#31619b','#274c75',1.5);
-    path(p=>{p.moveTo(155,51);p.lineTo(152,127)},null,'#7d9fbd',2);
-    path(p=>{p.moveTo(150,21);p.quadraticCurveTo(160,16,170,21)},null,'#839297',1.3);
-    for(let i=-1;i<=1;i++)path(p=>{p.moveTo(160+i*8,18+Math.abs(i)*2);p.lineTo(160+i*7,22+Math.abs(i)*2)},null,'#657681',1.5);
-    g.save();g.translate(160,pivotY);g.rotate(angle);
-    path(p=>{p.moveTo(-arm,2);p.lineTo(-arm,-2);p.lineTo(0,-5);p.lineTo(arm,-2);p.lineTo(arm,2);
-      p.lineTo(0,5);p.closePath()},silver,'#647985',1.2);
-    path(p=>{p.moveTo(0,-19);p.lineTo(2,-3);p.lineTo(-2,-3);p.closePath()},'#8d6735');
-    g.restore();
-    path(p=>p.arc(160,pivotY,6.1,0,2*Math.PI),'#d7a44f','#806636',1.5);
-    for(const side of [-1,1]){
-      const {x,y}=panPoint(side,angle),lip=y+panOffset;
-      for(const dx of [-53,53])path(p=>{p.moveTo(x,y+3);p.lineTo(x+dx,lip)},null,'#8a9ba5',1.7);
-      path(p=>p.arc(x,y,3.3,0,2*Math.PI),'#cbd7db','#667984',1.1);
-      const bowl=gradient(lip-1,lip+13,[[0,'#e0e8e9'],[.4,'#bac8cc'],[1,'#6d818b']]);
-      path(p=>{p.moveTo(x-58,lip);p.lineTo(x+58,lip);p.quadraticCurveTo(x+49,lip+12,x+20,lip+13);
-        p.lineTo(x-20,lip+13);p.quadraticCurveTo(x-49,lip+12,x-58,lip);p.closePath()},bowl,'#788a95',1.3);
-      path(p=>{p.moveTo(x-56,lip+1);p.lineTo(x+56,lip+1)},null,'#f3f6f5',2);
-      if(side===1){
-        const cx=x+36;
-        rounded(cx-6,lip-34,12,5,2,'#82663e');rounded(cx-8,lip-38,16,6,2,'#bc9655');
-        rounded(cx-14,lip-30,28,29,3,gradient(lip-30,lip,[[0,'#eace93'],[.6,'#c6a163'],[1,'#967442']]));
-        g.fillStyle='#3c3425';g.textAlign='center';g.font='bold 12px Arial';g.fillText(scale.weight+' g',cx,lip-11);
+    function cancel(){
+      press=null;model.highlight(null);
+      if(model.held!==null)model.putBack();
+      update();
+    }
+    function pick(id){
+      model.lift(id);update();
+    }
+    function drop(place){
+      const id=model.held;
+      if(id===null)return;
+      if(!place||place===model.places[id]){cancel();return}
+      const next=model.places.slice();next[id]=place;
+      if(!session.commit(next)){cancel();return}
+      model.highlight(null);update();
+    }
+    function activate(bead,place){
+      if(model.held===null){if(bead!==null)pick(bead);return}
+      if(bead===model.held){cancel();return}
+      const destination=bead===null?place:model.places[bead];
+      if(bead!==null&&destination===model.places[model.held])pick(bead);
+      else drop(destination);
+    }
+    function setScale(i){
+      if(scaleIndex!==i&&model.held!==null){
+        model.beads[model.held].position.copy(model.holders.get('tray').node.localToWorld(v.set(0,.16,0)));
       }
+      scaleIndex=i;Array.from(tabs.children).forEach((el,j)=>el.setAttribute('aria-pressed',String(i===j)));
+      session?.refresh();
     }
-  }
-
-  function open(host,initial,onChange){
-    let places=initial.slice(),selected=null,drag=null,frame=0;
-    const root=document.createElement('div');root.className='balance-experiment';
-    root.innerHTML='<p class="balance-direction" id="balanceHelp">구슬을 끌어 옮기세요. 구슬을 누른 뒤 놓을 곳을 눌러도 돼요.</p>'+
-      '<div class="balance-pair"></div><div class="balance-tray" data-holder="tray">'+
-      '<button type="button" class="tray-target" data-place="tray">구슬 받침</button><div class="balance-loose"></div></div>'+
-      '<div class="balance-tools"><button type="button" class="balance-restore">처음 배치로</button></div>';
-    host.replaceChildren(root);
-    const pair=root.querySelector('.balance-pair'),tray=root.querySelector('.balance-loose');
-    const stations=BALANCE_SCALES.map(scale=>{
-      const section=document.createElement('section');section.className='balance-station';
-      section.innerHTML='<header><h2>'+scale.label+'</h2><output aria-live="polite"></output></header>'+
-        '<div class="balance-machine"><canvas width="800" height="415" aria-hidden="true"></canvas></div>';
-      pair.append(section);
-      const machine=section.querySelector('.balance-machine');
-      const pans=[scale.left,scale.right].map((place,j)=>{
-        const target=document.createElement('button');target.type='button';target.className='pan-target';
-        target.dataset.place=place;
-        const label=scale.label+' '+(j?'오른쪽':'왼쪽')+' 접시';
-        target.setAttribute('aria-label',label);
-        if(j===1)target.setAttribute('aria-description',scale.weight+'그램 추가 놓여 있어요.');
-        machine.append(target);return target;
-      });
-      return {scale,machine,pans,canvas:machine.querySelector('canvas'),status:section.querySelector('output'),angle:0};
-    });
-    const beads=BALANCE_BEADS.map(({color},i)=>{
-      const bead=document.createElement('button');bead.type='button';bead.className='balance-bead '+color;
-      bead.dataset.bead=String(i);bead.setAttribute('aria-pressed','false');return bead;
-    });
-    function select(id){
-      selected=id;beads.forEach((button,i)=>button.setAttribute('aria-pressed',String(i===id)));
-      root.classList.toggle('carrying',id!==null);
+    Array.from(tabs.children).forEach((el,i)=>el.onclick=()=>setScale(i));
+    document.getElementById('balanceReset').onclick=()=>{
+      if(!session)return;
+      cancel();session.commit(initialBeadPlaces());update();
+    };
+    document.getElementById('leaveBench').onclick=()=>session?.leave();
+    function sizeCamera(w,h,zoom){
+      width=w;height=h;
+      const compact=w<720&&w/h<1.25,aspect=w/h;
+      const heightInRoom=Math.max(.98,(compact?1.15:1.86)/aspect)/zoom;
+      const visibleWidth=heightInRoom*aspect;
+      tabs.hidden=!compact&&visibleWidth>=1.60;
+      const offset=compact?.238:Math.max(0,(1.60-visibleWidth)/2);
+      const shift=scaleIndex===0?-offset:offset;
+      const x=model.benchX+shift,z=model.benchZ;
+      camera.position.set(x,1.62,z+1.25);
+      camera.lookAt(x,1.065,z+.12);
+      camera.aspect=aspect;
+      camera.fov=2*Math.atan(heightInRoom/(2*Math.hypot(1.13,.555)))*180/Math.PI;
+      camera.updateProjectionMatrix();
+      return camera;
     }
-    function render(){
-      stations.forEach(({scale,machine,pans,canvas,angle})=>{
-        paint(canvas,scale,angle);
-        pans.forEach((pan,j)=>{
-          const {x,y}=panPoint(j===0?-1:1,angle),lip=y+panOffset;
-          pan.style.left=x/viewWidth*100+'%';pan.style.top=(lip+14)/viewHeight*100+'%';
-          const ids=beads.map((_,i)=>i).filter(i=>places[i]===pan.dataset.place);
-          const slots=beadSlots(ids.length,j===1);
-          ids.forEach((id,k)=>{
-            const bead=beads[id];
-            if(bead.parentNode!==machine)machine.append(bead);
-            bead.style.left=(x+slots[k].x)/viewWidth*100+'%';
-            bead.style.top=(lip-slots[k].y)/viewHeight*100+'%';
-            bead.setAttribute('aria-label',colors[BALANCE_BEADS[id].color]+', '+pan.getAttribute('aria-label'));
-          });
-        });
-      });
-      beads.forEach((bead,i)=>{
-        if(places[i]==='tray'&&bead.parentNode!==tray){
-          tray.append(bead);bead.style.removeProperty('left');bead.style.removeProperty('top');
-          bead.setAttribute('aria-label',colors[BALANCE_BEADS[i].color]+', 구슬 받침');
+    function project(node,x,y,z){
+      node.localToWorld(v.set(x,y,z)).project(camera);
+      return [(1+v.x)*width/2,(1-v.y)*height/2];
+    }
+    function placeButton(button,x,y,w,h){
+      button.style.left=x+'px';button.style.top=y+'px';button.style.width=w+'px';button.style.height=h+'px';
+    }
+    function drawTargets(){
+      for(const [place,{node,xHalf,zHalf,bottom,top}] of model.holders){
+        const button=pans.get(place);
+        const corners=[];
+        for(const x of [-xHalf,xHalf])for(const z of [-zHalf,zHalf])for(const y of [bottom,top])corners.push(project(node,x,y,z));
+        const xs=corners.map(p=>p[0]),ys=corners.map(p=>p[1]);
+        const left=Math.min(...xs),right=Math.max(...xs),hi=Math.min(...ys),lo=Math.max(...ys);
+        button.hidden=right<0||left>width||lo<0||hi>height;
+        placeButton(button,(left+right)/2,(hi+lo)/2,right-left+4,lo-hi+4);
+      }
+      model.beads.forEach((node,id)=>{
+        const el=beads[id];
+        const [x,y]=project(node,0,0,0),[edge]=project(node,beadRadius,0,0);
+        el.hidden=x<0||x>width||y<0||y>height;
+        if(!el.hidden){
+          const size=Math.max(28,Math.abs(edge-x)*2+5);
+          placeButton(el,x,y,size,size);
         }
       });
     }
-    function update(animate){
-      cancelAnimationFrame(frame);
-      const start=performance.now(),from=stations.map(s=>s.angle);
-      const target=stations.map(station=>{
-        const {left,right,angle}=readBalance(station.scale,places);
-        station.status.textContent=left===right?'수평':(left>right?'왼쪽':'오른쪽')+'이 무거워요';
-        return angle;
+    function beadAt(x,y,except=null){
+      let nearest=null,best=Infinity;
+      beads.forEach((button,id)=>{
+        if(button.hidden||id===except)return;
+        const r=button.getBoundingClientRect(),dx=x-r.x-r.width/2,dy=y-r.y-r.height/2;
+        const d=dx*dx+dy*dy;
+        if(d<=(r.width/2)**2&&d<best){best=d;nearest=id}
       });
-      function draw(time){
-        if(!root.isConnected)return;
-        const t=animate?Math.min(1,(time-start)/280):1;
-        stations.forEach((station,i)=>{station.angle=from[i]+(target[i]-from[i])*(1-(1-t)**3)});
-        render();if(t<1)frame=requestAnimationFrame(draw);
-      }
-      draw(start);
-    }
-    function commit(next){
-      if(!onChange(next))return;
-      places=next;select(null);update(!matchMedia('(prefers-reduced-motion: reduce)').matches);
-    }
-    function place(id,holder){
-      if(!holder||id===null)return;
-      if(places[id]===holder){select(null);return}
-      const next=places.slice();next[id]=holder;commit(next);
+      return nearest;
     }
     function holderAt(x,y){
-      const hit=document.elementFromPoint(x,y);
-      if(!hit||!root.contains(hit))return null;
-      const bead=hit.closest('[data-bead]');
-      if(bead)return places[Number(bead.dataset.bead)];
-      const holder=hit.closest('[data-place],[data-holder]');
-      return holder?.dataset.place??holder?.dataset.holder;
+      for(const [place,button] of pans){
+        if(button.hidden)continue;
+        const r=button.getBoundingClientRect();
+        if(x>=r.left&&x<=r.right&&y>=r.top&&y<=r.bottom)return place;
+      }
+      const id=beadAt(x,y,model.held);
+      return id===null?null:model.places[id];
     }
-    function highlight(holder){
-      root.querySelectorAll('[data-place]').forEach(target=>target.classList.toggle('drop-over',target.dataset.place===holder));
-    }
-    function release(){
-      if(!drag)return;
-      drag.ghost?.remove();beads[drag.id].classList.remove('lifted');drag=null;highlight(null);
-    }
-    beads.forEach((button,id)=>{
-      button.onclick=event=>{if(event.detail===0)select(selected===id?null:id)};
-      button.onpointerdown=event=>{
-        if(!event.isPrimary||event.button!==0)return;
-        drag={id,pointer:event.pointerId,x:event.clientX,y:event.clientY,ghost:null};
-        button.setPointerCapture(event.pointerId);
-      };
-      button.onpointermove=event=>{
-        if(!drag||drag.pointer!==event.pointerId)return;
-        if(!drag.ghost&&Math.hypot(event.clientX-drag.x,event.clientY-drag.y)<5)return;
-        if(!drag.ghost){
-          const ghost=document.createElement('span');ghost.className='balance-ghost '+BALANCE_BEADS[id].color;
-          ghost.style.width=button.getBoundingClientRect().width+'px';root.append(ghost);
-          drag.ghost=ghost;button.classList.add('lifted');select(id);
-        }
-        drag.ghost.style.left=event.clientX+'px';drag.ghost.style.top=event.clientY+'px';
-        highlight(holderAt(event.clientX,event.clientY));
-      };
-      button.onpointerup=event=>{
-        if(!drag||drag.pointer!==event.pointerId)return;
-        const moved=!!drag.ghost,holder=moved&&holderAt(event.clientX,event.clientY);
-        release();
-        if(moved)place(id,holder);else select(selected===id?null:id);
-      };
-      button.onpointercancel=button.onlostpointercapture=release;
+    layer.onpointerdown=e=>{
+      if(!session||!e.isPrimary||e.button!==0)return;
+      e.preventDefault();
+      press={pointer:e.pointerId,x:e.clientX,y:e.clientY,bead:beadAt(e.clientX,e.clientY),dragged:false};
+      layer.setPointerCapture(e.pointerId);
+    };
+    layer.onpointermove=e=>{
+      if(!press||press.pointer!==e.pointerId||press.bead===null)return;
+      if(!press.dragged){
+        if(Math.hypot(e.clientX-press.x,e.clientY-press.y)<5)return;
+        if(model.held!==press.bead)pick(press.bead);
+        dragDepth=v.copy(model.beads[press.bead].position).project(camera).z;
+        press.dragged=true;
+      }
+      const rect=layer.getBoundingClientRect();
+      v.set(2*(e.clientX-rect.left)/width-1,1-2*(e.clientY-rect.top-6)/height,dragDepth);
+      model.beads[press.bead].position.copy(v.transform(camera.inverseViewProjection));
+      model.highlight(holderAt(e.clientX,e.clientY));session.refresh();
+    };
+    layer.onpointerup=e=>{
+      if(!press||press.pointer!==e.pointerId)return;
+      const {bead,dragged}=press;press=null;
+      const place=holderAt(e.clientX,e.clientY);
+      if(dragged)drop(place);else activate(bead,place);
+    };
+    layer.onpointercancel=layer.onlostpointercapture=()=>{if(press)cancel()};
+    layer.onclick=e=>{
+      if(!session||e.detail!==0)return;
+      const {bead,place}=e.target.dataset;
+      if(bead!==undefined||place)activate(bead!==undefined?Number(bead):null,place);
+    };
+    document.addEventListener('keydown',e=>{
+      if(!session||e.key!=='Escape'||e.defaultPrevented)return;
+      e.preventDefault();if(model.held!==null)cancel();else session.leave();
     });
-    root.querySelectorAll('[data-place]').forEach(target=>{target.onclick=()=>place(selected,target.dataset.place)});
-    root.querySelector('.balance-restore').onclick=()=>commit(initialBeadPlaces());
-    update(false);
+    window.addEventListener('blur',()=>{if(session)cancel()});
+    return {id:'balanceBench',surface:layer,get active(){return !!session},sizeCamera,drawTargets,
+      enter(options){
+        session=options;root.hidden=false;setScale(0);update();
+        root.tabIndex=-1;root.focus({preventScroll:true});
+      },
+      exit(){
+        cancel();session=null;root.hidden=true;
+      }
+    };
   }
-  return {build,open};
+  return {build};
 })();
