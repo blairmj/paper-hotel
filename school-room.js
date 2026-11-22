@@ -614,7 +614,7 @@ function start(){
     onInspect:(id,command)=>{
       if(!countdown||countdown.check())return;
       if(id===(room.lock?.id??'lock'))inspectLock(command);
-      else if(id==='doorGuide')modal(room.place+' 문제',deviceInstructions(),'door-question');
+      else if(id==='doorGuide')modal(puzzle.doorTitle??(room.place+' 문제'),deviceInstructions(),'door-question');
       else inspectClue(id);
     }
   }).then(created=>{
