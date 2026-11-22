@@ -1,9 +1,4 @@
 #inspect[data-panel=shelf]{
-  --panel-padding:16px;
-  position:fixed;
-  inset:auto 0 max(12px,env(safe-area-inset-bottom));
-  margin:0 auto;
-  width:min(450px,calc(100vw - 24px));
   background:#fdfbf6;
   color:#253950;
   border-color:#b7aa92;
@@ -11,41 +6,33 @@
   box-shadow:0 10px 32px #38302640;
 }
 
-@media(min-width:800px) and (min-aspect-ratio:5/4){
-  #inspect[data-panel=shelf]{
-    inset:0 clamp(12px,2vw,28px) 0 auto;
-    margin:auto 0;
-    width:clamp(330px,35vw,438px);
-  }
-}
-
 #inspect[data-panel=shelf]::backdrop{background:#30281517}
 #inspect[data-panel=shelf] .panel-top{padding-bottom:5px}
 #inspect[data-panel=shelf] #dismiss:hover{background:#f0eae0}
-#inspect[data-panel=shelf] .object-note{margin:0 0 12px;font-size:14px;color:#46566a}
+#inspect[data-panel=shelf] .object-note{margin:0 0 .75rem;font-size:.9375rem;color:#46566a}
 .spot[data-object=bookShelf]{touch-action:none}
 
 #inspect[data-panel=shelf] .shelf-ticket{
   display:flex;justify-content:space-between;align-items:baseline;gap:8px;
-  margin:10px 0 12px;color:#344b5b;font-size:14px;font-weight:650;
+  margin:.625rem 0 .75rem;color:#344b5b;font-size:.9375rem;font-weight:650;
 }
-.shelf-ticket #shelfCount{color:#55636c;font-size:13px;font-weight:500}
+.shelf-ticket #shelfCount{color:#55636c;font-size:.8125rem;font-weight:500}
 .shelf-row{
   display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:3px;
   align-items:end;padding:6px 3px 0;border-bottom:6px solid #a3845e;
 }
 .shelf-row:focus{outline:none}
 .shelf-row button{
-  --book-height:76px;
+  --book-height:4.75rem;
   height:var(--book-height);min-width:0;padding:0 1px 2px;
   border:1px solid #0003;border-radius:4px 4px 1px 1px;
   background:linear-gradient(90deg,#0002,transparent 18%,#fff1 32%,transparent 87%,#0002),var(--binding);
   color:#233749;box-shadow:inset 2px 0 #fff2;
   display:flex;flex-direction:column;align-items:center;justify-content:space-between;
-  font:700 clamp(15px,4vw,24px)/1.1 ui-monospace,monospace;
+  font:700 clamp(.9375rem,5cqi,1.5rem)/1.1 ui-monospace,monospace;
 }
-.shelf-row button:nth-child(3n+2){--book-height:80px}
-.shelf-row button:nth-child(3n){--book-height:72px}
+.shelf-row button:nth-child(3n+2){--book-height:5rem}
+.shelf-row button:nth-child(3n){--book-height:4.5rem}
 .shelf-row button::before,.shelf-row button::after{
   content:"";width:68%;border-top:2px solid #e6cea2;margin:8px 0;
 }
@@ -57,10 +44,10 @@
 }
 .shelf-row button[data-state=opened]::before,.shelf-row button[data-state=opened]::after{border-color:#ab997a}
 .shelf-row button:disabled{cursor:default}
-#inspect[data-panel=shelf] .shelf-feedback{margin:12px 0 4px;font-size:14px;color:#344b5b}
+#inspect[data-panel=shelf] .shelf-feedback{margin:.75rem 0 .25rem;font-size:.875rem;color:#344b5b}
 #inspect[data-panel=shelf] .shelf-feedback:empty{margin:0}
 #inspect[data-panel=shelf] .shelf-retry,#inspect[data-panel=shelf] .hint button{
-  width:auto;min-height:44px;padding:7px 11px;font-size:13px;font-weight:600
+  width:auto;min-height:var(--control-height);padding:.4rem .675rem;font-size:.875rem;font-weight:600
 }
 #inspect[data-panel=shelf] .hint{margin-top:11px;padding-top:8px;border-color:#d4c8b5}
-#inspect[data-panel=shelf] .hint p{font-size:14px}
+#inspect[data-panel=shelf] .hint p{font-size:.9375rem}

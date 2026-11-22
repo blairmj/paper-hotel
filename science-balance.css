@@ -1,22 +1,19 @@
 #inspect[data-panel=balance]{
-  --panel-padding:clamp(14px,2vw,24px);
-  width:min(850px,calc(100vw - 24px));
-  max-width:calc(100vw - 24px);
-  max-height:calc(100dvh - 20px);
+  --panel-width:clamp(36rem,76vw,58rem);
   border-color:#bbc9d4;
   background:#f8fafb;
 }
 #inspect[data-panel=balance] .panel-top{padding-bottom:4px}
 .balance-experiment{color:#233a4a}
-.balance-experiment .balance-direction{font-size:14px;color:#516472;margin:2px 0 16px}
-.balance-pair{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.balance-experiment .balance-direction{font-size:.9375rem;color:#516472;margin:.125rem 0 .75rem}
+.balance-pair{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.75rem}
 .balance-station{
   min-width:0;border:1px solid #c2cfd6;border-radius:8px;
   background:linear-gradient(170deg,#fff 5%,#f0f4f4 73%,#e3e9e8);
 }
-.balance-station header{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:13px 14px 0}
-.balance-station h2{margin:0;color:#294f7e;font-size:16px;font-weight:700}
-.balance-station output{font-size:13px;color:#50636e}
+.balance-station header{display:flex;align-items:center;justify-content:space-between;gap:.5rem;padding:.625rem .75rem 0}
+.balance-station h2{margin:0;color:#294f7e;font-size:1rem;font-weight:700}
+.balance-station output{font-size:.875rem;color:#50636e}
 .balance-machine{position:relative;aspect-ratio:320/166}
 .balance-machine canvas{display:block;width:100%;height:100%}
 .balance-experiment .pan-target{
@@ -43,22 +40,21 @@
 .balance-bead.lifted{opacity:.25}
 .balance-ghost{position:fixed;transform:translate(-50%,-55%);pointer-events:none;z-index:5;cursor:grabbing}
 .balance-tray{
-  display:flex;align-items:center;gap:12px;position:relative;min-height:55px;margin-top:12px;padding:6px 14px;
+  display:flex;align-items:center;gap:.75rem;position:relative;min-height:3.25rem;margin-top:.625rem;padding:.375rem .75rem;
   border:1px solid #aebcc3;border-radius:8px;background:#e4eaeb;box-shadow:inset 0 2px 5px #51657024;
 }
 .balance-tray .tray-target{position:absolute;inset:0;width:100%;text-align:left;padding:3px 14px;border:2px solid transparent;
-  border-radius:7px;background:transparent;color:#475e6b;font-size:13px;font-weight:650}
+  border-radius:7px;background:transparent;color:#475e6b;font-size:.875rem;font-weight:650}
 .balance-tray .tray-target.drop-over,.carrying .tray-target:is(:hover,:focus-visible){border:2px dashed #5384ad;background:#477bb011}
-.balance-loose{display:flex;gap:5px;align-items:center;flex-wrap:wrap;min-width:0;margin-left:72px;pointer-events:none}
-.balance-loose .balance-bead{position:relative;flex:none;width:26px;pointer-events:auto}
+.balance-loose{display:flex;gap:.3rem;align-items:center;flex-wrap:wrap;min-width:0;margin-left:4.75rem;pointer-events:none}
+.balance-loose .balance-bead{position:relative;flex:none;width:1.625rem;pointer-events:auto}
 .balance-tools{display:flex;justify-content:flex-end;margin-top:10px}
-.balance-tools button{padding:7px 12px;min-height:36px;font-size:13px}
-@media(max-width:650px){
+.balance-tools button{padding:.45rem .75rem;min-height:var(--control-height);font-size:.875rem}
+@container (max-width:32rem){
   .balance-pair{grid-template-columns:minmax(0,1fr);gap:8px}
-  .balance-station{width:100%;max-width:430px;justify-self:center}
-  .balance-station header{padding:7px 12px 0}
-  .balance-station h2{font-size:14px}
-  .balance-machine{max-width:330px;margin:0 auto}
-  .balance-experiment .balance-direction{font-size:13px;margin:0 0 8px}
+  .balance-station{width:100%;max-width:27rem;justify-self:center}
+  .balance-station header{padding:.4rem .75rem 0}
+  .balance-machine{max-width:22rem;margin:0 auto}
+  .balance-experiment .balance-direction{margin:0 0 .5rem}
   .balance-tray{margin-top:8px}.balance-tools{margin-top:6px}
 }

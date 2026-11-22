@@ -1,9 +1,4 @@
 #inspect[data-panel=mixer]{
-  --panel-padding:16px;
-  position:fixed;
-  inset:auto 0 max(12px,env(safe-area-inset-bottom));
-  margin:0 auto;
-  width:min(450px,calc(100vw - 24px));
   background:#20262d;
   color:#edf2f5;
   border-color:#525e6a;
@@ -11,20 +6,12 @@
   box-shadow:0 12px 34px #07090d75;
 }
 
-@media(min-width:800px) and (min-aspect-ratio:5/4){
-  #inspect[data-panel=mixer]{
-    inset:0 clamp(12px,2vw,28px) 0 auto;
-    margin:auto 0;
-    width:clamp(330px,35vw,438px);
-  }
-}
-
 #inspect[data-panel=mixer]::backdrop{background:#0c141b19}
 #inspect[data-panel=mixer] .panel-top{padding-bottom:5px}
 #inspect[data-panel=mixer] #dismiss{color:#e0e8ec}
 #inspect[data-panel=mixer] #dismiss:hover{background:#343e48}
 .spot[data-object=mixer]{touch-action:none}
-.mixer-guide{margin:0 0 12px;color:#d1dce4;font-size:14px}
+.mixer-guide{margin:0 0 .75rem;color:#d1dce4;font-size:.9375rem}
 .mixer-order,.mixer-pads{display:grid;gap:7px}
 .mixer-order{grid-template-columns:repeat(4,minmax(0,1fr));margin-bottom:13px}
 .mixer-pads{grid-template-columns:repeat(2,minmax(0,1fr))}
@@ -35,16 +22,16 @@
   justify-items:start;
   align-items:center;
   gap:4px;
-  min-height:64px;
-  padding:7px;
+  min-height:4rem;
+  padding:.375rem;
   border-color:#475664;
   background:#151c23;
   color:#deebef;
   text-align:left;
-  font-size:clamp(12px,1.3vw,14px);
+  font-size:.875rem;
   line-height:1.3;
 }
-.mixer-order small{color:#9ab0bd;font:650 12px/1 monospace}
+.mixer-order small{color:#9ab0bd;font:650 .75rem/1 monospace}
 .mixer-order button[data-result=passed]{background:#192b28}
 .mixer-order button[data-result=failed]{background:#41292e;border-color:#e5998c}
 .mixer-order button[aria-pressed=true]{border-color:#8cddc9;box-shadow:0 0 0 1px #8cddc9 inset}
@@ -55,13 +42,13 @@
   align-items:center;
   justify-content:flex-start;
   gap:9px;
-  min-height:45px;
-  padding:8px 10px;
+  min-height:var(--control-height);
+  padding:.5rem .625rem;
   background:#343d47;
   border-color:#66737f;
   border-bottom:3px solid #141b20;
   color:#f2f6f8;
-  font-size:15px;
+  font-size:.9375rem;
   font-weight:650;
   text-align:left;
 }
@@ -79,9 +66,9 @@
 .mixer-pads button:hover{background:#485561}
 .mixer-pads button:active{background:#263038;border-bottom-width:1px;transform:translateY(1px)}
 #inspect[data-panel=mixer] button:focus-visible{outline-color:#aff3e3;outline-offset:2px}
-.mixer-feedback{margin:11px 0 0;color:#ffb6a6;font-size:14px;font-weight:600}
+.mixer-feedback{margin:.7rem 0 0;color:#ffb6a6;font-size:.875rem;font-weight:600}
 .mixer-feedback:empty{display:none}
 #inspect[data-panel=mixer] .hint{margin-top:12px;padding-top:8px;border-color:#4a5863}
-#inspect[data-panel=mixer] .hint p{color:#d8e6ed;font-size:14px}
+#inspect[data-panel=mixer] .hint p{color:#d8e6ed;font-size:.9375rem}
 #inspect[data-panel=mixer] .hint button{background:#232c34;border-color:#76838e;color:#f0f5f7}
 #inspect[data-panel=mixer] .hint button:hover{background:#414d58}

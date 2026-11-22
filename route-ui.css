@@ -1,41 +1,46 @@
 .device-guide{
-  position:absolute;left:50%;bottom:calc(clamp(14px,2.2vw,29px) + 55px);
+  position:absolute;left:50%;bottom:calc(var(--edge-bottom) + var(--control-height) + .7rem);
   transform:translateX(-50%);margin:0;padding:9px 15px;
   width:max-content;max-width:min(40em,calc(100% - 30px));border-radius:7px;
   background:#1d2a32ee;color:#fff;box-shadow:0 2px 10px #18252b33;
-  text-align:center;font-size:clamp(14px,1.35vw,16px);line-height:1.5;word-break:keep-all;
+  text-align:center;font-size:.9375rem;line-height:1.5;word-break:keep-all;
   pointer-events:none;
 }
 #spots[inert] .device-guide,#musicGame:has(dialog[open]) .device-guide{display:none}
 #escape.room-transfer{
-  display:block;bottom:clamp(22px,6vh,54px);width:max-content;max-width:calc(100% - 28px);
-  padding:12px 17px;background:#fff;border:1px solid #becbd2;border-left:4px solid #26756e;
+  display:block;bottom:max(var(--edge-bottom),6vh);width:max-content;max-width:calc(100% - var(--edge-left) - var(--edge-right));
+  padding:.75rem 1rem;background:#fff;border:1px solid #becbd2;border-left:4px solid #26756e;
   border-radius:5px;box-shadow:0 3px 16px #14202b30;color:#26343c;
-  font-size:clamp(15px,1.6vw,18px);font-weight:650;line-height:1.35;word-break:keep-all;
+  font-size:1.0625rem;font-weight:650;line-height:1.35;word-break:keep-all;
 }
-dialog[data-panel=intro],dialog[data-panel=map]{width:min(740px,calc(100vw - 24px))}
+dialog[data-panel=intro],dialog[data-panel=map]{--panel-width:clamp(38rem,74vw,52rem)}
 dialog[data-panel=intro],dialog[data-panel=map]:has(.school-floorplan){
   background:#eaf4f9;color:#19364d;border-color:#9ab5ca;
 }
 dialog[data-panel=intro] #panelTitle:focus{outline:none}
-dialog:is([data-panel=intro],[data-panel=timeout]) .panel-top{flex-wrap:wrap;justify-content:flex-start;gap:8px}
-dialog:is([data-panel=intro],[data-panel=timeout]) .panel-top h1{flex-basis:100%;order:1}
+dialog:is([data-panel=intro],[data-panel=timeout]) .panel-top{flex-wrap:wrap;gap:.5rem}
+dialog:is([data-panel=intro],[data-panel=timeout]) .panel-top h1{order:-1}
 dialog:is([data-panel=intro],[data-panel=timeout]) .review-jump{z-index:4}
 dialog:is([data-panel=intro],[data-panel=timeout]) .review-jump nav{
-  grid-template-columns:repeat(2,minmax(0,1fr));width:min(260px,calc(100vw - 68px));
+  left:auto;right:0;grid-template-columns:repeat(2,minmax(0,1fr));
+  width:min(16.25rem,calc(100vw - 4rem));
 }
 dialog[data-panel=timeout] .review-jump nav{position:static;margin-top:6px}
+dialog[data-panel=timeout] .panel-top{flex-shrink:1;min-height:0;overflow-y:auto}
+dialog[data-panel=timeout] #panelBody{flex:none}
 dialog:is([data-panel=intro],[data-panel=timeout]) .review-jump a{padding-inline:8px}
+dialog[data-panel=intro] #panelBody{display:flex;flex-direction:column;overflow:hidden}
+.route-scroll{min-height:0;overflow-y:auto;overscroll-behavior:contain}
 .floorplan-overview{
   display:flex;flex-wrap:wrap;justify-content:space-between;align-items:baseline;
-  gap:4px 12px;margin:0 0 12px;color:#38576d;font-size:14px;
+  gap:.25rem .75rem;margin:0 0 .625rem;color:#38576d;font-size:.9375rem;
 }
-.floorplan-limit{font-size:13px;font-weight:700}
+.floorplan-limit{font-size:.875rem;font-weight:700}
 .floorplan-location{color:#19364d;font-weight:700}
 .school-floorplan{
   --blueprint-wall:#9ab5ca;
   --blueprint-route:#057f77;
-  position:relative;height:304px;isolation:isolate;
+  position:relative;height:clamp(10rem,min(42cqi,34dvh),23rem);isolation:isolate;
   border-block-start:1px solid var(--blueprint-wall);
   background-image:linear-gradient(90deg,#467ea12a 1px,transparent 1px),
     linear-gradient(#467ea12a 1px,transparent 1px);
@@ -59,27 +64,27 @@ dialog:is([data-panel=intro],[data-panel=timeout]) .review-jump a{padding-inline
 }
 .floorplan-room{
   display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;
-  width:min(130px,19.5%);min-height:52px;padding:4px 3px;
+  width:min(8.5rem,19.5%);min-height:3.15rem;padding:.25rem .19rem;
   border:1px solid var(--blueprint-wall);border-top-width:3px;border-radius:2px;
   background:#f8fcfe;color:#19364d;
-  font-size:14px;line-height:1.2;text-align:center;word-break:keep-all;
+  font-size:.9375rem;line-height:1.2;text-align:center;word-break:keep-all;
 }
 .floorplan-room-name,.floorplan-endpoint{font-weight:700}
 .floorplan-room-time{
-  display:block;color:#425f75;font-size:11px;line-height:1.3;white-space:nowrap;
+  display:block;color:#425f75;font-size:.75rem;line-height:1.3;white-space:nowrap;
 }
-.floorplan-room[data-endpoint]{min-height:62px;color:var(--terminal-ink);border-color:var(--terminal-ink)}
+.floorplan-room[data-endpoint]{min-height:3.75rem;color:var(--terminal-ink);border-color:var(--terminal-ink)}
 .floorplan-room[data-endpoint=start]{--terminal-ink:#9a4b1e;background:#fcf1e9}
 .floorplan-room[data-endpoint=end]{--terminal-ink:#69418f;background:#f4eef8}
-.floorplan-endpoint{font-size:11px}
+.floorplan-endpoint{font-size:.75rem}
 button.floorplan-room:hover{background:#e4f2f8}
 .floorplan-room[data-chosen=true]{
   background:#ccefe8;color:#104944;border-color:var(--blueprint-route);
 }
 .floorplan-rank{
-  display:grid;place-items:center;position:absolute;right:6px;top:-11px;
-  width:21px;height:21px;border-radius:50%;
-  background:#166b66;color:#fff;font-size:11px;font-weight:700;line-height:1;
+  display:grid;place-items:center;position:absolute;right:.3rem;top:-.65rem;
+  width:1.25rem;height:1.25rem;border-radius:50%;
+  background:#166b66;color:#fff;font-size:.75rem;font-weight:700;line-height:1;
 }
 .floorplan-rank:empty{display:none}
 .floorplan-door{
@@ -96,27 +101,27 @@ button.floorplan-room:hover{background:#e4f2f8}
   width:10px;height:10px;border-radius:50%;border:2px solid #245466;background:#fff;
   pointer-events:none;
 }
-.floorplan-result{min-height:40px;margin-top:9px}
+.floorplan-result{min-height:2.25rem;margin-top:.5rem}
 dialog p.floorplan-notice{
-  margin:0;padding:6px 0;color:#784311;font-size:14px;font-weight:700;
+  margin:0;padding:.375rem 0;color:#784311;font-size:.875rem;font-weight:700;
 }
 .floorplan-itinerary{
   display:flex;flex-wrap:wrap;gap:5px 9px;list-style:none;
   margin:9px 0 0;padding:8px 0;border-block-start:1px solid #adc5d2;
-  color:#19364d;font-size:13px;font-weight:650;line-height:1.5;
+  color:#19364d;font-size:.875rem;font-weight:650;line-height:1.5;
 }
 .floorplan-itinerary li+li::before{content:'→';margin-right:8px;color:#476d81}
-.map-controls{display:flex;flex-wrap:wrap;gap:7px;margin-top:6px}
-.map-controls button{min-height:44px}
+.map-controls{display:flex;flex:none;flex-wrap:wrap;gap:.45rem;padding-top:.5rem;border-top:1px solid #adc5d2}
+.map-controls button{min-height:var(--control-height)}
 .map-controls .primary{margin-left:auto;background:#166b66;border-color:#166b66}
 .map-controls .primary:enabled:hover{background:#125751}
 .map-controls button:disabled{color:#4c6e7e;background:#dae8ee;border-color:#b5c9d4;cursor:default}
-@media(max-width:600px){
-  .school-floorplan{height:414px}
+@container (max-width:28rem){
+  .school-floorplan{height:clamp(17rem,min(100cqi,45dvh),25rem)}
   .floorplan-lines.wide{display:none}
   .floorplan-lines.narrow{display:block}
   .floorplan-room,.floorplan-position{left:var(--narrow-x);top:var(--narrow-y)}
-  .floorplan-room{width:min(114px,29.5%);font-size:13px}
+  .floorplan-room{width:min(7.25rem,30%);font-size:.875rem}
   .floorplan-room[data-wing=north] .floorplan-door,
   .floorplan-room[data-wing=south] .floorplan-door{top:50%;bottom:auto}
   .floorplan-room[data-wing=north] .floorplan-door{
@@ -125,7 +130,7 @@ dialog p.floorplan-notice{
   .floorplan-room[data-wing=south] .floorplan-door{
     left:-11px;transform:translateY(-50%) rotate(90deg);
   }
-  .map-controls button{font-size:13px;padding-inline:8px}
+  .map-controls button{padding-inline:.625rem}
 }
 .book-keys{grid-template-columns:repeat(7,minmax(0,1fr));gap:3px}
 .book-keys button{min-height:78px;background:#e6efff;border-top:5px solid #386acc}

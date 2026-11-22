@@ -228,7 +228,10 @@ function renderSchoolRoutePicker(host,{heading,onStart}){
     confirm.disabled=!plan;
   }
 
-  host.replaceChildren(overview,map,result,error,controls);
+  const scrollArea=document.createElement('div');
+  scrollArea.className='route-scroll';
+  scrollArea.append(overview,map,result,error);
+  host.replaceChildren(scrollArea,controls);
   refresh();
   heading.focus({preventScroll:true});
 }
