@@ -6,7 +6,6 @@ const SportsComputerInteriors = (() => {
   const LOCKER = {width: .90, height: 1.65, front: 1.75, column: .51, columns: 8, base: .09, cap: .044};
   const LOCKER_LENGTH = LOCKER.column * LOCKER.columns;
   const TIER_HEIGHT = (LOCKER.height - LOCKER.base - LOCKER.cap) / 2;
-  const BALL_LOCKER_ID = 'ballLocker';
   const BALL_RACK = {x: -1.56, z: .43, width: 2.12, depth: .63, height: 1.45};
   const MATS = {x: -5.96, z: 3.17, width: 1.05, depth: 1.93, height: .55};
   const BENCH = {x: 5.91, z: 6.30, width: .40, depth: 2.18, height: .49};
@@ -25,7 +24,7 @@ const SportsComputerInteriors = (() => {
       {x: 3.3, finish: 'orange', color: '#c47b36'}
     ];
     const compartments = [
-      {bank: 0, column: 5, span: 2, tier: 1, id: 'ballLine', name: '공 선반 배열'},
+      {bank: 0, column: 5, span: 2, tier: 1, id: 'ballLine', name: '공의 배열'},
       {bank: 1, column: 2, span: 1, tier: 1, id: 'ballOrder', name: '공 회수 순서'}
     ].map(slot => {
       const position = lockerPosition(banks[slot.bank],slot.column,slot.tier,slot.span);
@@ -39,9 +38,8 @@ const SportsComputerInteriors = (() => {
       surface:{width:LOCKER.column*span-.055,height:TIER_HEIGHT-.074},approach:{x:banks[bank].x+1.65,z:z+.22}
     }));
     const [faceX,faceY,faceZ]=compartments[0].position;
-    const lock={id:BALL_LOCKER_ID,center:clues[0].xyz,rotationY:Math.PI/2,
-      ...clues[0].surface,approach:{x:faceX+1.53,z:faceZ},
-      inspectionView:{wide:[faceX-.10,faceY-.07,faceZ-.46],compact:[faceX-.12,faceY-.53,faceZ]}};
+    clues[0].approach={x:faceX+1.53,z:faceZ};
+    clues[0].inspectionView={wide:[faceX-.10,faceY-.07,faceZ-.46],compact:[faceX-.12,faceY-.53,faceZ]};
     const obstacles = banks.map(({x}, i) => [
       x - LOCKER.width/2 - .16,
       x + LOCKER.width/2 + (compartments.some(cell => cell.bank===i) ? .55 : .16),
@@ -54,7 +52,7 @@ const SportsComputerInteriors = (() => {
       obstacles.push([x-w/2-.16,x+w/2+.16,z-d/2-.16,z+d/2+.16]);
       occluders.push([x-w/2,x+w/2,0,h,z-d/2,z+d/2]);
     }
-    return {banks, compartments, clues, obstacles, occluders, lock};
+    return {banks, compartments, clues, obstacles, occluders};
   }
 
   function computerLayout() {
@@ -88,19 +86,16 @@ const SportsComputerInteriors = (() => {
     const doorway = sports
       ? {x:4.20,width:1.27,height:2.24,moldingColor:'#747b7d',recessColor:'#363d41'}
       : {x:4.20,width:1.42,height:2.27,moldingColor:'#224875',recessColor:'#152c49'};
-    const lock = sports ? layout.lock : {center:[doorway.x-doorway.width/2-.52,1.28,.073],width:.53,height:.53};
-    const targets=[{id:lock.id??'lock',name:SCHOOL_PUZZLES[kind].title,
-      xyz:lock.center,surface:lock,rotationY:lock.rotationY,inspectionView:lock.inspectionView,
-      approach:lock.approach??{x:lock.center[0],z:.99}},...clues.filter(clue=>clue.id!=='ballLine')];
-    const statusLamp=sports?SchoolInterior.doorGuide([doorway.x-doorway.width/2-.53,1.28,.075]):null;
-    if(statusLamp)targets.push(statusLamp);
+    const lock={center:[doorway.x-doorway.width/2-.52,1.28,.073],width:sports ? .36 : .53,height:sports ? .49 : .53};
+    const targets=[{id:'lock',name:SCHOOL_PUZZLES[kind].title,xyz:lock.center,surface:lock,
+      approach:{x:lock.center[0],z:.99}},...clues];
     const startX = sports ? -1.54 : 0;
     return {
       ...RECOVERY_ROOMS.find(item => item.kind === kind),
       interior:true, kind, wall:{width,height,z:0,back:depth}, depth, ceilingMinimum:height,
       bounds:{left:-width/2+.27,right:width/2-.27,front:.29,back:depth-.27},
       entrance:doorway, door:[doorway.x,doorway.height/2,.05], lock, layout,
-      doorReveal:sports?{x:4.32,z:2.79}:{x:4.93,z:2.76},statusLamp,
+      doorReveal:sports?{x:4.32,z:2.79}:{x:4.93,z:2.76},
       obstacles, occluders, clues,
       targets,
       start:[startX,1.55,depth-.32], firstView:[sports?-1.03:0,1.27,0],
@@ -231,8 +226,8 @@ const SportsComputerInteriors = (() => {
       return {label,mesh,from:0,to:0};
     });
     let progress=1;
-    function setDigits(counts,{pending=false,animate=false}={}){
-      const row=ballRowAfter(counts.length+Number(pending));
+    function setBalls(picked,animate=false){
+      const row=ballRowAfter(picked);
       for(const ball of balls){
         const index=row.indexOf(ball.label);
         ball.mesh.visible=index>=0;
@@ -243,9 +238,9 @@ const SportsComputerInteriors = (() => {
       }
       progress=animate?0:1;
     }
-    setDigits([]);
+    setBalls(0);
     return {
-      commandPads:balls.map(ball=>ball.mesh),setDigits,
+      commandPads:balls.map(ball=>ball.mesh),setBalls,
       animate(dt,reducedMotion){
         if(progress===1)return false;
         progress=reducedMotion?1:Math.min(1,progress+dt/.46);
@@ -323,23 +318,14 @@ const SportsComputerInteriors = (() => {
           patchPlane(flap,doorW,doorH,panelX,0,.010,doorMap);
           patchPlane(flap,doorW-.024,doorH-.024,panelX,0,-.010,enamel).rotation.y=Math.PI;
           for(const hingeY of [-.22,.22])box(compartment,.019,.067,.020,flap.position.x,hingeY,.012,aluminum);
-          if(open.id==='ballLine'&&offset===0){
-            const tag=InteriorArtwork.canvasMap(192,64,(g,w,h)=>{
-              g.fillStyle='#e7dfc7';g.fillRect(0,0,w,h);
-              g.fillStyle='#3e4039';g.font='bold 38px sans-serif';g.textAlign='center';g.textBaseline='middle';
-              g.fillText('공 라커',w/2,h/2+2);
-            });
-            patchPlane(flap,.22,.067,panelX,.05,.012,tag);
-          }
           flaps.push({flap,hinge});
         }
-        const targetId=open.id==='ballLine'?BALL_LOCKER_ID:open.id;
-        leaves.push({id:targetId,trigger:open.trigger,flaps,contents,requested:false,progress:0});
+        leaves.push({id:open.id,trigger:open.trigger,flaps,contents,requested:false,progress:0});
       }
     }
     return {
       commandPads:ballDevice.commandPads,
-      setDigits:ballDevice.setDigits,
+      setBalls:ballDevice.setBalls,
       onWalk(fromX,fromZ,toX,toZ) {
         for (const leaf of leaves) {
           if (!leaf.requested && passesLocker(leaf.trigger,fromX,fromZ,toX,toZ)) leaf.requested=true;
@@ -584,6 +570,30 @@ const SportsComputerInteriors = (() => {
     patchPlane(scene,front.surface.width,front.surface.height,...front.xyz,imageMap(frontCard));
   }
 
+  function sportsKeypad(scene,lock){
+    const [x,y,z]=lock.center;
+    rounded(scene,lock.width+.032,lock.height+.032,.059,x,y,z-.036,standard('#49545a',.53),.012);
+    const face=InteriorArtwork.canvasMap(216,292,(g,w,h)=>{
+      g.fillStyle='#37454a';g.fillRect(0,0,w,h);
+      g.strokeStyle='#879599';g.lineWidth=3;g.strokeRect(2,2,w-4,h-4);
+      g.textAlign='center';g.textBaseline='middle';g.font='bold 28px sans-serif';
+      for(const [i,key] of [...SCHOOL_PUZZLES.sports.keys,'⌫'].entries()){
+        const col=i<9?i%3:i-8,row=Math.floor(i/3);
+        const left=15+col*63,top=83+row*49;
+        g.fillStyle='#d6dcd6';g.beginPath();g.roundRect(left,top,59,41,5);g.fill();
+        g.fillStyle='#2d3b40';g.fillText(key,left+29.5,top+21);
+      }
+    });
+    patchPlane(scene,lock.width,lock.height,x,y,z,face);
+    const g=face.image.getContext('2d');
+    return digits=>{
+      g.fillStyle='#203135';g.fillRect(14,15,188,53);
+      g.fillStyle='#c5e1c8';g.font='bold 32px monospace';g.textAlign='center';g.textBaseline='middle';
+      for(let i=0;i<SCHOOL_PUZZLES.sports.answer.length;i++)g.fillText(digits[i]??'–',43+43*i,42);
+      face.needsUpdate=true;
+    };
+  }
+
   async function build(scene, room) {
     const sports = room.kind === 'sports';
     const artwork = await InteriorArtwork.load(room.kind);
@@ -602,13 +612,13 @@ const SportsComputerInteriors = (() => {
     if (sports) {
       sportsEquipment(scene,shadow);
       const furniture=await lockers(scene,room,artwork,shadow);
-      const [x,y,z]=room.statusLamp.xyz;
-      rounded(scene,.137,.168,.044,x,y,z-.027,standard('#434c55',.52),.009);
+      const setDigits=sportsKeypad(scene,room.lock);
+      const [x,y,z]=room.lock.center;
       const indicator=new School3D.MeshBasicMaterial({color:'#f38d72'});
-      cylinder(scene,.026,.026,.011,x,y,z,indicator,24).rotation.x=Math.PI/2;
-      canvas.dataset.artwork='balls-v37';
+      cylinder(scene,.009,.009,.007,x+room.lock.width*.40,y+room.lock.height*.477,z+.003,indicator,24).rotation.x=Math.PI/2;
+      canvas.dataset.artwork='sports-pin-v56';
       return {
-        ...furniture,
+        ...furniture,setDigits,
         setDoor(amount){
           swingDoor(amount);
           indicator.color.set(amount>0?'#74d5a9':'#f38d72');

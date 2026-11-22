@@ -560,6 +560,7 @@ async function createMusicWorld({onInspect,onReadyToMove,deviceInstructions,room
   return {
     clearKeys,walkTo,commandAt,lookAtPiano(){inspectTarget('paper')},
     setDigits(digits,level){model.setDigits(digits,level);queue()},
+    setBalls(picked,animate=false){model.setBalls(picked,animate);queue()},
     setBalance(places){model.setBalance(places);queue()},
     facingDoor(done){
       setZoom(1);

@@ -59,6 +59,10 @@ for(const kind of ['classroom','music','art','sports','computer','library','scie
  }
  if(kind==='sports'){
   const {banks,compartments}=room.layout;
+  const balls=room.targets.find(target=>target.id==='ballLine');
+  assert.equal(puzzleId,'lock','the password is entered at the door');
+  assert.ok(balls&&Math.hypot(balls.xyz[0]-device.xyz[0],balls.xyz[2]-device.xyz[2])>4,
+    'the ball shelf is a separate place to observe the moves');
   assert.equal(banks.length,3);
   assert.equal(new Set(compartments.map(slot=>slot.bank)).size,2);
   for(const [i,slot] of compartments.entries()){

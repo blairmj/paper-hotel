@@ -8,25 +8,13 @@
 #inspect[data-panel=ball-locker]::backdrop{background:#202b3019}
 #inspect[data-panel=ball-locker] .panel-top{padding-bottom:5px}
 #inspect[data-panel=ball-locker] #dismiss:hover{background:#e8eeeb}
-.spot[data-object=ballLocker]{touch-action:none}
-.ball-guide{margin:0 0 .7rem;color:#41585e;font-size:.9375rem}
-.ball-record,.ball-row,.ball-counts{display:grid;gap:6px}
-.ball-record{grid-template-columns:repeat(4,minmax(0,1fr));margin:0 0 10px}
-.ball-record>div{
-  display:grid;
-  gap:3px;
-  min-height:2.875rem;
-  padding:.3rem .4rem;
-  border:1px solid #b4c2ba;
-  border-radius:4px;
-  background:#edf1ec;
-}
-.ball-record>div[data-active=true]{border-color:#477c6d;box-shadow:inset 0 0 0 1px #477c6d;background:#e0eee8}
-.ball-record small{color:#416255;font-size:.75rem}
-.ball-record b{color:#2e5249;font-size:1rem;line-height:1.2}
+.spot[data-object=ballLine]{touch-action:none}
+#spots [data-object=ballLine] span{display:none}
 .ball-task{margin:.3rem 0 .45rem;font-size:.9375rem;font-weight:650}
 .ball-row-label{margin:0 0 .45rem;color:#4b6264;font-size:.8125rem;font-weight:650}
 .ball-row{
+  display:grid;
+  gap:6px;
   grid-template-columns:repeat(6,minmax(0,1fr));
   justify-items:center;
   align-items:center;
@@ -52,24 +40,25 @@ button.locker-ball:active:enabled{transform:translateY(1px)}
 button.locker-ball:disabled{cursor:default}
 .ball-empty{border:1px dashed #a1b1a8;background:#f0f4ef}
 #ballBefore .locker-ball,#ballBefore .ball-empty{width:min(100%,2.125rem)}
-.ball-counts{grid-template-columns:repeat(6,minmax(0,1fr));margin-top:9px}
-.ball-counts button{
-  min-height:var(--control-height);
-  padding:5px 2px;
-  border-color:#9eb6ad;
-  border-bottom:3px solid #739488;
-  background:#e9f2ec;
-  color:#2b5449;
-  font-size:.9375rem;
-  font-weight:650;
-  white-space:nowrap;
-}
-.ball-counts button:hover{background:#d4eadd}
-.ball-counts button:active{transform:translateY(1px);border-bottom-width:1px}
 .ball-feedback{margin:.5rem 0 0;color:#9a4032;font-size:.875rem;font-weight:650}
 .ball-feedback:empty{display:none}
-#inspect[data-panel=ball-locker] .hint{margin-top:8px;padding-top:6px;border-color:#c1cbc3}
-#inspect[data-panel=ball-locker] .hint p{font-size:.9375rem}
-@container (max-width:18rem){
-  .ball-counts{grid-template-columns:repeat(3,minmax(0,1fr))}
+#inspect[data-panel=sports-pin]{--panel-width:clamp(22rem,41vw,28rem)}
+.pin-device{
+  width:min(100%,14rem);margin:.8rem auto;padding:.75rem;
+  background:#3b484c;border:1px solid #536267;border-radius:.45rem;
 }
+#pinDisplay{
+  display:block;margin-bottom:.55rem;padding:.35rem;text-align:center;
+  background:#203135;color:#d1e7d1;border-radius:.2rem;
+  font:600 1.5rem/1.25 ui-monospace,monospace;letter-spacing:.08em;
+}
+#pinKeys{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.3rem}
+#pinKeys button{
+  min-height:var(--control-height);padding:.2rem;color:#243437;
+  background:#e1e5de;border:1px solid #c1c9c2;border-bottom:3px solid #a5afa8;
+  border-radius:.25rem;font:650 1.15rem/1.2 ui-monospace,monospace;
+}
+#pinKeys button:hover:enabled{background:#f2f4ee}
+#pinKeys button:active:enabled{border-bottom-width:1px}
+#pinKeys button:disabled{opacity:.55;cursor:default}
+#pinKeys .pin-zero{grid-column:2}
