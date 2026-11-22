@@ -4,7 +4,21 @@ const SpecialtyInteriors = (() => {
   const {enclosure,entrance,box,rounded,patchPlane,standard,cylinder,rod,tube,groundShadow}=SchoolInterior;
   const quarterTurn = Math.PI / 2;
   const bookArc = {x:-1.07,z:2.60,inner:.85,outer:1.26,from:-.54,to:1.96};
-  const counter = {x:3.37,z:3.35,w:1.63,d:2.14};
+  const counter = {x:2.25,z:3.48,w:1.40,d:2.14};
+  const readingNook = {x:-.40,z:.34,w:3.10,d:.68};
+  const caseDepth = .48;
+  const upperCaseBase = 2.40;
+  const libraryWallCases = [
+    {x:-4.015,z:3.60,width:7.11,angle:quarterTurn},
+    {x:-2.86,z:.285,width:1.82,angle:0},
+    {x:1.67,z:.285,width:1.04,angle:0},
+    {x:4.015,z:4.31,width:5.69,angle:-quarterTurn},
+    {x:0,z:6.915,width:7.55,angle:Math.PI},
+    // Continue the top row above the seat, the doorway and the inward door swing.
+    {x:readingNook.x,z:.285,width:readingNook.w,angle:0,base:upperCaseBase},
+    {x:2.985,z:.285,width:1.59,angle:0,base:upperCaseBase},
+    {x:4.015,z:.755,width:1.42,angle:-quarterTurn,base:upperCaseBase}
+  ];
   const lab = [
     {x:-1.81,z:3.40,w:1.82,d:2.67},
     {x:1.75,z:2.77,w:1.81,d:2.62}
@@ -20,6 +34,10 @@ const SpecialtyInteriors = (() => {
 
   function boundsOf({x,z,w,d},margin=.12){
     return [x-w/2-margin,x+w/2+margin,z-d/2-margin,z+d/2+margin];
+  }
+  function wallCaseBounds({x,z,width,angle}){
+    const sideWall=Math.abs(angle)===quarterTurn;
+    return boundsOf({x,z,w:sideWall?caseDepth:width,d:sideWall?width:caseDepth},.16);
   }
   function arcPoint(radius,angle){
     return {
@@ -44,18 +62,18 @@ const SpecialtyInteriors = (() => {
         approach:{x:numberedFront.x,z:5.13},
         inspectionView:{wide:[numberedFront.x+.39,.76,numberedFront.z],compact:[numberedFront.x,.53,numberedFront.z]}},
       statusLamp:{xyz:[2.43,1.27,.10]},doorReveal:{x:3.09,z:1.98},
-      start:[.08,1.55,6.80],view:[.78,1.30,.15],portraitView:[numberedFront.x,.98,numberedFront.z],viewAngle:58,
+      start:[.08,1.55,6.13],view:[.78,1.30,.15],portraitView:[numberedFront.x,.98,numberedFront.z],viewAngle:58,
       obstacles:[
-        ...arcObstacles,boundsOf(counter),
-        [-4.04,-3.57,.22,6.87],[-3.82,2.19,.23,.80]
+        ...arcObstacles,boundsOf(counter),boundsOf(readingNook),
+        ...libraryWallCases.filter(section=>!section.base).map(wallCaseBounds)
       ],
       clues:[
         {id:'shelfGuide',name:'서가 안내문',lines:LIBRARY_NOTICES.shelfGuide,
           xyz:[signPosition.x,1.153,signPosition.z],surface:{width:1.02,height:.32},rotationY:quarterTurn-bayAngle,
           approach:{x:numberedFront.x,z:5.20},placement:'stand'},
         {id:'loanSlip',name:'대출 데스크 모니터',lines:LIBRARY_NOTICES.loanSlip,
-          xyz:[3.03,1.43,3.18],surface:{width:.89,height:.45},rotationY:-1.10,
-          approach:{x:1.68,z:3.88},placement:'monitor'}
+          xyz:[counter.x-.14,1.43,counter.z-.17],surface:{width:.89,height:.45},rotationY:-1.10,
+          approach:{x:counter.x-1.48,z:counter.z+.55},placement:'monitor'}
       ],
       build:library
     },
@@ -216,29 +234,32 @@ const SpecialtyInteriors = (() => {
     parent.add(spines,labels);
   }
 
-  function shelves(scene,x,z,width,angle,wood,gold,cover){
-    const unit=positionGroup(scene,x,0,z,angle),height=2.88,depth=.48;
+  function shelves(scene,{x,z,width,angle,base=0},wood,gold,cover){
+    const unit=positionGroup(scene,x,base,z,angle),height=2.88-base,depth=caseDepth;
+    const rows=base ? [.028] : [.408,.995,1.582,2.169];
+    const bookHeightScale=base ? .58 : 1;
     const bays=Math.max(1,Math.round(width/.99)),bayWidth=width/bays;
     const books=[];
+    const offset=Math.round((10+x+z)*13);
     const light=new School3D.MeshBasicMaterial({color:'#ffebbd'});
     box(unit,width,height,.030,0,height/2,-depth/2,gold);
     for(let bay=0;bay<bays;bay++){
       const left=bay*bayWidth-width/2,center=left+bayWidth/2;
       box(unit,.050,height,depth,left+.025,height/2,0,wood);
-      box(unit,bayWidth-.066,.37,.41,center,.215,.020,wood);
-      for(const [row,y] of [.408,.995,1.582,2.169].entries()){
+      if(!base)box(unit,bayWidth-.066,.37,.41,center,.215,.020,wood);
+      for(const [row,y] of rows.entries()){
         const count=Math.floor((bayWidth-.13)/.067);
         for(let i=0;i<count;i++){
-          const mix=i*11+row*7+bay*19;
+          const mix=offset+i*11+row*7+bay*19;
           if(mix%17===8)continue;
           books.push({x:left+.085+i*.067,y:y+.027,z:.060+(mix%4)*.013,w:.041+(mix%8)*.003,
-            h:.248+(mix%18)*.011,d:.237,angle:0,color:backgroundBindings[mix%backgroundBindings.length]});
+            h:(.248+(mix%18)*.011)*bookHeightScale,d:.237,angle:0,color:backgroundBindings[mix%backgroundBindings.length]});
         }
       }
       box(unit,bayWidth-.13,.014,.029,center,height-.166,.195,light);
     }
     box(unit,.050,height,depth,width/2-.025,height/2,0,wood);
-    for(const y of [.408,.995,1.582,2.169])box(unit,width,.056,depth,0,y,0,wood);
+    for(const y of rows)box(unit,width,.056,depth,0,y,0,wood);
     box(unit,width,.16,depth+.027,0,height-.080,0,wood);
     packedBooks(unit,books,cover);
   }
@@ -339,15 +360,13 @@ const SpecialtyInteriors = (() => {
     const cushion=standard('#eeb938',.90);
     cushion.bumpMap=art.relief('cloth');cushion.bumpScale=.016;
     const cover=bookBinding();
-    shelves(scene,-3.985,3.60,6.72,quarterTurn,wood,gold,cover);
-    shelves(scene,-2.91,.285,1.87,0,wood,gold,cover);
-    shelves(scene,1.69,.285,.99,0,wood,gold,cover);
+    for(const section of libraryWallCases)shelves(scene,section,wood,gold,cover);
     const shelfDevice=curvedShelves(scene,wood,gold,cover);
     shadow(1.94,3.14,bookArc.x+.31,bookArc.z+.38,.005,.61);
     shadow(.99,6.78,-3.77,3.62,.005,.48);
 
-    const alcoveX=-.40;
-    box(scene,3.11,2.88,.17,alcoveX,1.44,.107,wood);
+    const alcoveX=readingNook.x;
+    box(scene,readingNook.w,upperCaseBase,.17,alcoveX,upperCaseBase/2,.107,wood);
     shapedPanel(scene,3.10,2.09,.38,.43,alcoveX,1.37,.311,wood,[2.95,1.93,.39]);
     const alcoveBack=fabric.clone(),cloth=art.sample('fabric').image;
     alcoveBack.map=InteriorArtwork.canvasMap(560,384,(g,w,h)=>{
@@ -988,7 +1007,7 @@ const SpecialtyInteriors = (() => {
       if(mesh.isMesh && mesh.material.isMeshStandardMaterial)mesh.receiveShadow=true;
     });
     const canvas=document.getElementById('roomView');
-    const version={library:'lending-v52',science:'balance-v1',broadcast:'studio-v34'}[room.kind];
+    const version={library:'lending-v54',science:'balance-v1',broadcast:'studio-v34'}[room.kind];
     Object.assign(canvas.dataset,{interior:room.kind,artwork:version});
     const updateDoorStatus=statusLamp(scene,design.statusLamp);
     return {
