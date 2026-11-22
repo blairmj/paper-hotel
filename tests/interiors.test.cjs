@@ -78,9 +78,34 @@ for(const kind of ['classroom','music','art','sports','computer','library','scie
  }
 });
 
+const cameraCode=vm.createContext({});
+vm.runInContext(fs.readFileSync(path.join(root,'music-world.js'),'utf8'),cameraCode);
+
+test('camera walks ease out at their exact endpoint and repeated steps can keep their speed',()=>{
+ const progress=cameraCode.walkingProgress;
+ for(const rate of [0,1,2.5]){
+  const positions=Array.from({length:101},(_,i)=>progress(i/100,rate));
+  assert.equal(positions[0],0);assert.equal(positions.at(-1),1);
+  assert.ok(positions.slice(1).every((p,i)=>p>=positions[i]&&p<=1));
+  assert.ok(1-progress(.999,rate)<.000004,'no last-frame jump');
+  assert.ok(Math.abs(progress(.00001,rate)/.00001-rate)<.0001,'velocity carries into the next step');
+ }
+ assert.ok(progress(.25)<.20&&progress(.75)>.80,'ease in and out on normal walks');
+});
+
+test('a camera rounds furniture corners only when the entire rounded path is walkable',()=>{
+ const start={x:0,z:0},bend={x:0,z:2},end={x:2,z:2};
+ const path=clear=>cameraCode.cameraPath(start,[bend,end],clear);
+ const rounded=path(()=>true);
+ assert.ok(rounded.some(p=>p.x>0&&p.z<2));
+ assert.ok(rounded.at(-1).at<4&&rounded.at(-1).at>3.5);
+ const blocked=path((a,b)=>!Array.from({length:11},(_,i)=>{
+  const t=i/10;return a.x+(b.x-a.x)*t>.01&&a.z+(b.z-a.z)*t<1.99;
+ }).some(Boolean));
+ assert.deepEqual(Array.from(blocked,p=>[p.x,p.z,p.at]),[[0,0,0],[0,2,2],[2,2,4]]);
+});
+
 test('the science dial clearance blocks the former landing point and leaves its approach aisle free',()=>{
- const cameraCode=vm.createContext({});
- vm.runInContext(fs.readFileSync(path.join(root,'music-world.js'),'utf8'),cameraCode);
  const room=layoutContext.specialty.definition('science');
  const clearance=target=>cameraCode.wallPanelClearance(room.wall,{
   point:{x:target.xyz[0],z:target.xyz[2]},surface:target.surface

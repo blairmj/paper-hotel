@@ -10,6 +10,35 @@ function wallPanelClearance(wall,target){
   return null;
 }
 
+// The same ease-in and ease-out used by B-0's observation room. Continuing a
+// button walk can carry its current speed into the extended stride.
+function walkingProgress(t,initialRate=0){
+  return t*t*(3-2*t)+initialRate*t*(1-t)*(1-t);
+}
+
+function cameraPath(start,waypoints,clearSegment){
+  const points=[{x:start.x,z:start.z,at:0}];
+  function add(point){
+    const last=points[points.length-1],gap=Math.hypot(point.x-last.x,point.z-last.z);
+    if(gap>1e-6)points.push({x:point.x,z:point.z,at:last.at+gap});
+  }
+  function mix(a,b,t){return {x:a.x+(b.x-a.x)*t,z:a.z+(b.z-a.z)*t}}
+  for(let i=0;i<waypoints.length-1;i++){
+    const before=i?waypoints[i-1]:start,bend=waypoints[i],after=waypoints[i+1];
+    const incoming=Math.hypot(before.x-bend.x,before.z-bend.z);
+    const outgoing=Math.hypot(after.x-bend.x,after.z-bend.z);
+    const radius=Math.min(.38,incoming/3,outgoing/3);
+    if(radius<.04){add(bend);continue}
+    const entry=mix(bend,before,radius/incoming),exit=mix(bend,after,radius/outgoing);
+    const curve=[entry];
+    for(const t of [.25,.5,.75,1])curve.push(mix(mix(entry,bend,t),mix(bend,exit,t),t));
+    if(curve.every((p,j)=>j===0||clearSegment(curve[j-1],p)))curve.forEach(add);
+    else add(bend);
+  }
+  add(waypoints[waypoints.length-1]);
+  return points;
+}
+
 async function createMusicWorld({onInspect,onReadyToMove,deviceInstructions,room=paintedRoom,buildRoom=buildPaintedRoom}){
   // Each interior supplies the same metre-based limits as its geometry.
   const roomLimits = room.bounds ?? {left:-9.06, right:9.06, front:-7.54, back:4.94};
@@ -56,7 +85,7 @@ async function createMusicWorld({onInspect,onReadyToMove,deviceInstructions,room
   camera.rotation.order='YXZ';
   let renderer,model,photos;
   try {
-    renderer=new THREE.WebGLRenderer({canvas,antialias:true,alpha:false,powerPreference:'low-power'});
+    renderer=new THREE.WebGLRenderer({canvas,antialias:true,alpha:false,powerPreference:'high-performance'});
     renderer.outputColorSpace=THREE.SRGBColorSpace;
     renderer.shadowMap.enabled=!!room.interior;
     renderer.shadowMap.type=THREE.PCFSoftShadowMap;
@@ -68,7 +97,7 @@ async function createMusicWorld({onInspect,onReadyToMove,deviceInstructions,room
   }
   const eye=camera.position;
   const reducedMotion=matchMedia('(prefers-reduced-motion: reduce)');
-  const keys=new Set(),point=new THREE.Vector3(),corner=new THREE.Vector3();
+  const keys=new Set(),keyVelocity=new THREE.Vector2(),point=new THREE.Vector3(),corner=new THREE.Vector3();
   const sight = new THREE.Ray(), hit = new THREE.Vector3();
   function targetOccluded(target,from=eye) {
     if(!occluders.length)return false;
@@ -118,12 +147,14 @@ async function createMusicWorld({onInspect,onReadyToMove,deviceInstructions,room
     }
   }
   let width=1,height=1,yaw=0,pitch=0,openness=0,journey,trail,drag,finale,raf=0,previousTime=0;
+  let fullRatio=1,movingRatio=1,wasMoving=false,slowFrames=0;
   const clamp=THREE.MathUtils.clamp, wrap=angle=>Math.atan2(Math.sin(angle),Math.cos(angle));
-  function heading(position){return Math.atan2(position[0]-eye.x,eye.z-position[2])}
-  function tilt(position){return Math.atan2(position[1]-eye.y,Math.hypot(position[0]-eye.x,position[2]-eye.z))}
+  function heading(position,from=eye){return Math.atan2(position[0]-from.x,from.z-position[2])}
+  function tilt(position,from=eye){return Math.atan2(position[1]-eye.y,Math.hypot(position[0]-from.x,position[2]-from.z))}
   function resize(){
     width=canvas.clientWidth;height=canvas.clientHeight;
-    if(renderer){renderer.setPixelRatio(Math.min(devicePixelRatio||1,1.6));renderer.setSize(width,height,false)}
+    fullRatio=Math.min(devicePixelRatio||1,1.6);movingRatio=fullRatio;slowFrames=0;wasMoving=false;
+    if(renderer){renderer.setPixelRatio(fullRatio);renderer.setSize(width,height,false)}
     camera.aspect=width/height;
     // Keep furniture at the same relative height across landscape screens.
     // Portrait screens get a wider vertical view within a comfortable limit.
@@ -131,6 +162,18 @@ async function createMusicWorld({onInspect,onReadyToMove,deviceInstructions,room
       2*Math.atan(Math.tan(viewAngle*Math.PI/360)/Math.min(camera.aspect,1))
     ),viewAngle,74);
     camera.updateProjectionMatrix();queue();
+  }
+  function resolutionForMotion(moving,elapsed){
+    if(!renderer)return;
+    // Only the drawing buffer changes. Projection, CSS size and picking stay in screen coordinates.
+    slowFrames=moving&&wasMoving&&elapsed>.050?slowFrames+1:0;
+    if(slowFrames>=2){
+      movingRatio=Math.min(movingRatio,movingRatio>1.05?1:.72);
+      slowFrames=0;
+    }
+    const ratio=moving?movingRatio:fullRatio;
+    if(renderer.getPixelRatio()!==ratio)renderer.setPixelRatio(ratio);
+    wasMoving=moving;
   }
   function nearDevice(target){
     const dx=target.point.x-eye.x,dz=target.point.z-eye.z;
@@ -201,33 +244,49 @@ async function createMusicWorld({onInspect,onReadyToMove,deviceInstructions,room
       moveEye(x,z);
     }
   }
-  function walkTo(goal, face=null, done=null, automatic=false) {
-    if(!onOpenFloor(goal.x,goal.z)) return false;
-    const path=floorRoute(eye,goal);
-    if(!path.length) return false;
-    journey=null;keys.clear();
-    if (reducedMotion.matches) {
+  function startWalk(path,face,done,automatic=false,stepDirection=0,initialSpeed=0){
+    const goal=path[path.length-1];
+    const turn=face?wrap(heading(face,goal)-yaw):0;
+    const nod=face?tilt(face,goal)-pitch:0;
+    const points=cameraPath(eye,path,clearSegment),length=points[points.length-1].at;
+    journey=null;trail=null;keys.clear();keyVelocity.set(0,0);
+    if(reducedMotion.matches||(length<.001&&Math.abs(turn)+Math.abs(nod)<.001)){
       for(const point of path)moveEye(point.x,point.z);
-      if(face){yaw=heading(face);pitch=tilt(face)}
-      queue();done?.();return true;
+      yaw=wrap(yaw+turn);pitch+=nod;
+      queue();done?.();return;
     }
-    trail={path,face,done,automatic};previousTime=performance.now();queue();
+    const duration=Math.max(length/2.45+.20,Math.abs(turn)/2.7,Math.abs(nod)/2.7);
+    trail={points,length,goal,next:1,start:performance.now(),duration,
+      yaw,pitch,turn,nod,stepDirection,speed:initialSpeed,
+      initialRate:length?clamp(initialSpeed*duration/length,0,2.5):0,done,automatic};
+    queue();
+  }
+  function walkTo(goal,face=null,done=null,automatic=false){
+    if(!onOpenFloor(goal.x,goal.z))return false;
+    const path=floorRoute(eye,goal);
+    if(!path.length)return false;
+    startWalk(path,face,done,automatic);
     return true;
   }
-  function advanceTrail(dt){
-    const next=trail.path[0],dx=next.x-eye.x,dz=next.z-eye.z,dist=Math.hypot(dx,dz);
-    const step=Math.min(dt*4.8,dist);
-    if(dist>0)moveEye(eye.x+dx*step/dist,eye.z+dz*step/dist);
-    if(trail.face){
-      yaw=wrap(yaw+wrap(heading(trail.face)-yaw)*Math.min(1,dt*9));
-      pitch+=(tilt(trail.face)-pitch)*Math.min(1,dt*9);
+  function advanceTrail(time){
+    const walk=trail;
+    const t=reducedMotion.matches?1:clamp((time-walk.start)/(1000*walk.duration),0,1);
+    const aim=walkingProgress(t),distance=walk.length*walkingProgress(t,walk.initialRate);
+    // Visit every crossed segment even on a slow frame so locker triggers and collisions agree with the path.
+    while(walk.next<walk.points.length&&walk.points[walk.next].at<=distance){
+      const p=walk.points[walk.next++];moveEye(p.x,p.z);
     }
-    if(dist-step>.001)return;
-    trail.path.shift();
-    if(trail.path.length)return;
-    const {face,done}=trail;trail=null;
-    if(face){yaw=heading(face);pitch=tilt(face)}
-    done?.();
+    if(walk.next<walk.points.length){
+      const a=walk.points[walk.next-1],b=walk.points[walk.next];
+      const ratio=(distance-a.at)/(b.at-a.at);
+      moveEye(a.x+(b.x-a.x)*ratio,a.z+(b.z-a.z)*ratio);
+    }
+    yaw=wrap(walk.yaw+walk.turn*aim);pitch=walk.pitch+walk.nod*aim;
+    if(t===1){trail=null;walk.done?.();return}
+    if(walk.stepDirection){
+      const rate=6*t*(1-t)+walk.initialRate*(1-t)*(1-3*t);
+      walk.speed=walk.length/walk.duration*rate;
+    }
   }
   function standingPlace(object,approach,nearDoor){
     if(!room.interior)return approach;
@@ -307,7 +366,11 @@ async function createMusicWorld({onInspect,onReadyToMove,deviceInstructions,room
     }
     const floor=hitY<.08;
     const goal={x:clamp(hitX,roomLimits.left,roomLimits.right),z:clamp(hitZ,roomLimits.front,roomLimits.back)};
-    if(floor&&onOpenFloor(goal.x,goal.z)){walkTo(goal);return}
+    if(floor&&onOpenFloor(goal.x,goal.z)){
+      const dx=goal.x-eye.x,dz=goal.z-eye.z;
+      if(Math.hypot(dx,dz)>.08)walkTo(goal,[goal.x+dx,eye.y,goal.z+dz]);
+      return;
+    }
     const dx=eye.x-hitX,dz=eye.z-hitZ,distance=Math.hypot(dx,dz);
     const face=floor?null:[hitX,hitY,hitZ];
     const standBack=1.55;
@@ -335,7 +398,7 @@ async function createMusicWorld({onInspect,onReadyToMove,deviceInstructions,room
     return raycaster.intersectObjects(model.commandPads.filter(pad=>pad.visible),false)[0]?.object.userData.command??null;
   }
   function frame(time){
-    raf=0;const dt=Math.min(.06,(time-previousTime)/1000);previousTime=time;
+    raf=0;const elapsed=clamp((time-previousTime)/1000,0,.20),dt=Math.min(elapsed,.06);previousTime=time;
     if(finale){
       const t=clamp((time-finale.start)/finale.duration,0,1);
       const swing=clamp((t-.14)/.72,0,1);
@@ -351,7 +414,7 @@ async function createMusicWorld({onInspect,onReadyToMove,deviceInstructions,room
     }
     if(journey){
       const j=journey,t=clamp((time-j.start)/j.duration,0,1);
-      const aim=1-(1-clamp(t/(j.door ? .42 : 1),0,1))**3;
+      const aim=j.door?1-(1-clamp(t/.42,0,1))**3:walkingProgress(t);
       yaw=wrap(j.from+wrap(j.to-j.from)*aim);pitch=j.p+(j.targetPitch-j.p)*aim;
       if(j.door){
         const slide=clamp((t-.28)/.68,0,1);
@@ -360,19 +423,27 @@ async function createMusicWorld({onInspect,onReadyToMove,deviceInstructions,room
       }
       if(t===1){journey=null;j.done?.()}
     }else if(trail && (trail.automatic||onReadyToMove())){
-      advanceTrail(dt);
-    }else if(keys.size&&onReadyToMove()){
-      yaw=wrap(yaw+(+keys.has('arrowright')-+keys.has('arrowleft'))*1.4*dt);
-      pitch=clamp(pitch+(+keys.has('arrowup')-+keys.has('arrowdown'))*dt,-1.1,1.1);
-      move((+keys.has('w')-+keys.has('s'))*dt*2.2,(+keys.has('d')-+keys.has('a'))*dt*2.2);
+      advanceTrail(time);
+    }else if((keys.size||keyVelocity.lengthSq())&&onReadyToMove()){
+      yaw=wrap(yaw+(+keys.has('arrowright')-+keys.has('arrowleft'))*1.4*elapsed);
+      pitch=clamp(pitch+(+keys.has('arrowup')-+keys.has('arrowdown'))*elapsed,-1.1,1.1);
+      const front=+keys.has('w')-+keys.has('s'),side=+keys.has('d')-+keys.has('a');
+      const scale=1/Math.max(1,Math.hypot(side,front)),blend=reducedMotion.matches?1:1-Math.exp(-elapsed*15);
+      keyVelocity.x+=(side*scale-keyVelocity.x)*blend;
+      keyVelocity.y+=(front*scale-keyVelocity.y)*blend;
+      if(!front&&!side&&keyVelocity.lengthSq()<.0001)keyVelocity.set(0,0);
+      move(keyVelocity.y*elapsed*2.2,keyVelocity.x*elapsed*2.2);
     }
     const animating=model.animate?.(dt,reducedMotion.matches);
-    draw();if(journey||trail||keys.size||animating)queue();
+    resolutionForMotion(Boolean(trail||journey||keys.size||keyVelocity.lengthSq()||drag?.moved),elapsed);
+    draw();if(journey||trail||keys.size||keyVelocity.lengthSq()||animating)queue();
   }
   function look(target,door=false,done){
-    trail=null;
-    const reduced=reducedMotion.matches;
-    journey={from:yaw,p:pitch,to:heading(target),targetPitch:tilt(target),door,done,start:performance.now(),duration:reduced?1:door?1200:280};
+    trail=null;keys.clear();keyVelocity.set(0,0);
+    const to=heading(target),targetPitch=tilt(target);
+    const angle=Math.max(Math.abs(wrap(to-yaw)),Math.abs(targetPitch-pitch));
+    const duration=door?1200:clamp(angle*370,240,1000);
+    journey={from:yaw,p:pitch,to,targetPitch,door,done,start:performance.now(),duration:reducedMotion.matches?1:duration};
     queue();
   }
   function turn(direction){
@@ -382,34 +453,38 @@ async function createMusicWorld({onInspect,onReadyToMove,deviceInstructions,room
       .filter(stop=>stop.angle>.07).sort((a,b)=>a.angle-b.angle);
     if(ordered.length)look(ordered[0].target);
   }
-  const clearKeys=()=>{keys.clear();drag=null;if(!trail?.automatic)trail=null};
+  const clearKeys=()=>{keys.clear();keyVelocity.set(0,0);drag=null;if(!trail?.automatic)trail=null;queue()};
   function startPointer(e,objectId=null){
     if(!e.isPrimary||e.button!==0||!onReadyToMove()||journey?.door)return;
-    journey=null;trail=null;
-    drag={x:e.clientX,y:e.clientY,distance:0,objectId,pointerId:e.pointerId};
+    clearKeys();journey=null;
+    drag={x:e.clientX,y:e.clientY,yaw,pitch,moved:false,objectId,pointerId:e.pointerId};
     canvas.setPointerCapture(e.pointerId);canvas.focus({preventScroll:true});
   }
   canvas.onpointerdown=e=>startPointer(e);
   canvas.onpointermove=e=>{
     if(!drag||drag.pointerId!==e.pointerId)return;
     const dx=e.clientX-drag.x,dy=e.clientY-drag.y,speed=1.9/Math.max(300,Math.min(width,height));
-    yaw=wrap(yaw-dx*speed);pitch=clamp(pitch+dy*speed,-1.1,1.1);
-    drag={...drag,x:e.clientX,y:e.clientY,distance:drag.distance+Math.hypot(dx,dy)};queue();
+    if(!drag.moved&&Math.hypot(dx,dy)<7)return;
+    drag.moved=true;yaw=wrap(drag.yaw-dx*speed);pitch=clamp(drag.pitch+dy*speed,-1.1,1.1);queue();
   };
   canvas.onpointerup=e=>{
     if(!drag||drag.pointerId!==e.pointerId)return;
-    const {objectId}=drag,tapped=drag.distance<7;drag=null;
-    if(!tapped||!onReadyToMove())return;
+    const {objectId}=drag,tapped=!drag.moved;drag=null;
+    if(!tapped||!onReadyToMove()){queue();return}
     if(objectId){inspectTarget(objectId);return}
     const rect=canvas.getBoundingClientRect();
     for(const t of targets)if(!t.button.hidden&&Math.hypot(e.clientX-rect.left-t.px,e.clientY-rect.top-t.py)<26){inspectTarget(t.id);return}
     walkToPixel(e.clientX-rect.left,e.clientY-rect.top);
   };
-  canvas.onpointercancel=canvas.onlostpointercapture=()=>{drag=null};
+  canvas.onpointercancel=canvas.onlostpointercapture=()=>{drag=null;queue()};
   document.addEventListener('keydown',e=>{
     if(!onReadyToMove()||journey?.door||e.metaKey||e.ctrlKey||e.altKey)return;
     const k=e.key.toLowerCase();
-    if(['w','s','a','d','arrowleft','arrowright','arrowup','arrowdown'].includes(k)){e.preventDefault();journey=null;trail=null;keys.add(k);queue()}
+    if(['w','s','a','d','arrowleft','arrowright','arrowup','arrowdown'].includes(k)){
+      e.preventDefault();journey=null;trail=null;
+      if(!keys.size&&!keyVelocity.lengthSq())previousTime=performance.now();
+      keys.add(k);queue();
+    }
   });
   document.addEventListener('keyup',e=>keys.delete(e.key.toLowerCase()));
   window.addEventListener('blur',clearKeys);
@@ -422,7 +497,17 @@ async function createMusicWorld({onInspect,onReadyToMove,deviceInstructions,room
   movementButton('right',()=>turn(1));
   function step(distance){
     if(!onReadyToMove()||journey?.door)return;
-    trail=null;move(distance,0);queue();
+    const direction=Math.sign(distance),continuing=trail?.stepDirection===direction?trail:null;
+    const from=continuing?.goal??eye;
+    const increments=Math.ceil(Math.abs(distance)/.10);
+    const dx=distance*Math.sin(yaw)/increments,dz=-distance*Math.cos(yaw)/increments;
+    let x=from.x,z=from.z;
+    for(let i=0;i<increments;i++){
+      if(!onOpenFloor(x+dx,z+dz))break;
+      x+=dx;z+=dz;
+    }
+    if(x===from.x&&z===from.z){if(!continuing)clearKeys();return}
+    startWalk([{x,z}],null,null,false,direction,continuing?.speed??0);
   }
   movementButton('walk',()=>step(1.2));
   movementButton('stepBack',()=>step(-1.2));
