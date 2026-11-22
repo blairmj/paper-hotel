@@ -9,14 +9,15 @@
 #inspect[data-panel=shelf]::backdrop{background:#30281517}
 #inspect[data-panel=shelf] .panel-top{padding-bottom:5px}
 #inspect[data-panel=shelf] #dismiss:hover{background:#f0eae0}
-#inspect[data-panel=shelf] .object-note{margin:0 0 .75rem;font-size:.9375rem;color:#46566a}
 .spot[data-object=bookShelf]{touch-action:none}
 
 #inspect[data-panel=shelf] .shelf-ticket{
-  display:flex;justify-content:space-between;align-items:baseline;gap:8px;
-  margin:.625rem 0 .75rem;color:#344b5b;font-size:.9375rem;font-weight:650;
+  margin:.25rem 0 .75rem;color:#465868;font-size:.875rem;
 }
-.shelf-ticket #shelfCount{color:#55636c;font-size:.8125rem;font-weight:500}
+#inspect[data-panel=library-note]{--panel-width:clamp(23rem,45vw,35rem)}
+#inspect[data-panel=library-note] .panel-top{padding:var(--panel-padding)}
+#inspect[data-panel=library-note] h1{font-size:1.15rem;line-height:1.6;word-break:keep-all}
+#inspect[data-panel=library-note] #panelBody{display:none}
 .shelf-row{
   display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:3px;
   align-items:end;padding:6px 3px 0;border-bottom:6px solid #a3845e;

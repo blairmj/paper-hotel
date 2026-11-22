@@ -118,6 +118,7 @@ async function createMusicWorld({onInspect,onReadyToMove,deviceInstructions,room
   const stopPoints=room.stops;
   const puzzleTarget=room.lock?.id??'lock';
   const devices=targets.filter(target=>target.id===puzzleTarget||target.id==='doorGuide');
+  const guideTargets=devices.filter(target=>target.surface.showGuide!==false);
   // Leave room to stand at wall-mounted controls, including when approaching by floor click or keyboard.
   const wallTargets=[];
   if(room.interior){
@@ -220,7 +221,7 @@ async function createMusicWorld({onInspect,onReadyToMove,deviceInstructions,room
       b.style.left=px+'px';b.style.top=py+'px';b.classList.toggle('label-left',px>width-95);
     }
     if(deviceGuide){
-      const show=devices.some(target=>nearDevice(target)||(!target.button.hidden&&
+      const show=guideTargets.some(target=>nearDevice(target)||(!target.button.hidden&&
         (target.button.matches(':hover')||target.button===document.activeElement)));
       deviceGuide.hidden=openness>0||!!journey?.door||!!trail?.automatic||!show;
     }
@@ -311,7 +312,7 @@ async function createMusicWorld({onInspect,onReadyToMove,deviceInstructions,room
     }
     return approach;
   }
-  function approachObject(object,inspect){
+  function approachObject(object,inspect,command){
     if(model.canInspect?.(object.id)===false)return;
     const [x,,z]=object.xyz;
     const approachX=object.id==='paper'?x+.65:x;
@@ -328,12 +329,12 @@ async function createMusicWorld({onInspect,onReadyToMove,deviceInstructions,room
       const towardDoor=Math.min(.40,spareWidth/doorDistance);
       face=object.xyz.map((v,i)=>v+(room.door[i]-v)*towardDoor);
     }
-    const visit=inspect?()=>{model.onInspect?.(object.id);onInspect(object.id)}:null;
+    const visit=inspect?()=>{model.onInspect?.(object.id);onInspect(object.id,command)}:null;
     walkTo(stand,face,visit);
   }
-  function inspectTarget(id){
+  function inspectTarget(id,command){
     const object=targets.find(t=>t.id===id);
-    if(object)approachObject(object,true);
+    if(object)approachObject(object,true,command);
   }
   const raycaster=new School3D.Raycaster(),mousePoint=new School3D.Vector2(),destination=new School3D.Vector3();
   const surfaceNormal=new School3D.Vector3(),normalMatrix=new School3D.Matrix3();
@@ -345,13 +346,16 @@ async function createMusicWorld({onInspect,onReadyToMove,deviceInstructions,room
     mousePoint.set(2*x/width-1,1-2*y/height);
     raycaster.setFromCamera(mousePoint,camera);
   }
+  function firstSceneHit(){
+    const meshes=[];
+    scene.traverseVisible(object=>{if(object.isMesh)meshes.push(object)});
+    return raycaster.intersectObjects(meshes,false)[0];
+  }
   function walkToPixel(x,y){
     aimRay(x,y);
     if(!raycaster.ray.intersectBox(roomBox,destination))return;
     // A click on a table, chair or door should stop at the surface the student actually saw.
-    const meshes=[];
-    scene.traverseVisible(obj=>{if(obj.isMesh)meshes.push(obj)});
-    const first=raycaster.intersectObjects(meshes,false)[0];
+    const first=firstSceneHit();
     const surface=first&&first.distance<=eye.distanceTo(destination)+.005?first:null;
     if(surface)destination.copy(surface.point);
     if(destination.y>=(room.ceilingMinimum??room.wall.height)-.02)return;
@@ -393,7 +397,11 @@ async function createMusicWorld({onInspect,onReadyToMove,deviceInstructions,room
     if(!model.commandPads)return null;
     const rect=canvas.getBoundingClientRect();
     aimRay(clientX-rect.left,clientY-rect.top);
-    return raycaster.intersectObjects(model.commandPads.filter(pad=>pad.visible),false)[0]?.object.userData.command??null;
+    const hit=raycaster.intersectObjects(model.commandPads.filter(pad=>pad.visible),false)[0];
+    if(!hit)return null;
+    // Only the visible surface of a book can be opened through the room view.
+    if(model.directCommandTarget)return firstSceneHit()?.object.userData.command??null;
+    return hit.object.userData.command;
   }
   function frame(time){
     raf=0;const elapsed=clamp((time-previousTime)/1000,0,.20),dt=Math.min(elapsed,.06);previousTime=time;
@@ -469,6 +477,10 @@ async function createMusicWorld({onInspect,onReadyToMove,deviceInstructions,room
     if(!drag||drag.pointerId!==e.pointerId)return;
     const {objectId}=drag,tapped=!drag.moved;drag=null;
     if(!tapped||!onReadyToMove()){queue();return}
+    if(model.directCommandTarget&&openness===0){
+      const command=commandAt(e.clientX,e.clientY);
+      if(command){inspectTarget(model.directCommandTarget,command);return}
+    }
     if(objectId){inspectTarget(objectId);return}
     const rect=canvas.getBoundingClientRect();
     for(const t of targets)if(!t.button.hidden&&Math.hypot(e.clientX-rect.left-t.px,e.clientY-rect.top-t.py)<26){inspectTarget(t.id);return}

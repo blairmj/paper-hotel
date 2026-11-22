@@ -77,6 +77,10 @@ function routeSignal(input) {
 
 const LOAN_NUMBER = 61;
 const SHELF_LIMIT = 3;
+const LIBRARY_NOTICES = {
+  shelfGuide:['책의 번호는 오른쪽으로 갈 수록 커집니다.', '3번 내로 필요한 책을 찾으세요.'],
+  loanSlip:['대출하려는 책의 번호는', LOAN_NUMBER+'번입니다.']
+};
 const SHELF_BINDINGS = ['#3b6a95','#b67a32','#9f584e','#36587d','#517c72','#95694a','#746889'];
 function makeLibraryShelf(random=Math.random){
   const size=SHELF_BINDINGS.length,slot=Math.floor(random()*size);
@@ -157,7 +161,7 @@ const SCHOOL_PUZZLES = {
     instructions:'공 라커에서 회수 순서대로 공을 하나씩 빼세요. 매번 뺀 공을 제외하고 자리가 바뀐 공은 몇 개인가요?',
     hint:'뺀 공을 제외하고 이번에 한 칸씩 왼쪽으로 움직인 공의 개수를 세세요. 다음 공은 바뀐 배열에서 빼세요.'},
   library:{control:'shelf',revision:1,title:'곡선 서가',
-    instructions:'대출 메모에 적힌 번호의 책은 어느 칸에 있을까요? 번호순으로 꽂힌 곡선 서가에서 책을 세 번 안에 찾아보세요.',
+    instructions:LIBRARY_NOTICES.shelfGuide.join(' '),
     hint:'남은 책의 가운데를 펼쳐 보세요. 찾는 번호가 더 크면 오른쪽에, 더 작으면 왼쪽에 있어요.'},
   science:{control:'dial',revision:2,title:'문 다이얼',answer:Array.from(String(6*BALANCE_WEIGHTS.black+3*BALANCE_WEIGHTS.white)),
     instructions:'비밀번호는 검은 구슬 6개와 흰 구슬 3개를 모두 합한 그램 수입니다.',

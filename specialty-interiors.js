@@ -27,8 +27,10 @@ const SpecialtyInteriors = (() => {
       z:bookArc.z+radius*Math.sin(angle)
     };
   }
-  const numberedBay={left:bookArc.to,right:bookArc.to-(bookArc.to-bookArc.from)/4,radius:bookArc.outer-.114};
-  const numberedFront=arcPoint(bookArc.outer,(numberedBay.left+numberedBay.right)/2);
+  const numberedBay={left:bookArc.to,right:(bookArc.from+bookArc.to)/2,radius:bookArc.outer-.095};
+  const bayAngle=(numberedBay.left+numberedBay.right)/2;
+  const numberedFront=arcPoint(bookArc.outer,bayAngle);
+  const signPosition=arcPoint((bookArc.outer+bookArc.inner)/2,bayAngle);
   const arcObstacles = Array.from({length:8},(_,i)=>{
     const point=arcPoint((bookArc.inner+bookArc.outer)/2,bookArc.from+(bookArc.to-bookArc.from)*i/7);
     return boundsOf({...point,w:.51,d:.51},.11);
@@ -38,20 +40,22 @@ const SpecialtyInteriors = (() => {
     library:{
       size:[8.6,7.2,3.14], trim:'#b59365',
       entrance:{x:3.34,width:1.30,height:2.22,moldingColor:'#d6a333'},
-      lock:{id:'bookShelf',center:[-.68,.54,2.90],width:1.80,height:.92,depth:1.94,inspectFromAnySide:true,
+      lock:{id:'bookShelf',center:[numberedFront.x,.61,numberedFront.z-.27],width:1.65,height:.73,depth:.80,inspectFromAnySide:true,showGuide:false,
         approach:{x:numberedFront.x,z:5.13},
         inspectionView:{wide:[numberedFront.x+.39,.76,numberedFront.z],compact:[numberedFront.x,.53,numberedFront.z]}},
       statusLamp:{xyz:[2.43,1.27,.10]},doorReveal:{x:3.09,z:1.98},
-      start:[.08,1.55,6.80],view:[.12,1.30,.15],viewAngle:58,
+      start:[.08,1.55,6.80],view:[.78,1.30,.15],portraitView:[numberedFront.x,.98,numberedFront.z],viewAngle:58,
       obstacles:[
         ...arcObstacles,boundsOf(counter),
         [-4.04,-3.57,.22,6.87],[-3.82,2.19,.23,.80]
       ],
       clues:[
-        {id:'shelfGuide',name:'책장 옆 찾기 표지',xyz:[bookArc.x+.12,1.127,bookArc.z+1.01],
-          surface:{width:.46,height:.28},approach:{x:-1.04,z:bookArc.z+1.88},placement:'stand'},
-        {id:'loanSlip',name:'열람대의 대출 메모',xyz:[counter.x-counter.w/2+.14,1.105,counter.z-.04],
-          surface:{width:.56,height:.34},rotationY:-quarterTurn,approach:{x:1.95,z:counter.z-.03},placement:'stand'}
+        {id:'shelfGuide',name:'서가 안내문',lines:LIBRARY_NOTICES.shelfGuide,
+          xyz:[signPosition.x,1.153,signPosition.z],surface:{width:1.02,height:.32},rotationY:quarterTurn-bayAngle,
+          approach:{x:numberedFront.x,z:5.20},placement:'stand'},
+        {id:'loanSlip',name:'대출 데스크 모니터',lines:LIBRARY_NOTICES.loanSlip,
+          xyz:[3.03,1.43,3.18],surface:{width:.89,height:.45},rotationY:-1.10,
+          approach:{x:1.68,z:3.88},placement:'monitor'}
       ],
       build:library
     },
@@ -110,7 +114,7 @@ const SpecialtyInteriors = (() => {
       ...RECOVERY_ROOMS.find(room=>room.kind===kind),depth,interior:true,
       wall:{width,height,z:0,back:depth},ceilingMinimum:height,entrance,door,doorReveal:design.doorReveal,lock,clues,targets,obstacles,
       bounds:{left:-width/2+.27,right:width/2-.27,front:.27,back:depth-.27},
-      start,viewAngle,firstView:view,portraitView:[view[0]*.5,1.30,view[2]],
+      start,viewAngle,firstView:view,portraitView:design.portraitView??[view[0]*.5,1.30,view[2]],
       stops:[...targets.map(target=>target.xyz),[width/2,1.38,depth/2],[0,1.38,depth],[-width/2,1.38,depth/2]]
     };
   }
@@ -183,8 +187,8 @@ const SpecialtyInteriors = (() => {
     topMesh.position.set(x,top-thickness,z);
   }
 
-  const bookColors = ['#ca4939','#edb137','#356ca0','#eeebda','#789b96','#2e4c75','#ad7663',
-    '#e7ae86','#837997','#e2c998','#91adc9','#4b545b'];
+  const backgroundBindings = ['#918179','#ab9f88','#768690','#b9b5a8','#88958e','#707d84',
+    '#9c8c80','#afa496','#928b93','#aaa28f','#94a1a5','#7e817c'];
   function bookBinding(){
     const map=InteriorArtwork.canvasMap(48,160,(g,w,h)=>{
       const spine=g.createLinearGradient(0,0,w,0);
@@ -201,7 +205,7 @@ const SpecialtyInteriors = (() => {
   function packedBooks(parent,books,cover){
     const geometry=new School3D.BoxGeometry(1,1,1);
     const spines=new School3D.InstancedMesh(geometry,cover,books.length);
-    const labels=new School3D.InstancedMesh(geometry,standard('#f0e9dd',.91),books.length);
+    const labels=new School3D.InstancedMesh(geometry,standard('#c4bfb1',.91),books.length);
     const pose=new School3D.Object3D();
     for(const [i,{x,y,z,w,h,d,angle,color}] of books.entries()){
       pose.position.set(x,y+h/2,z);pose.rotation.set(0,angle,0);pose.scale.set(w,h,d);pose.updateMatrix();
@@ -228,7 +232,7 @@ const SpecialtyInteriors = (() => {
           const mix=i*11+row*7+bay*19;
           if(mix%17===8)continue;
           books.push({x:left+.085+i*.067,y:y+.027,z:.060+(mix%4)*.013,w:.041+(mix%8)*.003,
-            h:.248+(mix%18)*.011,d:.237,angle:0,color:bookColors[mix%bookColors.length]});
+            h:.248+(mix%18)*.011,d:.237,angle:0,color:backgroundBindings[mix%backgroundBindings.length]});
         }
       }
       box(unit,bayWidth-.13,.014,.029,center,height-.166,.195,light);
@@ -261,7 +265,8 @@ const SpecialtyInteriors = (() => {
     for(let i=0;i<5;i++){
       const angle=bookArc.from+(bookArc.to-bookArc.from)*i/4;
       const point=arcPoint((bookArc.inner+bookArc.outer)/2,angle);
-      shapedPanel(scene,.455,.884,.058,.028,point.x,.531,point.z,wood).rotation.y=Math.PI-angle;
+      const lowerOnly=i===3;
+      shapedPanel(scene,.455,lowerOnly ? .43 : .884,.058,.028,point.x,lowerOnly ? .31 : .531,point.z,wood).rotation.y=Math.PI-angle;
     }
     const books=[];
     for(const [row,y] of [.154,.568].entries()){
@@ -271,7 +276,7 @@ const SpecialtyInteriors = (() => {
         if(row===1&&angle>numberedBay.right)continue;
         const point=arcPoint(bookArc.outer-.162-(i%3)*.014,angle);
         books.push({...point,y,w:.054+(i%4)*.005,h:.22+(i*5%9)*.011,d:.235,
-          angle:quarterTurn-angle,color:bookColors[(i+3*row)%bookColors.length]});
+          angle:quarterTurn-angle,color:backgroundBindings[(i+3*row)%backgroundBindings.length]});
       }
     }
     packedBooks(scene,books,cover);
@@ -281,29 +286,29 @@ const SpecialtyInteriors = (() => {
   function numberedBooks(scene,cover){
     const paper=standard('#e7ddc8',.91);
     const foil=standard('#c9ab75',.69);
-    const depth=.181,margin=.078;
+    const depth=.216,margin=.13;
     const commandPads=[];
     const volumes=SHELF_BINDINGS.map((color,i)=>{
       const angle=numberedBay.left-margin-(numberedBay.left-numberedBay.right-2*margin)*i/(SHELF_BINDINGS.length-1);
       const {x,z}=arcPoint(numberedBay.radius,angle);
       const unit=positionGroup(scene,x,.568,z,quarterTurn-angle);
-      const width=.076+(i%3)*.004,height=.268+(i*5%7)*.005;
+      const width=.125+(i%3)*.005,height=.291+(i*5%7)*.005;
       const binding=cover.clone();
       binding.color.set(color);
-      const spine=rounded(unit,width,height,.026,0,height/2,depth/2-.013,binding,.007);
-      const pages=box(unit,width-.014,height-.017,depth-.025,0,height/2,-.007,paper);
-      const covers=[-.5,.5].map(side=>box(unit,.006,height,depth,side*(width-.006),height/2,0,binding));
+      rounded(unit,width,height,.026,0,height/2,depth/2-.013,binding,.007);
+      box(unit,width-.014,height-.017,depth-.025,0,height/2,-.007,paper);
+      for(const side of [-.5,.5])box(unit,.006,height,depth,side*(width-.006),height/2,0,binding);
       for(const y of [.20,.80])box(unit,width*.72,.004,.003,0,height*y,depth/2+.002,foil);
       const ticket=patchPlane(unit,width*.91,.069,0,height*.72,depth/2+.006,null);
       ticket.visible=false;
-      for(const mesh of [spine,pages,...covers,ticket]){
+      for(const mesh of unit.children){
         mesh.userData.command='book-'+i;
         commandPads.push(mesh);
       }
       return {ticket,unit,x,z,angle};
     });
     return {
-      commandPads,
+      commandPads,directCommandTarget:'bookShelf',
       setDigits(readings){
         for(const [slot,{ticket,unit,x,z,angle}] of volumes.entries()){
           const number=readings[slot];
@@ -330,7 +335,7 @@ const SpecialtyInteriors = (() => {
   function library(scene,room,art,shadow){
     const wood=materialFrom(art,'wood',.64), fabric=materialFrom(art,'fabric',.92);
     const gold=new School3D.MeshStandardMaterial({color:'#dbaf56',roughness:.83,emissive:'#d39931',emissiveIntensity:.12});
-    const blue=standard('#284b83',.86), red=standard('#c84735',.75);
+    const blue=standard('#324f60',.80);
     const cushion=standard('#eeb938',.90);
     cushion.bumpMap=art.relief('cloth');cushion.bumpScale=.016;
     const cover=bookBinding();
@@ -380,7 +385,10 @@ const SpecialtyInteriors = (() => {
 
     const {x,z,w,d}=counter;
     slab(scene,{x,z,w:w-.075,d:d-.098},.85,blue,.76,.16);
-    shapedPanel(scene,1.09,.735,.039,.12,x-w/2+.035,.461,z+.552,red).rotation.y=-quarterTurn;
+    const front=positionGroup(scene,x-w/2+.015,.46,z,-quarterTurn);
+    rounded(front,1.78,.68,.06,0,0,0,wood,.022);
+    rounded(front,.61,.085,.016,.35,.17,.032,standard('#39444a',.88),.007);
+    box(front,.64,.014,.052,.35,.125,.039,blue);
     slab(scene,{x,z,w:w-.12,d:d-.12},.094,wood,.076,.16);
     slab(scene,counter,.94,wood,.105,.18);
     shadow(w+.46,d+.44,x,z,.004,.64);
@@ -933,11 +941,28 @@ const SpecialtyInteriors = (() => {
   function addCard(scene,clue,card){
     if(clue.placement==='instrument')return;
     const {width,height}=clue.surface,group=positionGroup(scene,...clue.xyz,clue.rotationY??0);
-    const frame=standard('#d7c498',.82);
-    rounded(group,width+.037,height+.035,.037,0,0,-.022,frame,.012);
-    if(clue.placement==='stand'){
-      box(group,width+.05,.026,.132,0,-height/2+.001,-.041,frame);
-      rod(group,[0,-height*.19,-.028],[0,-height*.50,-.123],.010,frame);
+    if(clue.placement==='monitor'){
+      const casing=standard('#29323a',.60),steel=standard('#647078',.42);
+      const top=.94-clue.xyz[1];
+      rounded(group,width+.049,height+.053,.046,0,0,-.027,casing,.012);
+      const neckHeight=-height/2-top;
+      box(group,.087,neckHeight,.049,0,top+neckHeight/2,-.055,steel);
+      rounded(group,.32,.024,.19,0,top+.012,-.045,casing,.008);
+      rounded(group,.43,.021,.15,0,top+.013,.224,casing,.008);
+      for(let row=0;row<4;row++){
+        const count=row===3?4:12;
+        const pitch=.38/count;
+        for(let key=0;key<count;key++){
+          box(group,pitch-.005,.008,.019,(key+.5)*pitch-.19,top+.027,.182+row*.026,steel);
+        }
+      }
+    }else{
+      const frame=standard('#d7c498',.82);
+      rounded(group,width+.037,height+.035,.037,0,0,-.022,frame,.012);
+      if(clue.placement==='stand'){
+        box(group,width+.05,.026,.132,0,-height/2+.001,-.041,frame);
+        rod(group,[0,-height*.19,-.028],[0,-height*.50,-.123],.010,frame);
+      }
     }
     patchPlane(group,width,height,0,0,0,imageMap(card));
   }
@@ -963,7 +988,7 @@ const SpecialtyInteriors = (() => {
       if(mesh.isMesh && mesh.material.isMeshStandardMaterial)mesh.receiveShadow=true;
     });
     const canvas=document.getElementById('roomView');
-    const version={library:'shelf-v45',science:'balance-v1',broadcast:'studio-v34'}[room.kind];
+    const version={library:'lending-v52',science:'balance-v1',broadcast:'studio-v34'}[room.kind];
     Object.assign(canvas.dataset,{interior:room.kind,artwork:version});
     const updateDoorStatus=statusLamp(scene,design.statusLamp);
     return {

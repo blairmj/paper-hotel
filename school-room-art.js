@@ -110,18 +110,6 @@ function branchingDiagram(){
     box(373,254,132,'□','#faf9f1')+box(517,254,132,ROUTE_NAMES[no.no],'#f1f2ec');
 }
 
-function libraryGuideDiagram(){
-  const spines=SHELF_BINDINGS.map((color,i)=>{
-    const x=72+i*68;
-    return '<rect x="'+x+'" y="103" width="45" height="110" rx="4" fill="'+color+'"/>'+
-      '<path d="M'+(x+8)+' 122h29m-29 71h29" fill="none" stroke="#e9d6ab" stroke-width="3"/>';
-  }).join('');
-  return svgText(300,59,'책은 왼쪽부터 번호순',31)+spines+
-    '<path d="M60 219h482" stroke="#8a6d4d" stroke-width="9"/>'+
-    svgText(157,275,'← 작은 번호',25)+svgText(448,275,'큰 번호 →',25)+
-    svgText(300,323,'책을 펼치면 번호가 보여요.',21);
-}
-
 function broadcastRulesDiagram(){
   return Object.values(BROADCAST_COMMANDS).map(({label,before},i)=>{
     const y=30+i*78;
@@ -147,8 +135,6 @@ function schoolClueSvg(id){
       PRINT_RECORDS.filter(sample=>shouldPrint(sample)===printed).map(describePrintCard).join('. ')).join('. ')],
     ballLine:[()=>ballDiagram(BALLS),BALLS.join(' ')+' 순서로 놓인 공'],
     ballOrder:[()=>ballDiagram(BALL_PICKUP),BALL_PICKUP.join(', ')+' 순으로 회수'],
-    loanSlip:[()=>svgText(300,121,'찾을 책의 대출 번호',32)+svgText(300,256,LOAN_NUMBER,102,'#3459a4'),'찾을 책 번호 '+LOAN_NUMBER],
-    shelfGuide:[libraryGuideDiagram,'책은 왼쪽부터 작은 번호순입니다. 책을 펼치면 번호를 알 수 있습니다.'],
     broadcastRules:[broadcastRulesDiagram,Object.values(BROADCAST_COMMANDS).map(({label,before})=>before+'에서 '+label).join('. ')],
     broadcastLog:[broadcastLogDiagram,'녹음 중 상태에서 3단계가 멈췄습니다.'],
     recordA:[signalsDiagram,'출입 신호 기록'],
@@ -159,6 +145,25 @@ function schoolClueSvg(id){
 }
 
 async function clueBoardArt(clue){
+  if(clue.lines){
+    const canvas=document.createElement('canvas');
+    canvas.width=1024;
+    canvas.height=Math.round(canvas.width*clue.surface.height/clue.surface.width);
+    const g=canvas.getContext('2d');
+    g.fillStyle=clue.placement==='monitor'?'#edf5f2':'#fff8e8';
+    g.fillRect(0,0,canvas.width,canvas.height);
+    const font=' "Malgun Gothic","Apple SD Gothic Neo",sans-serif';
+    g.font='600 100px'+font;
+    const longest=Math.max(...clue.lines.map(line=>g.measureText(line).width));
+    const size=Math.min(100*canvas.width*.90/longest,canvas.height/(clue.lines.length*1.8));
+    g.font='600 '+size+'px'+font;
+    g.fillStyle='#213c47';g.textAlign='center';g.textBaseline='middle';
+    clue.lines.forEach((line,i)=>{
+      const y=canvas.height/2+(i-(clue.lines.length-1)/2)*size*1.48;
+      g.fillText(line,canvas.width/2,y);
+    });
+    return canvas;
+  }
   const canvas=document.createElement('canvas');canvas.width=720;canvas.height=420;
   const g=canvas.getContext('2d');
   g.fillStyle='#aaaead';g.fillRect(0,0,720,420);

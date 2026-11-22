@@ -221,6 +221,10 @@ function inspectClue(id){
   const clue=room.clues.find(item=>item.id===id);
   if(!clue)return;
   collectClue(id);
+  if(clue.lines){
+    modal(clue.lines.join(' '),'','library-note');
+    return;
+  }
   switch(id){
     case 'balanceBench':
       modal(clue.name,'','balance');
@@ -276,17 +280,14 @@ function sequencePanel(){
   draw();
 }
 
-function shelfPanel(){
-  const hasMemo=run.found.includes('loanSlip');
-  modal(puzzle.title,deviceInstructions()+
-    '<div class="shelf-ticket"><span id="loanTarget"></span><span id="shelfCount"></span></div>'+
+function shelfPanel(firstCommand){
+  modal(puzzle.title,'<div class="shelf-ticket" id="shelfCount"></div>'+
     '<div class="shelf-row" id="shelfRow" role="group" tabindex="-1" aria-label="왼쪽부터 번호순으로 꽂힌 일곱 권"></div>'+
     '<p class="shelf-feedback" id="shelfFeedback" role="status"></p>','shelf');
-  byId('loanTarget').textContent=hasMemo?'대출 메모 · '+LOAN_NUMBER+'번':'대출 메모 미확인';
   const feedback=byId('shelfFeedback'),row=byId('shelfRow');
   const buttons=SHELF_BINDINGS.map((color,slot)=>{
     const button=action(row,'',()=>{
-      if(!hasMemo||opening||run.solved||button.disabled||countdown.check())return;
+      if(opening||run.solved||countdown.check()||!canOpenLibraryBook(run.shelf,run.entry,slot))return;
       run.entry.push(slot);
       world.setDigits(deviceEntry());draw();
       if(run.shelf[slot]===LOAN_NUMBER){solve(850);return}
@@ -315,16 +316,16 @@ function shelfPanel(){
       button.textContent=opened?run.shelf[slot]:'';
       const description=opened?run.shelf[slot]+'번':'번호 가림';
       button.setAttribute('aria-label','왼쪽에서 '+(slot+1)+'번째 책, '+description);
-      button.disabled=!hasMemo||!canOpenLibraryBook(run.shelf,run.entry,slot);
+      button.disabled=!canOpenLibraryBook(run.shelf,run.entry,slot);
     }
     retry.hidden=remaining>0||found;
     if(found)feedback.textContent=LOAN_NUMBER+'번 책을 찾았어요!';
-    else if(!hasMemo)feedback.textContent='열람대에서 대출 메모를 먼저 찾아보세요.';
     else if(last===undefined)feedback.textContent='';
     else if(!remaining)feedback.textContent=last+'번이에요. 세 권을 모두 펼쳤어요.';
     else feedback.textContent=last+'번 책을 펼쳤어요.';
   }
   draw();
+  if(firstCommand)buttons.find(button=>button.dataset.command===firstCommand)?.click();
 }
 
 function selectionPanel(){
@@ -514,12 +515,12 @@ function ballLockerPanel(){
   draw();
 }
 
-function inspectLock(){
+function inspectLock(command){
   if(run.solved||!countdown||countdown.check())return;
   const panels={sequence:sequencePanel,selection:selectionPanel,dial:dialPanel,routing:routingPanel,debug:mixerPanel,
     balls:ballLockerPanel,shelf:shelfPanel};
-  panels[puzzle.control]();
-  appendRoomTextHint(content,countdown,puzzle.hint);
+  panels[puzzle.control](command);
+  if(!run.solved)appendRoomTextHint(content,countdown,puzzle.hint);
 }
 
 function directory(){
@@ -610,9 +611,9 @@ function start(){
   createMusicWorld({
     room,buildRoom:buildSchoolRoom,deviceInstructions:puzzle.instructions,
     onReadyToMove:()=>!!countdown&&!dialog.open&&!opening&&!finished&&!countdown.expired,
-    onInspect:id=>{
+    onInspect:(id,command)=>{
       if(!countdown||countdown.check())return;
-      if(id===(room.lock?.id??'lock'))inspectLock();
+      if(id===(room.lock?.id??'lock'))inspectLock(command);
       else if(id==='doorGuide')modal(room.place+' 문제',deviceInstructions(),'door-question');
       else inspectClue(id);
     }
