@@ -1,6 +1,6 @@
 # 학교 탈출
 
-[학생용 게임 시작](https://blairmj.github.io/paper-hotel/)
+[학생용 게임 시작](https://blairmj.github.io/school-escape/)
 
 하교 종이 울린 직후 학교 출입 시스템의 연결이 끊깁니다. 교실 배치도의 예상 풀이 시간을 보고 들를 교실을 3곳 이상 누르면, 우리 반 교실부터 컴퓨터실까지 이동 경로와 방문 순서가 지도에 바로 표시됩니다. 퍼즐을 풀면 문이 열리고 다음 교실 이름을 잠깐 보여준 뒤 자동으로 이동합니다. 마지막 컴퓨터실에서 출입 신호를 맞추면 현관이 열립니다.
 
@@ -23,15 +23,15 @@
 
 ## 교실 검토
 
-첫 화면과 교실 왼쪽 위의 **바로가기**에서 검토할 교실을 열 수 있습니다. [우리 반 교실 검토](https://blairmj.github.io/paper-hotel/index.html?review=1)와 개별 교실 주소도 검토 모드로 열립니다. 교실별 검토 제한 시간은 2분이며 검토 진행과 학생용 진행은 서로 다른 기록에 저장됩니다.
+첫 화면과 교실 왼쪽 위의 **바로가기**에서 검토할 교실을 열 수 있습니다. [우리 반 교실 검토](https://blairmj.github.io/school-escape/index.html?review=1)와 개별 교실 주소도 검토 모드로 열립니다. 교실별 검토 제한 시간은 2분이며 검토 진행과 학생용 진행은 서로 다른 기록에 저장됩니다.
 
-- [음악실](https://blairmj.github.io/paper-hotel/music.html)
-- [미술실](https://blairmj.github.io/paper-hotel/art.html)
-- [체육 준비실](https://blairmj.github.io/paper-hotel/sports.html)
-- [도서실](https://blairmj.github.io/paper-hotel/library.html)
-- [과학실](https://blairmj.github.io/paper-hotel/science.html)
-- [방송실](https://blairmj.github.io/paper-hotel/broadcast.html)
-- [컴퓨터실](https://blairmj.github.io/paper-hotel/computer.html)
+- [음악실](https://blairmj.github.io/school-escape/music.html)
+- [미술실](https://blairmj.github.io/school-escape/art.html)
+- [체육 준비실](https://blairmj.github.io/school-escape/sports.html)
+- [도서실](https://blairmj.github.io/school-escape/library.html)
+- [과학실](https://blairmj.github.io/school-escape/science.html)
+- [방송실](https://blairmj.github.io/school-escape/broadcast.html)
+- [컴퓨터실](https://blairmj.github.io/school-escape/computer.html)
 
 ## 수정과 배포
 
