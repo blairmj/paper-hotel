@@ -95,12 +95,13 @@ const CTDeviceUI=(()=>{
     const trail=practice?'M150 14V46 L'+(top==='left'?60:240)+' 121':'M150 14V44 '+(top==='right'?'L241 140':'L100 83 L'+(lower==='left'?38:137)+' 140');
     return '<svg class="ct-rail" aria-label="위 갈림판 '+(top==='left'?'왼쪽':'오른쪽')+(practice?'':', 아래 갈림판 '+(lower==='left'?'왼쪽':'오른쪽'))+'" viewBox="0 0 300 '+(practice?160:181)+'" role="img">'+defs+'<rect width="300" height="181" rx="9" fill="#e4eff6"/><rect width="300" height="181" fill="url(#railGrid)"/><path d="'+paths+'" fill="none" stroke="#a5b5c3" stroke-width="11" stroke-linejoin="round"/><path d="'+paths+'" fill="none" stroke="white" stroke-width="5"/>'+gate(150,practice?46:44,top)+(practice?'':gate(100,83,lower))+cups.map(outlet).join('')+(ball?'<circle r="7" fill="'+(ball==='blue'?'#2367d9':'#fff')+'" stroke="#416183" stroke-width="2"><animateMotion dur=".55s" fill="freeze" path="'+trail+'"/></circle>':'')+'</svg>';
   }
-  function open(kind,state,host,{save,solve,active,update},command){
+  function open(kind,state,host,{save,solve,active,update,record},command){
     const controls=element(host,'div',undefined,'ct-controls');
     const status=element(host,'p','', 'ct-feedback');
     status.setAttribute('role','status');
     const alive=()=>host.isConnected&&active();
     const message=s=>{status.textContent=s};
+    const incorrect=text=>{record('wrong');message(text)};
     const change=()=>{save();update()};
     const group=()=>element(controls,'div',undefined,'ct-buttons');
     const confirm=(label,fn)=>button(group(),label,()=>{if(alive())fn()},{cls:'primary'});
@@ -114,7 +115,7 @@ const CTDeviceUI=(()=>{
           if(!alive())return;
           state.cell=i;change();
           if(CT.parity(i)){const btn=controls.querySelectorAll('button')[i];btn.textContent=bits[i]?'○':'●';btn.setAttribute('aria-pressed',String(!bits[i]));solve(300)}
-          else message('이 불을 바꾸어도 모든 줄이 짝수가 되지 않아요. 점검 기록을 다시 보세요.');
+          else incorrect('이 불을 바꾸어도 모든 줄이 짝수가 되지 않아요. 점검 기록을 다시 보세요.');
         });
       }else if(kind==='music'){
         const labels={'(':'×2 [',')':']'};
@@ -130,13 +131,13 @@ const CTDeviceUI=(()=>{
         again('마지막 카드 빼기',()=>state.program.pop());
         confirm('연주하기',()=>{
           const notes=CT.music(state.program);
-          if(!notes){message('반복 띠의 시작과 끝을 짝지어 주세요.');return}
+          if(!notes){incorrect('반복 띠의 시작과 끝을 짝지어 주세요.');return}
           if(!notes.length){message('먼저 소리 카드를 놓으세요.');return}
           const correct=state.program.length===7&&notes.join(' ')===CT.motif.join(' ');
           const id=++play;const playback=seq(controls,notes);
           listen(notes,i=>Array.from(playback.children).forEach((n,j)=>n.classList.toggle('active',j===i)),()=>id===play&&alive()&&playback.isConnected);
           if(correct){message('악보와 같은 리듬이에요.');solve(340*notes.length)}
-          else message('연주한 리듬과 피아노 악보를 비교해 보세요.');
+          else incorrect('연주한 리듬과 피아노 악보를 비교해 보세요.');
         });
       }else if(kind==='art'){
         element(controls,'p','남은 물감 '+(3-state.drops.length)+'방울');
@@ -154,7 +155,7 @@ const CTDeviceUI=(()=>{
         if(practice){confirm('흰 구슬 굴리기',()=>{
           if(busy)return;busy=true;const old=top;
           view.innerHTML=railSvg(top,lower,true,'white');
-          setTimeout(()=>{if(!alive())return;state.practice++;busy=false;change();draw();message('구슬이 '+(old==='left'?'왼쪽':'오른쪽')+' 컵에 떨어졌어요.');},600);
+          setTimeout(()=>{if(!alive())return;record('practice',old);state.practice++;busy=false;change();draw();message('구슬이 '+(old==='left'?'왼쪽':'오른쪽')+' 컵에 떨어졌어요.');},600);
         });return}
         seq(controls,['① 흰 구슬','② 흰 구슬','③ 파란 구슬']);
         const choices=group();
@@ -163,6 +164,7 @@ const CTDeviceUI=(()=>{
           if(busy)return;
           if(!state.cup){message('먼저 파란 구슬을 받을 컵을 고르세요.');return}
           busy=true;controls.querySelectorAll('button').forEach(b=>b.disabled=true);
+          record('prediction',state.cup);
           const steps=CT.experiment(lower);
           for(const [i,step] of steps.entries()){
             if(!alive())return;
@@ -176,7 +178,7 @@ const CTDeviceUI=(()=>{
           if(!alive())return;
           busy=false;
           if(steps[2].cup===state.cup)solve(350);
-          else{draw();message('파란 구슬은 '+steps[2].cup+' 컵에 도착했어요. 갈림판을 처음 위치로 돌렸어요. 다시 예측해 보세요.')}
+          else{draw();incorrect('파란 구슬은 '+steps[2].cup+' 컵에 도착했어요. 갈림판을 처음 위치로 돌렸어요. 다시 예측해 보세요.')}
         });
       }else if(kind==='broadcast'){
         seq(controls,[0,1,2].map(i=>BROADCAST_COMMANDS[state.channels[i]]?.label??'―'));
@@ -186,11 +188,11 @@ const CTDeviceUI=(()=>{
         confirm('방송 송출',()=>{
           const decoded=state.channels.map(id=>BROADCAST_COMMANDS[id].code).join(' ');
           if(state.channels.length===3&&decoded===CT.signal.join(' '))solve();
-          else message('수신한 빛의 순서와 입력한 방송의 암호를 비교하세요.');
+          else incorrect('수신한 빛의 순서와 입력한 방송의 암호를 비교하세요.');
         });
       }else if(kind==='computer'){
         const keys=group();for(const card of CT.cards)button(keys,card,()=>{
-          if(!alive())return;state.test=card;state.repair=null;change();message('');draw();
+          if(!alive())return;record('test',card);state.test=card;state.repair=null;change();message('');draw();
         },{label:'시험 카드 '+card,pressed:state.test===card});
         if(!state.test)return;
         const result=element(controls,'div',undefined,'ct-readers');
@@ -210,7 +212,7 @@ const CTDeviceUI=(()=>{
           const outputs=['A','B'].map(id=>CT.readerOutput('▲●★',id,state.fault,state.repair));
           message('새 출입증 ▲●★  ·  A '+outputs[0]+'  ·  B '+outputs[1]);
           if(outputs.every(x=>x==='▲●★'))solve(850);
-          else message(status.textContent+'  방향을 다시 비교하세요.');
+          else incorrect(status.textContent+'  방향을 다시 비교하세요.');
         });
       }else if(kind==='print'){
         const grid=element(controls,'div',undefined,'ct-jobs');
@@ -223,7 +225,7 @@ const CTDeviceUI=(()=>{
             select.value=state.jobs[index];select.onchange=()=>{if(alive()){state.jobs[index]=select.value;message('');change()}};
           }
         }
-        confirm('작업표 실행',()=>{const error=CT.schedule(state.jobs);if(error)message(error);else{message('별 한 장, 달 한 장 인쇄 완료');solve(480)}});
+        confirm('작업표 실행',()=>{const error=CT.schedule(state.jobs);if(error)incorrect(error);else{message('별 한 장, 달 한 장 인쇄 완료');solve(480)}});
       }else if(kind==='council'){
         const keys=group();
         for(const [id,label] of Object.entries(CT.fields))button(keys,label,()=>{
@@ -239,9 +241,9 @@ const CTDeviceUI=(()=>{
         for(const id of cols)element(header,'th',CT.fields[id]??'―');
         for(const ticket of CT.tickets){const row=body.insertRow();for(const id of cols)element(row,'td',ticket[id]??'―')}
         confirm('전광판 게시',()=>{
-          if(state.columns.includes('name'))message('복도에서 누구나 이름을 볼 수 있어요. 운영 약속을 확인하세요.');
-          else if(!state.columns.includes('time'))message('입장할 시각이 보이지 않아요.');
-          else if(!state.columns.includes('id'))message('두 학생은 같은 반이에요. 각자 자기 줄을 찾을 수 있을까요?');
+          if(state.columns.includes('name'))incorrect('복도에서 누구나 이름을 볼 수 있어요. 운영 약속을 확인하세요.');
+          else if(!state.columns.includes('time'))incorrect('입장할 시각이 보이지 않아요.');
+          else if(!state.columns.includes('id'))incorrect('두 학생은 같은 반이에요. 각자 자기 줄을 찾을 수 있을까요?');
           else solve(450);
         });
       }

@@ -13,13 +13,14 @@ const REVIEW_ROOMS = [
 ];
 
 const RECOVERY_ROOMS = [{n:502,place:'우리 반 교실',href:'index.html',kind:'classroom'},...REVIEW_ROOMS];
-const SCHOOL_STORY_KEY = 'paperhotel.recovery.school.v2';
+const SCHOOL_STORY_KEY = globalThis.SchoolRecords?.storyKey || 'paperhotel.recovery.school.v2';
 const SCHOOL_REVIEW_KEY = 'paperhotel.recovery.review.v1';
 const SCHOOL_ESCAPE_DURATION = 10*60_000;
 
 function recoveryRoomLink(room, story) {
-  if (room.kind==='classroom') return story ? './' : 'index.html?review=1';
-  return room.href+(story?'?school=1':'');
+  const enrolled=story&&globalThis.SchoolRecords?.lesson;
+  if (room.kind==='classroom') return story ? (enrolled?'./?lesson=1':'./') : 'index.html?review=1';
+  return room.href+(enrolled?'?school=1&lesson=1':story?'?school=1':'');
 }
 
 function roomRestored(book, room) {
@@ -27,7 +28,7 @@ function roomRestored(book, room) {
 }
 
 function readSchoolBook(key='paperhotel.explore.v1'){
-  for(const store of ['localStorage','sessionStorage']){
+  for(const store of (key.startsWith('school.escape.lesson.')?['sessionStorage']:['localStorage','sessionStorage'])){
     try{
       const book=JSON.parse(globalThis[store].getItem(key));
       if(book && book.visits && typeof book.visits==='object')return book;
@@ -38,7 +39,7 @@ function readSchoolBook(key='paperhotel.explore.v1'){
 
 function writeSchoolBook(key,book){
   const value=JSON.stringify(book);
-  for(const store of ['localStorage','sessionStorage']){
+  for(const store of (key.startsWith('school.escape.lesson.')?['sessionStorage']:['localStorage','sessionStorage'])){
     try{globalThis[store].setItem(key,value);return true}catch{}
   }
   return false;
@@ -49,17 +50,17 @@ function schoolEscapeTimer(book){
   return Number.isFinite(timer?.startedAt)&&Number.isFinite(timer.deadline)?timer:null;
 }
 
-function beginSchoolAttempt(plan){
+function beginSchoolAttempt(plan,lessonAttempt=null){
   const startedAt=Date.now();
   return writeSchoolBook(SCHOOL_STORY_KEY,{
-    room:RECOVERY_ROOMS[0].n,visits:{},route:plan,
+    room:RECOVERY_ROOMS[0].n,visits:{},route:plan,...(lessonAttempt?{lessonAttempt}:{}),
     escapeTimer:{startedAt,deadline:startedAt+SCHOOL_ESCAPE_DURATION}
   });
 }
 
 function retrySchool(){
   writeSchoolBook(SCHOOL_STORY_KEY,{room:RECOVERY_ROOMS[0].n,visits:{}});
-  location.replace('./');
+  location.replace(recoveryRoomLink(RECOVERY_ROOMS[0],true));
 }
 
 function showSchoolTimeout(dialog,retry){
@@ -227,6 +228,7 @@ function setupSchoolTimer(number,{isSolved=()=>false,onExpire,key='paperhotel.ex
       const originalDeadline=deadline;
       deadline-=10_000;
       if(shared&&!save()){deadline=originalDeadline;return false}
+      if(shared){const room=RECOVERY_ROOMS.find(item=>item.n===number);if(room)globalThis.SchoolRecords?.event(readSchoolBook(key),room.kind,'hint')}
       if(check())return false;
       if(!shared)save();
       return true;

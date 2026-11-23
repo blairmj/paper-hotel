@@ -208,11 +208,13 @@ function renderSchoolRoutePicker(host,{heading,onStart}){
     refresh();
     map.querySelector('button').focus({preventScroll:true});
   };
-  confirm.onclick=()=>{
-    if(plan&&onStart(plan)===false){
-      error.textContent='진행을 저장할 수 없어요. 브라우저 설정을 확인해 주세요.';
-      error.hidden=false;
-    }
+  let starting=false;
+  confirm.onclick=async()=>{
+    if(!plan||starting)return;
+    starting=true;confirm.disabled=true;reset.disabled=true;map.inert=true;error.hidden=true;
+    try{if(await onStart(plan)===false)throw Error('진행을 저장할 수 없어요. 브라우저 설정을 확인해 주세요.')}
+    catch(e){error.textContent=e.message;error.hidden=false}
+    finally{starting=false;confirm.disabled=!plan;reset.disabled=!selected.size;map.inert=false}
   };
   controls.append(reset,confirm);
 
@@ -230,7 +232,17 @@ function renderSchoolRoutePicker(host,{heading,onStart}){
 
   const scrollArea=document.createElement('div');
   scrollArea.className='route-scroll';
+  if(globalThis.SchoolRecords?.lesson){
+    const c=SchoolRecords.context(),label=document.createElement('p');label.className='lesson-identity';
+    label.textContent=c.label+' · '+c.seat+'번 · 수업 참여';scrollArea.append(label);
+  }
   scrollArea.append(overview,map,result,error);
+  if(!globalThis.SchoolRecords?.lesson){
+    const links=document.createElement('div');links.className='lesson-access';
+    const participate=document.createElement('a');participate.href='join.html';participate.textContent='학급 코드로 참여';
+    const teacher=document.createElement('a');teacher.href='teacher.html';teacher.textContent='교사용 대시보드';
+    links.append(participate,teacher);scrollArea.append(links);
+  }
   host.replaceChildren(scrollArea,controls);
   refresh();
   heading.focus({preventScroll:true});

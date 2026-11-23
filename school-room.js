@@ -53,6 +53,9 @@ if(run.solved&&puzzle.control==='pin'){
   run.entry=puzzle.answer.slice();
 }
 
+function logPlay(kind,detail=''){
+  if(story&&globalThis.SchoolRecords?.lesson)SchoolRecords.event(book(),room.kind,kind,detail);
+}
 function recordRestoration(next){
   next.room=room.n;
   next.visits[room.n]={...next.visits[room.n],restoration:run};
@@ -164,6 +167,7 @@ function solve(revealMs=0){
   run.solved=true;
   const saved=story&&room.kind!=='computer'?save():countdown.stop(recordRestoration);
   if(!saved){run.solved=false;return}
+  logPlay('solve');
   opening=true;
   byId('spots').inert=true;roomHead.inert=true;
   function openDoor(){
@@ -192,7 +196,7 @@ function changed(){
 }
 
 function collectClue(id){
-  if(!run.found.includes(id)){run.found.push(id);save()}
+  if(!run.found.includes(id)){run.found.push(id);save();logPlay('clue',id)}
   byId('bag').hidden=false;
 }
 
@@ -233,8 +237,10 @@ function shelfPanel(firstCommand){
     const button=action(row,'',()=>{
       if(opening||run.solved||countdown.check()||!canOpenLibraryBook(run.shelf,run.entry,slot))return;
       run.entry.push(slot);
+      logPlay('book',(slot+1)+':'+run.shelf[slot]);
       world.setDigits(deviceEntry());draw();
       if(run.shelf[slot]===LOAN_NUMBER){solve(850);return}
+      if(run.entry.length===SHELF_LIMIT)logPlay('wrong');
       save();
       if(retry.hidden)row.focus({preventScroll:true});
       else retry.focus({preventScroll:true});
@@ -329,6 +335,7 @@ function ballLockerPanel(){
   function pick(label){
     if(countdown.check()||run.solved||run.picked===BALL_PICKUP.length)return;
     if(label!==BALL_PICKUP[run.picked]){
+      logPlay('wrong');
       feedback.textContent='회수 순서 단서를 다시 확인해 보세요.';
       return;
     }
@@ -357,7 +364,7 @@ function sportsPinPanel(){
     else{
       run.entry.push(key);
       if(run.entry.length===puzzle.answer.length&&!correct()){
-        run.entry=[];
+        logPlay('wrong');run.entry=[];
         feedback.textContent='비밀번호가 맞지 않아요. 네 자리를 다시 눌러 보세요.';
       }
     }
@@ -384,7 +391,7 @@ function devicePanel(kind,title,command){
     '<div id="deviceSurface"></div>','ct-device');
   const host=byId('deviceSurface');
   CTDeviceUI.open(kind,run.device,host,{
-    save,solve,
+    save,solve,record:logPlay,
     active:()=>dialog.open&&!countdown.check(),
     update:()=>world.setDigits(deviceEntry())
   },command);
@@ -419,21 +426,26 @@ function restart(){
 function beginTimer(){
   if(story)attempt=schoolEscapeTimer(book())?.startedAt;
   countdown=setupSchoolTimer(room.n,{key:bookKey,isSolved:()=>run.solved,onExpire:()=>{
+    logPlay('timeout');
     world.leaveWorkbench?.();
     world.clearKeys();opening=false;roomHead.inert=true;
     byId('escape').hidden=true;
     placeJumpInDialog();
     showSchoolTimeout(dialog,story?retrySchool:restart);
   }});
-  return !countdown.check();
+  const canPlay=!countdown.check();
+  if(canPlay&&!run.solved)logPlay('enter');
+  return canPlay;
 }
 function intro(){
   placeJumpInDialog();
   modal('들를 교실 고르기','','intro');
-  renderSchoolRoutePicker(content,{heading:byId('panelTitle'),onStart:plan=>{
+  renderSchoolRoutePicker(content,{heading:byId('panelTitle'),onStart:async plan=>{
     const progress=book();
     if(schoolEscapeTimer(progress)&&schoolRoute(progress)){location.reload();return}
-    if(!beginSchoolAttempt(plan))return false;
+    const enrollment=await SchoolRecords.reserve(plan.stops);
+    if(!beginSchoolAttempt(plan,enrollment))return false;
+    if(enrollment)SchoolRecords.started();
     run=newRun();resetWorld();byId('bag').hidden=true;
     close();beginTimer();save();
   }});
@@ -441,6 +453,7 @@ function intro(){
 function mandatoryDialog(){return ['intro','timeout'].includes(dialog.dataset.panel)}
 
 function start(){
+  if(SchoolRecords.lesson&&!SchoolRecords.storyKey){location.replace('join.html');return}
   const progress=book(),plan=schoolEscapeTimer(progress)&&schoolRoute(progress);
   let updated=false;
   if(story){
