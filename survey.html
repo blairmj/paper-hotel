@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="referrer" content="no-referrer">
+  <title>학생 설문 · 학교 탈출</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="lesson.css?v=survey1">
+</head>
+<body class="join-page">
+  <main class="join-card survey-card">
+    <p class="join-brand">학교 탈출</p>
+    <h1>학생 설문</h1>
+    <p id="surveyNote">이번에 풀어 본 퍼즐을 떠올려 보세요.</p>
+    <form id="surveyForm">
+      <div><label for="favorite">어느 교실의 퍼즐이 가장 재미있었나요?</label>
+        <select id="favorite" name="favorite" required hidden><option value="">교실 선택</option></select></div>
+      <div><label for="hardest">어느 교실의 퍼즐이 가장 어려웠나요?</label>
+        <select id="hardest" name="hardest" required hidden><option value="">교실 선택</option></select></div>
+      <div><label for="easiest">어느 교실의 퍼즐이 가장 쉬웠나요?</label>
+        <select id="easiest" name="easiest" required hidden><option value="">교실 선택</option></select></div>
+      <p id="surveyError" role="alert" hidden></p>
+      <button id="sendSurvey" type="submit" hidden>설문 보내기</button>
+    </form>
+    <p id="surveyDone" role="status" tabindex="-1" hidden></p>
+    <a id="surveyBack" href="./">게임으로</a>
+    <noscript>설문에 응답하려면 자바스크립트를 켜 주세요.</noscript>
+  </main>
+  <script src="class-records.js?v=survey1"></script>
+  <script src="review-rooms.js?v=lesson1"></script>
+  <script src="school-routes.js?v=ct58"></script>
+  <script src="survey.js?v=survey1"></script>
+</body>
+</html>

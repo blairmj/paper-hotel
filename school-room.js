@@ -108,6 +108,10 @@ function resetWorld(){
   if(puzzle.control==='pin')world.setBalls(run.picked);
 }
 
+function openSurvey(){
+  location.assign(SchoolRecords.lesson?'survey.html?lesson=1':'survey.html?solo=1');
+}
+
 function showFinish(){
   finished=true;
   roomHead.hidden=true;byId('spots').hidden=true;movement.hidden=true;
@@ -122,7 +126,9 @@ function showFinish(){
   world.showFinale(buildSchoolFinale(),()=>{
     panel.innerHTML='<p role="status">교실 장치 '+restored+'/'+preceding.length+' 복구 · 현관 열림</p><h1 tabindex="-1">하교 완료</h1>';
     panel.classList.add('finale-complete');
-    action(panel,'처음부터',retrySchool,true);
+    const buttons=document.createElement('div');buttons.className='survey-actions';panel.append(buttons);
+    action(buttons,'학생 설문',openSurvey,true);
+    action(buttons,'처음부터',retrySchool);
     panel.querySelector('h1').focus({preventScroll:true});
   });
 }
@@ -432,6 +438,14 @@ function beginTimer(){
     byId('escape').hidden=true;
     placeJumpInDialog();
     showSchoolTimeout(dialog,story?retrySchool:restart);
+    if(story){
+      const progress=book();
+      if(!progress.surveyTimeoutRoom&&schoolEscapeTimer(progress)?.startedAt===attempt){
+        progress.surveyTimeoutRoom=room.kind;
+        writeSchoolBook(bookKey,progress);
+      }
+      action(content.querySelector('.actions'),'학생 설문',openSurvey);
+    }
   }});
   const canPlay=!countdown.check();
   if(canPlay&&!run.solved)logPlay('enter');

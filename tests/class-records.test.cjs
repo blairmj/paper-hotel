@@ -76,3 +76,26 @@ test('방 이동 전 오프라인 기록은 재접속 후 한 번만 전달되�
   assert.equal(local.length, 0);
   assert.deepEqual(saved.map(e => e.kind), ['enter', 'book']);
 });
+
+test('설문 전에는 이 플레이의 미전송 기록부터 보내고 다른 플레이의 대기 기록은 보존한다', async () => {
+  const session = storage(), local = storage(), posts = [];
+  const fetch = async (url, options) => {
+    const action=url.split('/').at(-1), data=JSON.parse(options.body);
+    posts.push({action,data});
+    return Response.json({accepted:action==='survey' ? true : data.events.length});
+  };
+  const app=openPage('?lesson=1',session,local,fetch);
+  const attempt=()=>({lessonAttempt:{id:webcrypto.randomUUID(),key:'a'.repeat(64)},escapeTimer:{startedAt:Date.now()}});
+  const mine=attempt(),another=attempt();
+  app.event(another,'classroom','enter');
+  app.event(mine,'classroom','enter');
+  app.event(mine,'classroom','timeout');
+  const choices={favorite:'classroom',hardest:'unsure',easiest:'classroom'};
+  await app.submitSurvey(mine.lessonAttempt,choices);
+  assert.deepEqual(posts.map(p=>p.action),['events','survey']);
+  assert.equal(posts[0].data.events.length,2);
+  assert.equal(posts[0].data.id,mine.lessonAttempt.id);
+  assert.deepEqual(posts[1].data.answers,choices);
+  assert.equal(local.length,1);
+  assert.ok(local.key(0).includes(another.lessonAttempt.id));
+});

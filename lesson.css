@@ -2,3 +2,10 @@
 .join-card{box-sizing:border-box;width:min(29rem,calc(100% - 1.5rem));padding:clamp(1.25rem,5vw,2rem);border:1px solid #bdcfd7;border-top:5px solid #376c83;border-radius:7px;background:#fff}
 .join-brand{margin:0;color:#446e81;font-weight:700}.join-card h1{margin:.25rem 0 1.4rem;font-size:clamp(1.7rem,6vw,2.3rem);letter-spacing:-.06em}.join-card form{display:grid;gap:.42rem}.join-card label{font-weight:650}.join-card input{box-sizing:border-box;min-width:0;padding:.58rem .72rem;margin-bottom:.45rem;border:1px solid #92aab7;border-radius:4px;font:inherit}.join-card p{word-break:keep-all}.join-card form p{margin:.35rem 0 .65rem;font-size:.94rem;color:#476074}.join-card [role=alert]{color:#9a3933}.join-card button{padding:.67rem;border:0;border-radius:4px;background:#255673;color:#fff;font:650 1rem system-ui;cursor:pointer}.join-card button:disabled{opacity:.65}.join-card a{display:inline-block;margin-top:1rem;color:#36576d}.join-card :focus-visible{outline:3px solid #2c77c3;outline-offset:2px}
 .lesson-identity{margin:0 0 .55rem!important;font-size:.93rem;color:#27596b;font-weight:650}.lesson-access{font-size:.88rem;padding:.35rem 0;display:flex;gap:1rem;flex-wrap:wrap}.lesson-access a{color:#36576d}#recordSync{padding:.3rem .45rem;background:#fff2cc;color:#5b481e;border-radius:4px;font-size:.85rem}
+
+.survey-card{width:min(32rem,calc(100% - 1.5rem));margin:1rem auto}
+.survey-card h1{margin-bottom:.45rem}.survey-card #surveyNote{color:#475f70;margin:.3rem 0 1.35rem}
+.survey-card form{gap:1.05rem}.survey-card label{display:block;margin:0 0 .35rem;line-height:1.45}
+.survey-card select{width:100%;min-height:2.8rem;border:1px solid #91a9b6;border-radius:4px;background:#fff;color:#1d3748;padding:.5rem .65rem;font:inherit}
+.survey-card button{margin-top:.15rem}.survey-card #surveyDone{margin:.75rem 0;color:#205948}
+.survey-card [hidden]{display:none!important}.survey-actions{display:flex;justify-content:center;gap:.5rem;flex-wrap:wrap}

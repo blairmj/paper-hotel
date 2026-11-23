@@ -56,6 +56,20 @@ globalThis.SchoolRecords=(()=>{
     if(badge){badge.textContent=text;badge.hidden=!text}
   }
   function schedule(ms){if(!retryTimer)retryTimer=setTimeout(()=>{retryTimer=0;flush()},ms)}
+  async function sendEvents(batch){
+    const first=batch[0][1];
+    const result=await post('events',{id:first.id,key:first.key,events:batch.map(([,entry])=>entry.event)});
+    if(result.accepted!==batch.length)throw Error('저장 확인 대기');
+    batch.forEach(([k])=>remove(k));
+  }
+  async function submitSurvey(ref,answers){
+    if(!lesson||!ref)throw Error('이 플레이의 학급을 확인할 수 없어요.');
+    // The survey checks visited rooms on the server. Send this attempt's pending visits first.
+    const pending=[...savedEntries()].filter(([,entry])=>entry.id===ref.id);
+    for(let offset=0;offset<pending.length;offset+=24)await sendEvents(pending.slice(offset,offset+24));
+    const result=await post('survey',{id:ref.id,key:ref.key,answers});
+    if(result.accepted!==true)throw Error('설문을 보내지 못했어요. 다시 시도해 주세요.');
+  }
   async function flush(){
     if(busy)return;
     const pending=savedEntries();
@@ -64,9 +78,7 @@ globalThis.SchoolRecords=(()=>{
     const batch=[...pending.entries()].filter(([,r])=>r.id===first.id).slice(0,24);
     busy=true;
     try{
-      const result=await post('events',{id:first.id,key:first.key,events:batch.map(([,r])=>r.event)});
-      if(result.accepted!==batch.length)throw Error('저장 확인 대기');
-      batch.forEach(([k])=>remove(k));delay=1500;showSync('');schedule(100);
+      await sendEvents(batch);delay=1500;showSync('');schedule(100);
     }catch(e){
       if(e.status===403){
         // A deleted class no longer accepts its former attempts.
@@ -94,5 +106,5 @@ globalThis.SchoolRecords=(()=>{
   window.addEventListener('pagehide',flush);
   document.addEventListener('visibilitychange',()=>{if(document.hidden)flush()});
   const active=context();
-  return {lesson,context,join,reserve,started,event,flush,storyKey:lesson&&active?'school.escape.lesson.'+active.session:null};
+  return {lesson,context,join,reserve,started,event,flush,submitSurvey,storyKey:lesson&&active?'school.escape.lesson.'+active.session:null};
 })();
