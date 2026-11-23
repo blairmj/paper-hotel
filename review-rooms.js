@@ -7,6 +7,8 @@ const REVIEW_ROOMS = [
   {n:205, place:'도서실', href:'library.html', kind:'library'},
   {n:204, place:'과학실', href:'science.html', kind:'science'},
   {n:206, place:'방송실', href:'broadcast.html', kind:'broadcast'},
+  {n:210, place:'인쇄실', href:'print.html', kind:'print'},
+  {n:211, place:'학생회실', href:'council.html', kind:'council'},
   {n:209, place:'컴퓨터실', href:'computer.html', kind:'computer'}
 ];
 

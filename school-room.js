@@ -25,12 +25,8 @@ function migrateSportsProgress(previous){
 
 function newRun(){
   if(puzzle.control==='shelf')return {revision:puzzle.revision,found:[],entry:[],shelf:makeLibraryShelf(),solved:false};
-  let entry=Array(puzzle.answer.length).fill(['routing','debug'].includes(puzzle.control)?'':'0');
-  if(['sequence','pin'].includes(puzzle.control))entry=[];
-  const restoration={revision:puzzle.revision,found:[],entry,solved:false};
-  if(puzzle.control==='pin')restoration.picked=0;
-  if(room.kind==='science')restoration.beadPlaces=initialBeadPlaces();
-  return restoration;
+  if(puzzle.control==='device')return {revision:puzzle.revision,found:[],entry:[],device:CT.fresh(room.kind),solved:false};
+  return {revision:puzzle.revision,found:[],entry:[],picked:0,solved:false};
 }
 let run=newRun(),world,countdown,attempt,reviewJump,opening=false,finished=false;
 if(saved&&(!outdated||puzzle.control==='shelf')){
@@ -38,7 +34,7 @@ if(saved&&(!outdated||puzzle.control==='shelf')){
 }
 if(saved&&!outdated){
   if(puzzle.control==='pin'&&Number.isInteger(saved.picked)&&saved.picked>=0&&saved.picked<=BALL_PICKUP.length)run.picked=saved.picked;
-  if(room.kind==='science'&&validBeadPlaces(saved.beadPlaces))run.beadPlaces=saved.beadPlaces.slice();
+  if(puzzle.control==='device')run.device=CT.restore(room.kind,saved.device,run.device);
   if(Array.isArray(saved.entry)){
     if(puzzle.control==='shelf'){
       if(validLibraryShelf(saved.shelf)){
@@ -49,23 +45,11 @@ if(saved&&!outdated){
         }
       }
     }
-    else if(puzzle.control==='sequence')run.entry=saved.entry.filter(key=>puzzle.keys.includes(key)).slice(0,puzzle.answer.length);
-    else if(puzzle.control==='pin'){
-      if(saved.entry.length<puzzle.answer.length&&saved.entry.every(value=>puzzle.keys.includes(value)))run.entry=saved.entry.slice();
-    }
-    else run.entry=run.entry.map((value,i)=>{
-      const stored=saved.entry[i];
-      let valid;
-      if(puzzle.control==='selection')valid=stored==='0'||stored==='1';
-      else if(puzzle.control==='dial')valid=typeof stored==='string'&&/^\d$/.test(stored);
-      else if(puzzle.control==='debug')valid=Object.hasOwn(BROADCAST_COMMANDS,stored);
-      else valid=Object.hasOwn(ROUTE_NAMES,stored);
-      return valid?stored:value;
-    });
+    else if(puzzle.control==='pin'&&saved.entry.length<puzzle.answer.length&&saved.entry.every(value=>puzzle.keys.includes(value)))run.entry=saved.entry.slice();
   }
 }
 run.solved=saved?.solved===true&&(!outdated||story);
-if(run.solved&&puzzle.control!=='shelf'){
+if(run.solved&&puzzle.control==='pin'){
   run.entry=puzzle.answer.slice();
 }
 
@@ -113,12 +97,12 @@ function action(host,label,fn,primary=false){
 function actions(){const host=document.createElement('div');host.className='actions';content.append(host);return host}
 function correct(){return run.entry.length===puzzle.answer.length&&puzzle.answer.every((value,i)=>run.entry[i]===value)}
 function deviceEntry(){
+  if(puzzle.control==='device')return run.device;
   return run.shelf?run.shelf.map((number,slot)=>run.entry.includes(slot)?number:null):run.entry;
 }
 function resetWorld(){
   world.reset(run.solved,deviceEntry());
   if(puzzle.control==='pin')world.setBalls(run.picked);
-  if(run.beadPlaces)world.setBalance(run.beadPlaces);
 }
 
 function showFinish(){
@@ -207,19 +191,6 @@ function changed(){
   else save();
 }
 
-function scoreSheet(){
-  return '<div class="number-score" aria-label="악보에 적힌 건반 번호">'+
-    MUSIC_KEYS.map(number=>'<span><b aria-hidden="true">♩</b>'+number+'</span>').join('')+'</div>';
-}
-function signalRecords(){
-  const fields=Object.keys(SIGNAL_FIELDS);
-  return '<table class="record-table"><thead><tr><th scope="col">신호</th>'+
-    fields.map(field=>'<th scope="col">'+SIGNAL_FIELDS[field]+'</th>').join('')+
-    '<th scope="col">결과</th></tr></thead><tbody>'+
-    SAMPLE_SIGNALS.map(signal=>'<tr><th scope="row">'+signal.name+'</th>'+
-      fields.map(field=>'<td>'+signalValue(signal,field)+'</td>').join('')+
-      '<td>'+ROUTE_NAMES[routeSignal(signal)]+'</td></tr>').join('')+'</tbody></table>';
-}
 function collectClue(id){
   if(!run.found.includes(id)){run.found.push(id);save()}
   byId('bag').hidden=false;
@@ -233,27 +204,17 @@ function inspectClue(id){
     modal(clue.lines.join(' '),'','library-note');
     return;
   }
-  switch(id){
-    case 'balanceBench':
-      world.openWorkbench(places=>{
-        if(countdown.check()||run.solved)return false;
-        const previous=run.beadPlaces;
-        run.beadPlaces=places;
-        if(!save()){run.beadPlaces=previous;return false}
-        world.setBalance(places,true);
-        return true;
-      });
-      break;
-    case 'paper':modal(clue.name,scoreSheet());break;
-    case 'recordA':modal(clue.name,signalRecords());break;
-    default:modal(clue.name,'<div class="school-clue">'+schoolClueSvg(id)+'</div>');
-  }
+  if(id==='practiceRail'){devicePanel(id,clue.name);return}
+  if(CT.clues[id]){
+    modal(clue.name,'<div class="ct-clue" id="clueDetail"></div>','ct-clue');
+    CTDeviceUI.clue(id,byId('clueDetail'));
+  }else modal(clue.name,'<div class="school-clue">'+schoolClueSvg(id)+'</div>');
 }
 function inventory(){
   modal('찾은 단서','<div class="collected-clues" id="collectedClues"></div>');
   for(const clue of room.clues.filter(clue=>run.found.includes(clue.id))){
     action(byId('collectedClues'),clue.name,()=>{
-      if(clue.id==='balanceBench'){close();world.inspectTarget(clue.id)}
+      if(clue.id==='practiceRail'){close();world.inspectTarget(clue.id)}
       else inspectClue(clue.id);
     });
   }
@@ -261,34 +222,6 @@ function inventory(){
 
 function deviceInstructions(style='object-note'){
   return '<p class="'+style+'" id="deviceInstructions">'+puzzle.instructions+'</p>';
-}
-
-function sequencePanel(){
-  modal(puzzle.title,deviceInstructions()+'<div class="sequence-output" id="sequenceOutput" aria-label="입력한 순서"></div>'+
-    '<div class="sequence-keys" id="sequenceKeys"></div><p class="readout" id="entryFeedback" role="status"></p>','lock');
-  function draw(){
-    const steps=puzzle.answer.map((_,i)=>'<span data-next="'+(i===run.entry.length)+'">'+
-      (RESET_GLYPHS[run.entry[i]]??run.entry[i]??'·')+'</span>');
-    const failed=run.entry.length===puzzle.answer.length&&!correct();
-    const output=byId('sequenceOutput');
-    output.innerHTML=steps.join('');
-    output.dataset.invalid=String(failed);
-    byId('entryFeedback').textContent=failed?'순서를 다시 확인해 보세요.':'';
-    undo.disabled=!run.entry.length;
-  }
-  for(const key of puzzle.keys){
-    const label=RESET_KEYS[key];
-    const button=action(byId('sequenceKeys'),label,()=>{
-      if(countdown.check()||run.entry.length>=puzzle.answer.length)return;
-      run.entry.push(key);draw();changed();
-    });
-    button.innerHTML='<b aria-hidden="true">'+RESET_GLYPHS[key]+'</b><span>'+label+'</span>';
-  }
-  const undo=action(actions(),'한 단계 지우기',()=>{
-    if(countdown.check())return;
-    run.entry.pop();draw();changed();
-  });
-  draw();
 }
 
 function shelfPanel(firstCommand){
@@ -337,116 +270,6 @@ function shelfPanel(firstCommand){
   }
   draw();
   if(firstCommand)buttons.find(button=>button.dataset.command===firstCommand)?.click();
-}
-
-function selectionPanel(){
-  modal(puzzle.title,deviceInstructions()+
-    '<div class="print-keys" id="printKeys" aria-label="인쇄할 도안"></div>','lock');
-  const keys=byId('printKeys');
-  for(const [i,{label}] of PRINT_SAMPLES.entries()){
-    const button=action(keys,label,()=>{
-      run.entry[i]=run.entry[i]==='1'?'0':'1';
-      button.setAttribute('aria-pressed',String(run.entry[i]==='1'));
-      changed();
-    });
-    button.setAttribute('aria-label','도안 '+label);
-    button.setAttribute('aria-pressed',String(run.entry[i]==='1'));
-  }
-}
-
-function dial(host,i) {
-  const wheel=document.createElement('div');wheel.className='digit';host.append(wheel);
-  const output=document.createElement('output');
-  output.textContent=run.entry[i];output.setAttribute('aria-label',(i+1)+'번째 숫자');
-  function rotate(delta){
-    run.entry[i]=String((Number(run.entry[i])+delta+10)%10);
-    output.textContent=run.entry[i];changed();
-  }
-  action(wheel,'▲',()=>rotate(1)).setAttribute('aria-label',(i+1)+'번째 숫자 올리기');
-  wheel.append(output);
-  action(wheel,'▼',()=>rotate(-1)).setAttribute('aria-label',(i+1)+'번째 숫자 내리기');
-}
-function dialPanel(){
-  if(room.kind!=='music'){
-    modal(puzzle.title,deviceInstructions()+
-      '<div class="switches four-digits" id="wheels"></div>','lock');
-    run.entry.forEach((_,i)=>dial(byId('wheels'),i));
-    return;
-  }
-  modal(puzzle.title,deviceInstructions()+'<div class="dial-pairs" id="wheels" aria-label="변환 결과"></div>','lock');
-  for(let i=0;i<MUSIC_CONVERTED.length;i+=2){
-    const pair=document.createElement('div');pair.className='dial-pair';byId('wheels').append(pair);
-    for(const position of [i,i+1]){
-      const gap=MUSIC_GAPS.indexOf(position);
-      if(gap>=0)dial(pair,gap);
-      else{
-        const value=document.createElement('span');value.className='fixed-digit';
-        value.textContent=MUSIC_CONVERTED[position];pair.append(value);
-      }
-    }
-  }
-}
-
-function routingPanel(){
-  modal(puzzle.title,deviceInstructions()+'<div class="signal-tests" id="signalTests"></div><p class="readout" id="entryFeedback" role="status"></p>','routing');
-  function feedback(){
-    byId('entryFeedback').textContent=run.entry.every(Boolean)&&!correct()?'신호 경로를 다시 확인해 보세요.':'';
-  }
-  for(const [i,signal] of NEW_SIGNALS.entries()){
-    const card=document.createElement('fieldset');
-    card.innerHTML='<legend>신호 '+signal.name+'</legend><div class="signal-flags">'+
-      Object.entries(SIGNAL_FIELDS).map(([field,label])=>'<span>'+label+' <b>'+signalValue(signal,field)+'</b></span>').join('')+'</div>';
-    const select=document.createElement('select');
-    select.setAttribute('aria-label','신호 '+signal.name+'의 경로');
-    select.innerHTML='<option value="">경로 선택</option>'+
-      Object.entries(ROUTE_NAMES).map(([value,label])=>'<option value="'+value+'">'+label+'</option>').join('');
-    select.value=run.entry[i];
-    select.onchange=()=>{run.entry[i]=select.value;feedback();changed()};
-    card.append(select);byId('signalTests').append(card);
-  }
-  feedback();
-}
-
-function mixerPanel(){
-  const result=()=>run.entry.every(Boolean)?broadcastTrace(run.entry):null;
-  const initial=result();
-  if(initial?.passed){solve();return}
-  modal(puzzle.title,deviceInstructions('mixer-guide')+
-    '<div class="mixer-order" id="mixerOrder" role="group" aria-label="방송 순서"></div>'+
-    '<div class="mixer-pads" id="mixerPads" role="group" aria-label="방송 명령"></div>'+
-    '<p class="mixer-feedback" id="entryFeedback" role="status"></p>','mixer');
-  let selected=initial?.trace.length??run.entry.indexOf('');
-  const feedback=byId('entryFeedback');
-  const slots=run.entry.map((_,i)=>{
-    const slot=action(byId('mixerOrder'),String(i+1),()=>{selected=i;draw(result())});
-    slot.innerHTML='<small aria-hidden="true">'+(i+1)+'</small><span></span>';
-    return slot;
-  });
-  function draw(outcome){
-    const failed=outcome&&!outcome.passed?outcome.trace.length:-1;
-    for(const [i,slot] of slots.entries()){
-      const label=BROADCAST_COMMANDS[run.entry[i]]?.label;
-      slot.lastElementChild.textContent=label??'—';
-      slot.setAttribute('aria-label',(i+1)+'단계 '+(label??'비어 있음'));
-      slot.setAttribute('aria-pressed',String(i===selected));
-      slot.dataset.result=i===failed?'failed':i<failed?'passed':'';
-    }
-    feedback.textContent=failed<0?'':(failed+1)+'단계에서 멈췄어요. 현재 상태는 '+outcome.state+'입니다.';
-  }
-  for(const [key,{label}] of Object.entries(BROADCAST_COMMANDS)){
-    const pad=action(byId('mixerPads'),label,()=>{
-      if(countdown.check())return;
-      run.entry[selected]=key;
-      world.setDigits(run.entry);
-      const outcome=result();
-      if(outcome?.passed){solve();return}
-      const next=run.entry.findIndex((value,i)=>!value&&i>selected);
-      selected=outcome?.trace.length??(next<0?run.entry.indexOf(''):next);
-      save();draw(outcome);
-    });
-    pad.dataset.command=key;
-  }
-  draw(result());
 }
 
 function ballLockerPanel(){
@@ -555,11 +378,22 @@ function sportsPinPanel(){
   keys.firstElementChild.focus({preventScroll:true});
 }
 
+function devicePanel(kind,title,command){
+  const practice=kind==='practiceRail';
+  modal(title,(practice?'<p>'+CT.clues.practiceRail[1]+'</p>':deviceInstructions())+
+    '<div id="deviceSurface"></div>','ct-device');
+  const host=byId('deviceSurface');
+  CTDeviceUI.open(kind,run.device,host,{
+    save,solve,
+    active:()=>dialog.open&&!countdown.check(),
+    update:()=>world.setDigits(deviceEntry())
+  },command);
+}
 function inspectLock(command){
   if(run.solved||!countdown||countdown.check())return;
-  const panels={sequence:sequencePanel,selection:selectionPanel,dial:dialPanel,routing:routingPanel,debug:mixerPanel,
-    pin:sportsPinPanel,shelf:shelfPanel};
-  panels[puzzle.control](command);
+  if(puzzle.control==='device')devicePanel(room.kind,puzzle.title,command);
+  else if(puzzle.control==='pin')sportsPinPanel();
+  else shelfPanel(command);
   if(!run.solved)appendRoomTextHint(content,countdown,puzzle.hint);
 }
 
@@ -574,7 +408,10 @@ function directory(){
 }
 function restart(){
   close();
-  run=newRun();opening=false;save();byId('bag').hidden=true;byId('escape').hidden=true;
+  const previous=run;
+  run=newRun();
+  if(room.kind==='science')run.device.lower=previous.device.lower==='left'?'right':'left';
+  opening=false;save();byId('bag').hidden=true;byId('escape').hidden=true;
   roomHead.inert=false;byId('spots').inert=false;
   movement.hidden=false;resetWorld();
   countdown?.reset();
@@ -598,7 +435,7 @@ function intro(){
     if(schoolEscapeTimer(progress)&&schoolRoute(progress)){location.reload();return}
     if(!beginSchoolAttempt(plan))return false;
     run=newRun();resetWorld();byId('bag').hidden=true;
-    close();beginTimer();
+    close();beginTimer();save();
   }});
 }
 function mandatoryDialog(){return ['intro','timeout'].includes(dialog.dataset.panel)}

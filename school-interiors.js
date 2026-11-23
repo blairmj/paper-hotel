@@ -28,12 +28,12 @@ const SchoolInterior = (() => {
     });
     const clues = music ? [
       target('paper', '피아노 악보', SCORE_CENTER, SCORE.width, SCORE.height, -3.07, 2.35),
-      target('musicSample', '보면대 변환 기록',
+      target('musicSample', '보면대의 반복 띠 안내',
         [REHEARSAL_SEATS[0].x+STAND_OFFSET,1.172,REHEARSAL_SEATS[0].z-STAND_DISTANCE+.026],
         MUSIC_SAMPLE.width,MUSIC_SAMPLE.height,-3.55,4.03)
     ] : [
-      target('printSamples', '작업대의 판화 도안', PRINT_SHEET.center, PRINT_SHEET.width, PRINT_SHEET.height, 2.25, 6.82),
-      target('printRule', '게시판의 인쇄 기록', [-3.71, 2.13, .086], 1.20, .70, -3.10, 2.15)
+      target('printSamples', '작업대의 벽화 밑그림', PRINT_SHEET.center, PRINT_SHEET.width, PRINT_SHEET.height, 2.25, 6.82),
+      target('printRule', '게시판의 물감 번짐 견본', [-3.71, 2.13, .086], 1.20, .70, -3.10, 2.15)
     ];
     const entry = RECOVERY_ROOMS.find(item => item.kind === kind);
     return {
@@ -41,7 +41,7 @@ const SchoolInterior = (() => {
       start: [0, 1.55, 9.24], firstView: [0, 1.10, 0],
       portraitView: music ? [1.5, 1.45, 0] : [0, 1.4, 0],
       door: [DOOR.x, DOOR.height / 2, .05], doorReveal:{x:DOOR.x-.18,z:2.62}, lock, clues,
-      targets: [target('lock', music ? '문 다이얼' : '문 인쇄판', lock.center, lock.width, lock.height, lock.center[0], 1.85), ...clues],
+      targets: [target('lock', SCHOOL_PUZZLES[kind].title, lock.center, lock.width, lock.height, lock.center[0], 1.85), ...clues],
       obstacles: music ? [
         [-1.82, 1.82, 4.06, 6.48], [-5.19, -2.55, .05, 1.42],
         [3.07, 3.73, 3.27, 3.97], [4.45, 5.75, 2.16, 2.67],
@@ -344,10 +344,10 @@ const SchoolInterior = (() => {
         g.moveTo(left,y);g.lineTo(left+215,y);g.stroke();
       }
       g.fillStyle = '#392e29';
-      g.font='600 36px Arial,sans-serif';
+      g.font='600 29px Malgun Gothic,sans-serif';
       g.textAlign='center';
-      for (const [i,number] of MUSIC_KEYS.entries()) {
-        const x=(i<4?78:351)+(i%4)*54, y=number==='1'?175:149;
+      for (const [i,number] of CT.motif.entries()) {
+        const x=(i<5?70:345)+(i%5)*44, y=number==='북'?175:number==='짝'?160:146;
         g.beginPath();
         g.ellipse(x,y,11,7,-.28,0,Math.PI*2);
         g.fill();

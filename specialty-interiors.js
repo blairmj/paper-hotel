@@ -55,6 +55,28 @@ const SpecialtyInteriors = (() => {
   });
 
   const designs = {
+    print:{
+      size:[7.4,6.25,2.92],trim:'#996c62',entrance:{x:2.30,width:1.25,height:2.24,moldingColor:'#ac5d57',opensOut:true},
+      lock:{id:'press',center:[-.95,1.28,2.08],width:.81,height:.49,approach:{x:-.95,z:3.62}},
+      statusLamp:{xyz:[1.44,1.34,.09]},doorReveal:{x:2.09,z:1.94},
+      start:[.35,1.55,5.82],view:[-.62,1.26,1.38],viewAngle:58,
+      obstacles:[[-2.97,.69,.90,2.39],[-3.60,-2.86,3.35,5.55],[1.26,3.22,3.70,4.66]],
+      clues:[
+        {id:'printJobs',name:'벽의 포스터 주문서',xyz:[-.25,1.98,.065],surface:{width:.90,height:.57},approach:{x:.97,z:1.74}},
+        {id:'printManual',name:'재단대의 기계 안내',xyz:[2.31,1.12,4.22],surface:{width:.69,height:.41},placement:'stand',approach:{x:2.31,z:5.16}}
+      ], build:printShop
+    },
+    council:{
+      size:[8.1,6.70,3.20],trim:'#6d6b94',entrance:{x:2.72,width:1.29,height:2.26,moldingColor:'#786197',opensOut:true},
+      lock:{id:'display',center:[-.84,1.68,.115],width:1.72,height:.80,approach:{x:-.84,z:1.55}},
+      statusLamp:{xyz:[1.79,1.35,.09]},doorReveal:{x:2.42,z:2.07},
+      start:[.78,1.55,6.32],view:[-.72,1.36,.29],viewAngle:58,
+      obstacles:[[-2.44,.10,2.64,4.55],[-3.87,-3.26,3.78,5.75],[2.41,3.67,3.90,4.85]],
+      clues:[
+        {id:'councilTickets',name:'회의 탁자의 접수증',xyz:[-1.20,.99,4.05],surface:{width:.73,height:.38},placement:'stand',approach:{x:-1.20,z:5.30}},
+        {id:'councilNotice',name:'게시판의 운영 약속',xyz:[-2.89,1.62,.09],surface:{width:1.0,height:.61},approach:{x:-2.58,z:1.39}}
+      ],build:councilChamber
+    },
     library:{
       size:[8.6,7.2,3.14], trim:'#b59365',
       entrance:{x:3.34,width:1.30,height:2.22,moldingColor:'#d6a333'},
@@ -80,8 +102,8 @@ const SpecialtyInteriors = (() => {
     science:{
       size:[9.1,7.9,3.48], trim:'#2c5a9e',
       entrance:{side:'right',x:-1.82,width:1.34,height:2.30,moldingColor:'#2a5187',opensOut:true},
-      lock:{id:'lock',center:[4.45,1.34,3.22],width:.43,height:.26,depth:.045,rotationY:-quarterTurn,
-        approach:{x:3.32,z:3.48}},
+      lock:{id:'marbleRail',center:[lab[0].x,1.45,3.98],width:1.27,height:.88,depth:.13,
+        approach:{x:lab[0].x,z:5.64}},
       statusLamp:{xyz:[4.45,1.64,3.22],angle:-quarterTurn},doorReveal:{x:2.12,z:1.17},
       start:[-.15,1.55,7.59],view:[-.075,1.26,1.38],viewAngle:58,
       obstacles:[
@@ -90,8 +112,10 @@ const SpecialtyInteriors = (() => {
         [-3.77,3.77,.22,.99]
       ],
       clues:[
-        {id:'balanceBench',name:'실험대의 양팔저울',xyz:[lab[0].x,1.16,3.94],placement:'bench',
-          surface:{width:1.63,height:.51,depth:.70},inspectFromAnySide:true,approach:{x:lab[0].x,z:5.19}}
+        {id:'practiceRail',name:'연습대의 갈림판',xyz:[lab[1].x,1.42,3.44],placement:'bench',
+          surface:{width:1.04,height:.79,depth:.13},approach:{x:lab[1].x,z:4.95}},
+        {id:'railNote',name:'벽의 실험 순서표',xyz:[-.65,1.83,.055],placement:'wall',
+          surface:{width:.98,height:.62},approach:{x:0,z:1.58}}
       ],
       build:science
     },
@@ -109,9 +133,9 @@ const SpecialtyInteriors = (() => {
         boundsOf({...studioSeat,w:.57,d:.60},.08),boundsOf({...tripod,w:.70,d:.69},.09)
       ],
       clues:[
-        {id:'broadcastRules',name:'진행석의 방송 장치 안내표',xyz:[-2.35,1.04,1.68],
+        {id:'broadcastRules',name:'진행석의 방송 암호표',xyz:[-2.35,1.04,1.68],
           surface:{width:.58,height:.32},approach:{x:-2.22,z:2.44},placement:'stand'},
-        {id:'broadcastLog',name:'믹서 옆 방송 시험 기록',xyz:[3.02,1.074,3.92],
+        {id:'broadcastLog',name:'믹서 옆 신호등 수신 기록',xyz:[3.02,1.074,3.92],
           surface:{width:.59,height:.35},rotationY:-quarterTurn,approach:{x:2.03,z:3.92},placement:'stand'}
       ],
       build:broadcast
@@ -458,6 +482,125 @@ const SpecialtyInteriors = (() => {
     cylinder(unit,.033,.033,.016,-.114,.242,.085,dark,18).rotation.x=quarterTurn;
   }
 
+
+  function marbleBoard(scene,x,z,practice){
+    const width=practice?1.04:1.27,height=practice?.76:.88;
+    const unit=positionGroup(scene,x,.94,z);
+    const base=standard('#354d61',.56),plate=standard('#b7d6e8',.56),track=standard('#eef4ed',.40);
+    const brass=standard('#f3aa47',.38,.25);
+    rounded(unit,width,.06,.38,0,.03,-.065,base,.017);
+    rounded(unit,width,height,.054,0,.08+height/2,-.018,plate,.025);
+    const place=(u,v)=>[(u/300-.5)*(width-.04),.08+height*(1-v/(practice?160:181)),.032];
+    const branch=(a,b)=>rod(unit,place(...a),place(...b),.017,track);
+    const pivot=practice?[150,46]:[150,44],low=[100,83];
+    branch([150,10],pivot);
+    if(practice){branch(pivot,[60,123]);branch(pivot,[240,123])}
+    else{branch(pivot,low);branch(pivot,[241,142]);branch(low,[38,142]);branch(low,[137,142])}
+    function vane(at){
+      const [cx,cy]=place(...at),joint=positionGroup(unit,cx,cy,.058);
+      rounded(joint,.024,.103,.017,0,-.042,0,brass,.007);
+      cylinder(joint,.017,.017,.015,0,0,.018,base,18).rotation.x=quarterTurn;
+      return joint;
+    }
+    const a=vane(pivot),b=practice?null:vane(low);
+    const cups=[];
+    for(const [u,label] of (practice?[[60,'왼쪽'],[240,'오른쪽']]:[[38,'별'],[137,'달'],[241,'해']])){
+      const [cx,cy]=place(u,practice?124:143);
+      const cupMaterial=standard('#38596d',.52);
+      rounded(unit,.149,.076,.085,cx,cy-.037,.055,cupMaterial,.012);
+      cups.push({label,cupMaterial});
+      const mark=InteriorArtwork.canvasMap(140,55,(g,w,h)=>{
+        g.fillStyle='#24445c';g.fillRect(0,0,w,h);g.fillStyle='white';g.textAlign='center';g.font='bold 34px Malgun Gothic,sans-serif';g.fillText(label,w/2,40);
+      });
+      patchPlane(unit,.143,.060,cx,cy-.033,.103,mark);
+    }
+    return (top,lower,selected)=>{
+      a.rotation.z=top==='left'?-.77:.77;
+      if(b)b.rotation.z=lower==='left'?-.77:.77;
+      for(const {label,cupMaterial} of cups)cupMaterial.color.set(label===selected?'#e89336':'#38596d');
+    };
+  }
+
+  function activityFinish(art,kind){
+    const print=kind==='print';
+    return {sample:art.sample,surface(name,w,h,side){
+      if(name!=='wall')return art.surface(name,w,h,side);
+      return InteriorArtwork.canvasMap(Math.ceil(w*104),Math.ceil(h*104),(g,width,height)=>{
+        const grad=g.createLinearGradient(0,0,width,height);
+        grad.addColorStop(0,print?'#fff0d8':'#eeeaf7');grad.addColorStop(1,print?'#e4d9c9':'#cbd4eb');
+        g.fillStyle=grad;g.fillRect(0,0,width,height);
+        g.fillStyle=print?'#d98874':'#9292bb';g.fillRect(0,height*.72,width,height*.28);
+        g.fillStyle=print?'#bc5c50':'#656589';g.fillRect(0,height*.72,width,3);
+        if(!print){g.strokeStyle='#787da2';g.lineWidth=1;for(let x=0;x<width;x+=36){g.beginPath();g.moveTo(x,height*.73);g.lineTo(x,height);g.stroke()}}
+      });
+    }};
+  }
+  function printShop(scene,room,art,shadow){
+    const cream=standard('#dddcd3',.52),ink=standard('#303941',.50),trim=standard('#ad665a',.68);
+    const wood=standard('#ba9876',.72),paper=standard('#f4efdf',.8),glass=standard('#96bcc4',.27,.2);
+    // A flatbed scanner and a floor-standing printer share the production bench.
+    rounded(scene,3.45,.79,1.18,-1.13,.405,1.64,trim,.04);
+    rounded(scene,3.50,.065,1.26,-1.13,.834,1.64,wood,.018);
+    rounded(scene,.89,.145,.60,-2.18,.938,1.63,ink,.026);
+    rounded(scene,.75,.025,.47,-2.18,1.014,1.64,glass,.016);
+    const lid=rounded(scene,.85,.055,.52,-2.18,1.22,1.39,cream,.016);lid.rotation.x=-.88;
+    rounded(scene,.83,.49,.57,.08,1.112,1.54,cream,.035);
+    rounded(scene,.58,.10,.026,.08,1.16,1.837,ink,.008);
+    rounded(scene,.45,.014,.29,.08,1.112,1.959,paper,.003);
+    for(const dy of [.96,1.04])box(scene,.60,.01,.014,.08,dy,1.834,ink);
+    const [x,y,z]=room.lock.center;
+    rounded(scene,.86,.54,.11,x,y,z-.06,ink,.030);
+    const device=patchPlane(scene,.81,.49,x,y,z+.002,imageMap(schoolLockArt(room,[])));
+    rounded(scene,1.73,.79,.69,2.25,.405,4.19,wood,.035);
+    rounded(scene,1.82,.055,.78,2.25,.83,4.19,cream,.021);
+    for(let i=0;i<3;i++){
+      const center=4.02+i*.52;
+      box(scene,.57,.031,.42,-3.26,.50,center,wood);
+      for(let k=0;k<4;k++)box(scene,.43,.024,.31,-3.26,.54+k*.027,center,k===3?trim:paper);
+    }
+    for(const [px,tone,mark] of [[-2.72,'#e29436','★'],[-1.72,'#5a77aa','☾']]){
+      const poster=InteriorArtwork.canvasMap(180,226,(g,w,h)=>{
+        g.fillStyle='#fff5df';g.fillRect(0,0,w,h);g.fillStyle=tone;g.fillRect(10,10,w-20,h-20);
+        g.fillStyle='#fff3d5';g.textAlign='center';g.textBaseline='middle';g.font='110px Georgia';g.fillText(mark,w/2,h/2);
+      });patchPlane(scene,.76,.95,px,1.96,.046,poster);
+    }
+    shadow(3.74,1.45,-1.13,1.65,.006,.68);
+    return {setDigits(state){device.material.map.image=schoolLockArt(room,state);device.material.map.needsUpdate=true}};
+  }
+  function councilChamber(scene,room,art,shadow){
+    const oak=materialFrom(art,'wood'),paint=standard('#797b9e',.65),dark=standard('#2c4050',.52);
+    const paper=standard('#e8dfca',.78),mint=standard('#7f9998',.68);
+    slab(scene,{x:-1.16,z:3.64,w:1.69,d:1.59},.83,oak,.082,.24);
+    for(const x of [-1.71,-.61])for(const z of [3.15,4.12])cylinder(scene,.037,.041,.77,x,.39,z,dark);
+    for(const [x,z] of [[-2.14,3.63],[-.19,3.63],[-1.16,2.88]]){
+      rounded(scene,.45,.064,.43,x,.44,z,paint,.045);
+      for(const i of [-1,1])for(const j of [-1,1])rod(scene,[x+i*.15,.42,z+j*.14],[x+i*.19,.03,z+j*.18],.015,dark);
+    }
+    rounded(scene,1.27,.77,.65,3,.405,4.40,mint,.026);
+    box(scene,.36,.24,.29,2.98,.92,4.40,paper);
+    box(scene,.19,.013,.11,2.98,1.045,4.40,dark);
+    rounded(scene,1.54,.99,.05,-2.88,1.62,.033,oak,.027);
+    for(let i=0;i<4;i++)box(scene,.41,.055,.46,-3.51,.42+i*.27,4.68,oak);
+    const [x,y,z]=room.lock.center;
+    rounded(scene,1.83,.89,.079,x,y,z-.047,dark,.035);
+    const map=InteriorArtwork.canvasMap(640,287,()=>{});
+    patchPlane(scene,1.72,.80,x,y,z,map);
+    function setDigits(state){
+      const g=map.image.getContext('2d'),columns=state?.columns??[];
+      g.fillStyle='#183642';g.fillRect(0,0,640,287);
+      g.textAlign='center';g.fillStyle='#b0ded3';g.font='bold 31px Malgun Gothic,sans-serif';g.fillText('학생회 입장 안내',320,48);
+      for(let c=0;c<2;c++){
+        const key=columns[c],cx=167+c*306;
+        g.fillStyle='#8bc6c2';g.font='26px Malgun Gothic,sans-serif';g.fillText(CT.fields[key]??'―',cx,110);
+        g.fillStyle='#f1f7e9';g.font='bold 32px Malgun Gothic,sans-serif';
+        CT.tickets.forEach((t,r)=>g.fillText(t[key]??'―',cx,172+r*64));
+      }
+      map.needsUpdate=true;
+    }
+    shadow(2.60,2.08,-1.16,3.63,.006,.66);
+    return {setDigits};
+  }
+
   function science(scene,room,art,shadow){
     const top=materialFrom(art,'worktop',.40),blue=materialFrom(art,'blue',.48);
     const enamel=materialFrom(art,'ivory',.51),steel=standard('#d5d9dc',.24,.57);
@@ -471,7 +614,8 @@ const SpecialtyInteriors = (() => {
       stool(scene,x,z,stoolYellow,legs);
       shadow(.63,.63,x,z,.006,.57);
     }
-    const balances=ScienceBalance.build(scene,room);
+    const mainRail=marbleBoard(scene,lab[0].x,3.96,false);
+    const practiceRail=marbleBoard(scene,lab[1].x,3.42,true);
     microscope(scene,2.11,lab[1].z+.18,enamel,dark,steel);
     const measureGlass=new School3D.MeshPhysicalMaterial({
       color:'#c6e7f2',roughness:.13,clearcoat:.58,transparent:true,opacity:.29,depthWrite:false
@@ -507,7 +651,7 @@ const SpecialtyInteriors = (() => {
     const tiles=new School3D.Mesh(new School3D.PlaneGeometry(7.14,1.40),
       new School3D.MeshStandardMaterial({map:art.surface('tile',7.14,1.40),roughness:.48,envMapIntensity:.55}));
     tiles.position.set(0,1.570,.013);scene.add(tiles);
-    return balances;
+    return {setDigits(state){mainRail('left',state?.lower??'left',state?.cup);practiceRail(state?.practice%2?'right':'left','left')}};
   }
 
   function studioFinish(art,name,levels,roughness){
@@ -718,8 +862,8 @@ const SpecialtyInteriors = (() => {
       g.fillStyle='#101c20';g.fillRect(0,0,width,height);
       g.fillStyle='#77bdaf';g.font='bold 28px sans-serif';g.textAlign='left';g.fillText('CUE ORDER',15,41);
       g.font='bold 30px monospace';g.textAlign='center';
-      for(let i=0;i<4;i++){
-        const x=12+i*100, a=BROADCAST_COMMANDS[program[i]];
+      for(let i=0;i<3;i++){
+        const x=12+i*134, a=BROADCAST_COMMANDS[program[i]];
         g.fillStyle=a?'#20443f':'#263235';g.fillRect(x,65,94,96);
         g.fillStyle=a?'#b9f0de':'#88a8a5';g.fillText(a?.display??'—',x+47,124);
       }
@@ -764,7 +908,8 @@ const SpecialtyInteriors = (() => {
       return pad;
     });
     for(const x of [-.603,.603])box(panel,.014,.059,.535,x,.005,0,edge);
-    return {commandPads,setDigits:mixerOrderDisplay(panel)};
+    const show=mixerOrderDisplay(panel);
+    return {commandPads,directCommandTarget:'mixer',setDigits(state){show(state?.channels??[])}};
   }
 
   function equipmentRack(scene,x,z,shell,edge){
@@ -863,6 +1008,12 @@ const SpecialtyInteriors = (() => {
     nearfield(scene,3.69,2.81,shell,edge);
     studioChair(scene,studioSeat.x,studioSeat.z,-quarterTurn,upholstered,frame);
     const mixer=mixingBoard(scene,shell,edge);
+    const signal=positionGroup(scene,3.04,1.26,3.92,-quarterTurn);
+    rounded(signal,.48,.11,.096,0,0,0,shell,.019);
+    for(let i=0;i<CT.signal.length;i++){
+      const long=CT.signal[i]==='길';
+      rounded(signal,long?.065:.029,.03,.015,(i-2)*.083,0,.05,standard('#e8c26f',.32),.006);
+    }
     headphones(scene,3.56,3.52,shell,edge);
     tripodCamera(scene,recording);
     shadow(.78,.83,tripod.x,tripod.z,.005,.49);
@@ -947,7 +1098,7 @@ const SpecialtyInteriors = (() => {
       material.emissive.set(tone);
     }
     if(floor){
-      const pattern={library:'wood',science:'paint',broadcast:'cloth'}[room.kind];
+      const pattern={library:'wood',science:'paint',broadcast:'cloth',print:'paint',council:'wood'}[room.kind];
       const relief=art.relief(pattern).clone();
       relief.wrapS=relief.wrapT=School3D.RepeatWrapping;
       relief.repeat.set(room.wall.width/2,room.depth/2);
@@ -989,9 +1140,10 @@ const SpecialtyInteriors = (() => {
   async function build(scene,room){
     const design=designs[room.kind];
     const cards=room.clues.filter(clue=>clue.placement!=='instrument'&&clue.placement!=='bench');
-    const [art,cardImages]=await Promise.all([InteriorArtwork.load(room.kind),Promise.all(cards.map(clueBoardArt))]);
+    const [art,cardImages]=await Promise.all([InteriorArtwork.load(({print:'science',council:'library'})[room.kind]??room.kind),Promise.all(cards.map(clueBoardArt))]);
     lightRoom(scene,room);
-    enclosure(scene,room,art,design.trim,(map,surface)=>architectureMaterial(art,room,map,surface));
+    const finish=['print','council'].includes(room.kind)?activityFinish(art,room.kind):art;
+    enclosure(scene,room,finish,design.trim,(map,surface)=>architectureMaterial(art,room,map,surface));
     const doorParent=room.entrance.side==='right'?positionGroup(scene,room.wall.width/2,0,room.depth/2,-quarterTurn):scene;
     const doorFinish=room.kind==='broadcast'?studioFinish(art,'door',[49,54,61],.50):materialFrom(art,'door',.54);
     const swingDoor=entrance(doorParent,room,art,doorFinish);
@@ -1007,7 +1159,7 @@ const SpecialtyInteriors = (() => {
       if(mesh.isMesh && mesh.material.isMeshStandardMaterial)mesh.receiveShadow=true;
     });
     const canvas=document.getElementById('roomView');
-    const version={library:'lending-v54',science:'balance-bench-v57',broadcast:'studio-v34'}[room.kind];
+    const version={library:'lending-v54',science:'marble-rails',broadcast:'signal-studio',print:'print-workshop',council:'council-meeting'}[room.kind];
     Object.assign(canvas.dataset,{interior:room.kind,artwork:version});
     const updateDoorStatus=statusLamp(scene,design.statusLamp);
     return {

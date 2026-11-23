@@ -7,8 +7,10 @@ const ClassroomInterior=(()=>{
   const doorway={x:3.10,width:1.26,height:2.34,casingColor:'#d76d58',
     moldingColor:'#bd5946',recessColor:'#943e31',opensOut:true};
   const groups=[{x:-.48,z:2.24},{x:-1.02,z:4.11},{x:-1.56,z:5.98}];
-  const boardNote={id:'resetOrder',name:'칠판의 점검 순서',xyz:[.36,1.94,.110],
+  const boardNote={id:'resetOrder',name:'칠판의 점검 기록',xyz:[.36,1.94,.110],
     surface:{width:1.12,height:.65},approach:{x:.36,z:1.22}};
+  const deskNote={id:'powerNote',name:'모둠 책상의 점검 쪽지',xyz:[-1.03,.855,6.18],
+    surface:{width:.50,height:.32},approach:{x:-.81,z:7.22},tilt:-1.04};
   const lock={center:[1.94,1.42,.131],width:.70,height:.36};
 
   function definition(){
@@ -19,11 +21,11 @@ const ClassroomInterior=(()=>{
       depth,ceilingMinimum:height,entrance:doorway,door:[doorway.x,1.21,.05],
       doorReveal:{x:doorway.x-.68,z:2.94},
       bounds:{left:-width/2+.27,right:width/2-.27,front:.29,back:depth-.27},
-      lock,clues:[boardNote],targets:[
-        {id:'lock',name:'교실 복구 단말기',xyz:lock.center,surface:lock,approach:{x:1.94,z:1.39}},boardNote
+      lock,clues:[boardNote,deskNote],targets:[
+        {id:'lock',name:SCHOOL_PUZZLES.classroom.title,xyz:lock.center,surface:lock,approach:{x:1.94,z:1.39}},boardNote,deskNote
       ],
       obstacles,start:[.53,1.55,7.27],firstView:[-1.08,1.42,0],portraitView:[.94,1.56,0],
-      stops:[boardNote.xyz,lock.center,[width/2,1.38,depth/2],[0,1.38,depth],[-width/2,1.38,depth/2]]
+      stops:[boardNote.xyz,lock.center,deskNote.xyz,[width/2,1.38,depth/2],[0,1.38,depth],[-width/2,1.38,depth/2]]
     };
   }
 
@@ -181,25 +183,24 @@ const ClassroomInterior=(()=>{
     for(const dx of [-.292,.292])for(const dy of [-.134,.134]){
       cylinder(scene,.012,.012,.005,x+dx,y+dy,z+.012,metal,14).rotation.x=Math.PI/2;
     }
-    const caps=['#df5349','#efb74a','#63a85f'].map((color,i)=>{
-      const cx=x+(i-1)*.189;
-      cylinder(scene,.058,.059,.027,cx,y,z+.016,rims,30).rotation.x=Math.PI/2;
-      const material=standard(color,.38);
-      material.emissive.set(color);material.emissiveIntensity=.04;
-      const button=cylinder(scene,.048,.050,.034,cx,y,z+.033,material,30);
-      button.rotation.x=Math.PI/2;
-      return button;
+    const bulbs=Array.from({length:16},(_,i)=>{
+      const cx=x+(i%4-1.5)*.11,cy=y+(1.5-Math.floor(i/4))*.068;
+      cylinder(scene,.029,.030,.012,cx,cy,z+.014,rims,20).rotation.x=Math.PI/2;
+      const lamp=new School3D.MeshBasicMaterial({color:'#475358'});
+      cylinder(scene,.022,.022,.016,cx,cy,z+.024,lamp,20).rotation.x=Math.PI/2;
+      return lamp;
     });
-    return values=>{
-      for(const [i,button] of caps.entries()){
-        button.position.z=values[i]?z+.027:z+.033;
-        button.material.emissiveIntensity=values[i] ? .40 : .04;
-      }
-    };
+    return state=>bulbs.forEach((lamp,i)=>{
+      const on=CT.lights.join('')[i]==='1';
+      const fixed=state?.cell===i&&CT.parity(i);
+      lamp.color.set(on!==fixed?'#ffe38a':'#46555a');
+    });
   }
 
   async function build(scene,room){
-    const [artwork,note]=await Promise.all([InteriorArtwork.load('classroom'),clueBoardArt(boardNote)]);
+    const [artwork,note,deskCard]=await Promise.all([
+      InteriorArtwork.load('classroom'),clueBoardArt(boardNote),clueBoardArt(deskNote)
+    ]);
     scene.add(new School3D.HemisphereLight('#fffaf7','#b9afc6',2.08));
     const light=new School3D.DirectionalLight('#fff6ee',1.04);
     light.position.set(1.9,4.4,3.1);scene.add(light);
@@ -223,6 +224,11 @@ const ClassroomInterior=(()=>{
     }
     const shadow=groundShadow(scene);
     buildDesks(scene,artwork,shadow,silver);
+    const slip=patchPlane(scene,deskNote.surface.width,deskNote.surface.height,...deskNote.xyz,imageMap(deskCard));
+    slip.rotation.x=deskNote.tilt;
+    const [nx,ny,nz]=deskNote.xyz;
+    const backing=box(scene,.515,.329,.016,nx,ny-.009,nz-.005,standard('#b093c4',.85));
+    backing.rotation.x=deskNote.tilt;
     readingCorner(scene,artwork,shadow,silver);
     const plaque=InteriorArtwork.canvasMap(460,115,(g,w,h)=>{
       g.fillStyle='#c6a483';g.fillRect(0,0,w,h);

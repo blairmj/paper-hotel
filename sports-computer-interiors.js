@@ -60,9 +60,9 @@ const SportsComputerInteriors = (() => {
     const rows = [1.62, 3.37, 5.12, 6.87].map(z => columns.map(x => ({x,z})));
     const rearStation = rows[3][3];
     const clues = [
-      {id:'recordA', name:'출입 신호 기록', xyz:[-.16,1.94,.057],
+      {id:'recordA', name:'판독기 점검 기록', xyz:[-.16,1.94,.057],
         surface:{width:1.28,height:.75}, approach:{x:0,z:1.02}},
-      {id:'recordB', name:'신호 분기표',
+      {id:'recordB', name:'판독기 수리 순서',
         xyz:[rearStation.x,SCREEN.y,rearStation.z+SCREEN.z], surface:SCREEN,
         approach:{x:rearStation.x,z:rearStation.z+1.30}}
     ];

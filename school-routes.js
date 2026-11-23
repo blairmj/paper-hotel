@@ -6,6 +6,8 @@ const SCHOOL_POINTS = {
   center:{col:2,row:1,label:'B'},
   east:{col:3,row:1,label:'C'},
   computer:{col:4,row:1,label:'컴퓨터실',color:'#3067d6'},
+  print:{col:0,row:0,label:'인쇄실',color:'#bd637a'},
+  council:{col:4,row:2,label:'학생회실',color:'#6c5ca9'},
   library:{col:1,row:0,label:'도서실',color:'#e9ad22'},
   music:{col:2,row:0,label:'음악실',color:'#4b72ce'},
   art:{col:3,row:0,label:'미술실',color:'#e76352'},
@@ -18,7 +20,8 @@ const SCHOOL_PASSAGES = [
   ['classroom','west'],['west','center'],['center','east'],['east','computer'],
   ['west','library'],['library','music'],['music','art'],['art','east'],
   ['west','broadcast'],['broadcast','science'],['science','sports'],['sports','east'],
-  ['center','science'],['center','music',true]
+  ['center','science'],['center','music',true],
+  ['classroom','print'],['print','library'],['sports','council'],['council','computer']
 ];
 const SCHOOL_MIN_STOPS = 3;
 

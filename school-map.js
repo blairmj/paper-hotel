@@ -1,7 +1,7 @@
 'use strict';
 
 const SCHOOL_ROOM_ESTIMATES={
-  classroom:60,library:75,music:95,art:105,broadcast:100,science:110,sports:120,computer:90
+  classroom:60,library:75,music:95,art:105,broadcast:100,science:110,sports:120,print:85,council:65,computer:90
 };
 
 function buildSchoolFloorPlan({position,onSelect}={}){

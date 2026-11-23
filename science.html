@@ -8,7 +8,7 @@
   <link rel="icon" href="data:,">
   <link rel="stylesheet" href="music.css?v=layout51">
   <link rel="stylesheet" href="route-ui.css?v=layout51">
-  <link rel="stylesheet" href="science-balance.css?v=bench57">
+  <link rel="stylesheet" href="ct-devices.css?v=ct58">
 </head>
 <body data-room="science">
   <main id="musicGame" aria-label="학교 탈출 204호 과학실">
@@ -18,21 +18,6 @@
       <nav aria-label="메뉴"><button id="bag" type="button" hidden>찾은 단서</button><button id="map" type="button">안내도</button></nav>
     </header>
     <div id="spots" aria-label="조사할 물건"></div>
-    <section id="balanceWorkbench" hidden aria-label="실험대의 양팔저울" aria-describedby="balanceHelp">
-      <div id="balanceTargets" role="group" aria-label="저울 접시와 구슬"></div>
-      <div class="bench-tools">
-        <div id="balanceScales" role="group" aria-label="살펴볼 저울" hidden>
-          <button type="button" aria-pressed="true">첫째 저울</button>
-          <button type="button" aria-pressed="false">둘째 저울</button>
-        </div>
-        <p id="balanceHelp">구슬을 끌거나, 구슬과 놓을 곳을 차례로 누르세요.</p>
-        <div class="bench-actions">
-          <button id="balanceReset" type="button">처음 배치로</button>
-          <button id="leaveBench" type="button">실험대에서 물러나기</button>
-        </div>
-      </div>
-      <output id="balanceStatus" class="sr-only" aria-live="polite"></output>
-    </section>
     <footer class="room-foot">
       <div class="movement" aria-label="이동">
         <button id="left" type="button" aria-label="왼쪽 보기">‹</button>
@@ -58,18 +43,19 @@
   <script src="webgl/picking.js?v=webgl50"></script>
   <script src="webgl/shaders.js?v=webgl50"></script>
   <script src="webgl/renderer.js?v=webgl50"></script>
-  <script src="review-rooms.js?v=classroom43"></script>
-  <script src="school-routes.js?v=room-route41"></script>
-  <script src="school-map.js?v=layout51"></script>
-  <script src="school-puzzles.js?v=library52"></script>
+  <script src="review-rooms.js?v=ct58"></script>
+  <script src="school-routes.js?v=ct58"></script>
+  <script src="school-map.js?v=ct58"></script>
+  <script src="school-puzzles.js?v=ct58"></script>
+  <script src="ct-devices.js?v=ct58"></script>
+  <script src="ct-panels.js?v=ct58"></script>
   <script src="music-art.js?v=webgl50"></script>
   <script src="music-world.js?v=bench57"></script>
   <script src="interior-artwork.js?v=webgl50"></script>
   <script src="school-corridor.js?v=webgl50"></script>
-  <script src="school-interiors.js?v=webgl50"></script>
-  <script src="science-balance.js?v=bench57"></script>
-  <script src="specialty-interiors.js?v=bench57"></script>
-  <script src="school-room-art.js?v=library52"></script>
-  <script src="school-room.js?v=bench57"></script>
+  <script src="school-interiors.js?v=ct58"></script>
+  <script src="specialty-interiors.js?v=ct58"></script>
+  <script src="school-room-art.js?v=ct58"></script>
+  <script src="school-room.js?v=ct58"></script>
 </body>
 </html>
