@@ -1,7 +1,7 @@
 'use strict';
 
 const CTDeviceUI=(()=>{
-  let audio;
+  let audio,playbackId=0;
   const paints=['#e99539','#6398cf','#70ad85'];
   function element(host,tag,text,cls){
     const el=document.createElement(tag);
@@ -35,20 +35,36 @@ const CTDeviceUI=(()=>{
     values.forEach(value=>element(row,'span',value));
     return row;
   }
+  function playNotes(notes,row){
+    const id=++playbackId;
+    listen(notes,i=>{
+      Array.from(row.children).forEach((mark,j)=>mark.classList.toggle('active',j===i));
+    },()=>id===playbackId&&row.isConnected&&row.closest('dialog')?.open);
+  }
   function board(host,bits,onClick){
     const grid=element(host,'div',undefined,'ct-led');
     bits.forEach((bit,i)=>button(grid,bit?'●':'○',()=>onClick(i),{
       label:(Math.floor(i/4)+1)+'행 '+(i%4+1)+'열 '+(bit?'켜짐':'꺼짐'),pressed:!!bit
     }));return grid;
   }
-  function mural(host,drops,fn){
+  function mural(host,drops,onPick,applied=false){
     const grid=element(host,'div',undefined,'ct-mural');
-    const regions=CT.pigments(drops);
+    const regions=applied?CT.pigments(drops):[];
     Array.from(CT.wall.join('')).forEach((tile,i)=>{
       const color=regions.findIndex(part=>part.includes(i));
       const label=(Math.floor(i/5)+1)+'행 '+(i%5+1)+'열';
       if(tile==='#'){const wall=element(grid,'span','', 'ct-wall');wall.setAttribute('aria-label',label+' 벽');return}
-      const cell=fn?button(grid,drops.includes(i)?'●':'',()=>fn(i),{label:label+(color>=0?' 칠한 칸':' 흰 칸'),disabled:color>=0||drops.length>=3}):element(grid,'span','');
+      if(!onPick){element(grid,'span','');return}
+      const mark=drops.indexOf(i);
+      const cell=button(grid,'',()=>onPick(i),{
+        label:label+(mark>=0?' 물감 자리 '+(mark+1):color>=0?' 칠한 칸':' 흰 칸'),
+        pressed:mark>=0,disabled:applied||(mark<0&&drops.length===3)
+      });
+      cell.dataset.tile=i;
+      if(mark>=0){
+        const drop=element(cell,'span',String(mark+1),'ct-drop');
+        drop.style.backgroundColor=paints[mark];
+      }
       if(color>=0)cell.style.background=paints[color];
     });
   }
@@ -72,9 +88,8 @@ const CTDeviceUI=(()=>{
     const lines=CT.clues[id];
     if(!lines)return;
     if(id==='paper'){
-      const row=seq(host,CT.motif);let count=0;
-      button(host,'악보 들어 보기',()=>{const play=++count;
-        listen(CT.motif,i=>{Array.from(row.children).forEach((n,j)=>n.classList.toggle('active',j===i))},()=>row.isConnected&&play===count)});
+      const row=seq(host,CT.motif);
+      button(host,'악보 들어 보기',()=>playNotes(CT.motif,row));
     }else if(id==='printSamples'){mural(host,[],null);element(host,'p',lines[1])}
     else if(id==='broadcastLog')lamps(host);
     else if(id==='broadcastRules'){
@@ -95,7 +110,7 @@ const CTDeviceUI=(()=>{
     const trail=practice?'M150 14V46 L'+(top==='left'?60:240)+' 121':'M150 14V44 '+(top==='right'?'L241 140':'L100 83 L'+(lower==='left'?38:137)+' 140');
     return '<svg class="ct-rail" aria-label="위 갈림판 '+(top==='left'?'왼쪽':'오른쪽')+(practice?'':', 아래 갈림판 '+(lower==='left'?'왼쪽':'오른쪽'))+'" viewBox="0 0 300 '+(practice?160:181)+'" role="img">'+defs+'<rect width="300" height="181" rx="9" fill="#e4eff6"/><rect width="300" height="181" fill="url(#railGrid)"/><path d="'+paths+'" fill="none" stroke="#a5b5c3" stroke-width="11" stroke-linejoin="round"/><path d="'+paths+'" fill="none" stroke="white" stroke-width="5"/>'+gate(150,practice?46:44,top)+(practice?'':gate(100,83,lower))+cups.map(outlet).join('')+(ball?'<circle r="7" fill="'+(ball==='blue'?'#2367d9':'#fff')+'" stroke="#416183" stroke-width="2"><animateMotion dur=".55s" fill="freeze" path="'+trail+'"/></circle>':'')+'</svg>';
   }
-  function open(kind,state,host,{save,solve,active,update,record},command){
+  function open(kind,state,host,{save,solve,active,update,record,question,hasScore},command){
     const controls=element(host,'div',undefined,'ct-controls');
     const status=element(host,'p','', 'ct-feedback');
     status.setAttribute('role','status');
@@ -106,7 +121,7 @@ const CTDeviceUI=(()=>{
     const group=()=>element(controls,'div',undefined,'ct-buttons');
     const confirm=(label,fn)=>button(group(),label,()=>{if(alive())fn()},{cls:'primary'});
     const again=(label,fn)=>button(group(),label,()=>{if(alive()){fn();message('');change();draw()}});
-    let busy=false,play=0;
+    let busy=false;
     function draw(){
       controls.replaceChildren();
       if(kind==='classroom'){
@@ -123,31 +138,65 @@ const CTDeviceUI=(()=>{
         const keys=group();
         for(const t of ['북','짝','딩','(',')']){
           const count=t==='('||t===')'?2:1;
-          button(keys,labels[t]||t,()=>{
+          const name={'(':'반복 시작',')':'반복 끝'}[t]??t;
+          button(keys,t==='('?name+' ×2':name,()=>{
             if(!alive())return;
             state.program.push(t);change();message('');draw();
-          },{label:t==='('?'반복 시작':t===')'?'반복 끝':t,disabled:state.program.filter(v=>v===t).length>=count});
+          },{label:name,disabled:state.program.filter(v=>v===t).length>=count});
         }
         again('마지막 카드 빼기',()=>state.program.pop());
-        confirm('연주하기',()=>{
+        const transport=group();
+        const playback=element(controls,'figure',undefined,'ct-playback');
+        function replay(label,notes){
+          playback.replaceChildren();
+          element(playback,'figcaption',label);
+          playNotes(notes,seq(playback,notes));
+        }
+        if(hasScore)button(transport,'피아노 악보 다시 듣기',()=>{if(alive())replay('피아노 악보',CT.motif)});
+        button(transport,'연주하기',()=>{
+          if(!alive())return;
           const notes=CT.music(state.program);
           if(!notes){incorrect('반복 띠의 시작과 끝을 짝지어 주세요.');return}
           if(!notes.length){message('먼저 소리 카드를 놓으세요.');return}
           const correct=state.program.length===7&&notes.join(' ')===CT.motif.join(' ');
-          const id=++play;const playback=seq(controls,notes);
-          listen(notes,i=>Array.from(playback.children).forEach((n,j)=>n.classList.toggle('active',j===i)),()=>id===play&&alive()&&playback.isConnected);
+          replay('내 리듬',notes);
           if(correct){message('악보와 같은 리듬이에요.');solve(340*notes.length)}
-          else incorrect('연주한 리듬과 피아노 악보를 비교해 보세요.');
-        });
+          else if(!hasScore)incorrect('피아노 악보에는 어떤 리듬이 적혀 있을까요?');
+          else{
+            const mismatch=notes.findIndex((sound,i)=>i<CT.motif.length&&sound!==CT.motif[i]);
+            if(mismatch>=0)incorrect((mismatch+1)+'번째 소리가 달라요. 두 리듬을 다시 들어 볼까요?');
+            else if(notes.length<CT.motif.length)incorrect('내 연주가 먼저 끝났어요. 악보에서는 어떤 부분이 더 이어질까요?');
+            else incorrect('내 연주가 더 길어요. 어느 부분이 한 번 더 들렸을까요?');
+          }
+        },{cls:'primary'});
       }else if(kind==='art'){
-        element(controls,'p','남은 물감 '+(3-state.drops.length)+'방울');
+        element(controls,'p','고른 물감 자리 '+state.drops.length+' / 3');
         mural(controls,state.drops,i=>{
-          if(!alive()||state.drops.length>=3)return;
-          state.drops.push(i);change();draw();
-          const used=new Set(CT.pigments(state.drops).flat()).size;
-          if(used===CT.blankCount)solve(480);
+          if(!alive()||state.applied)return;
+          const mark=state.drops.indexOf(i);
+          if(mark>=0)state.drops.splice(mark,1);
+          else if(state.drops.length<3)state.drops.push(i);
+          change();draw();
+          controls.querySelector('[data-tile="'+i+'"]').focus({preventScroll:true});
+        },state.applied);
+        const unpainted=CT.blankCount-new Set(CT.pigments(state.drops).flat()).size;
+        if(state.applied){
+          message(unpainted?'흰 칸이 '+unpainted+'개 남았어요. 어느 자리를 옮기면 그곳까지 번질까요?':'세 방울로 흰 칸을 모두 칠했어요.');
+        }else message('');
+        const tools=group();
+        button(tools,'물감 떨어뜨리기',()=>{
+          if(!alive()||state.applied||state.drops.length!==3)return;
+          state.applied=true;
+          update();draw();
+          if(!unpainted){solve(850);return}
+          save();record('wrong');
+          controls.querySelector('.ct-buttons button:enabled')?.focus({preventScroll:true});
+        },{cls:'primary',disabled:state.applied||state.drops.length!==3});
+        if(state.drops.length)button(tools,'자리 다시 고르기',()=>{
+          if(!alive())return;
+          state.drops=[];state.applied=false;change();draw();
+          controls.querySelector('[data-tile]').focus({preventScroll:true});
         });
-        again('새 도안으로 다시 칠하기',()=>{state.drops=[]});
       }else if(kind==='practiceRail'||kind==='science'){
         const practice=kind==='practiceRail';
         let top=practice&&state.practice%2?'right':'left',lower=state.lower;
@@ -169,10 +218,11 @@ const CTDeviceUI=(()=>{
           for(const [i,step] of steps.entries()){
             if(!alive())return;
             view.innerHTML=railSvg(top,lower,false,i===2?'blue':'white',state.cup);
-            message((i+1)+'번째 '+(i===2?'파란':'흰')+' 구슬');
+            const turn=['첫 번째','두 번째','마지막'][i];
+            message(turn+' '+(i===2?'파란':'흰')+' 구슬');
             await new Promise(done=>setTimeout(done,610));if(!alive())return;
             top=step.nextTop;lower=step.nextLower;
-            view.innerHTML=railSvg(top,lower,false,null,state.cup);message((i+1)+'번째 구슬 → '+step.cup+' 컵');
+            view.innerHTML=railSvg(top,lower,false,null,state.cup);message(turn+' 구슬 → '+step.cup+' 컵');
             await new Promise(done=>setTimeout(done,270));
           }
           if(!alive())return;
@@ -181,33 +231,43 @@ const CTDeviceUI=(()=>{
           else{draw();incorrect('파란 구슬은 '+steps[2].cup+' 컵에 도착했어요. 갈림판을 처음 위치로 돌렸어요. 다시 예측해 보세요.')}
         });
       }else if(kind==='broadcast'){
-        seq(controls,[0,1,2].map(i=>BROADCAST_COMMANDS[state.channels[i]]?.label??'―'));
+        const order=element(controls,'ol',undefined,'ct-seq ct-broadcast-order');
+        order.setAttribute('aria-label','방송 순서');
+        ['첫 방송','두 번째','세 번째'].forEach((label,i)=>{
+          const slot=element(order,'li');
+          element(slot,'small',label);element(slot,'strong',BROADCAST_COMMANDS[state.channels[i]]?.label??'―');
+        });
         const keys=group();
         for(const [id,{label}] of Object.entries(BROADCAST_COMMANDS))button(keys,label,()=>addChannel(id),{disabled:state.channels.length>=3});
         again('마지막 방송 빼기',()=>state.channels.pop());
-        confirm('방송 송출',()=>{
+        confirm('방송 시작',()=>{
           const decoded=state.channels.map(id=>BROADCAST_COMMANDS[id].code).join(' ');
           if(state.channels.length===3&&decoded===CT.signal.join(' '))solve();
-          else incorrect('수신한 빛의 순서와 입력한 방송의 암호를 비교하세요.');
+          else if(state.channels.length<3)message('아직 빈 방송 자리가 있어요.');
+          else incorrect('고른 방송을 불빛으로 바꾸면, 신호등에서 본 순서와 같을까요?');
         });
       }else if(kind==='computer'){
         const keys=group();for(const card of CT.cards)button(keys,card,()=>{
           if(!alive())return;record('test',card);state.test=card;state.repair=null;change();message('');draw();
         },{label:'시험 카드 '+card,pressed:state.test===card});
         if(!state.test)return;
+        const identical=CT.readerOutput(state.test,'A',state.fault,null)===CT.readerOutput(state.test,'B',state.fault,null);
+        if(identical)question.textContent='두 판독기가 똑같이 읽었어요. 어느 카드로 다시 시험해 볼까요?';
+        else if(state.repair)question.textContent='고친 판독기는 새 출입증도 바르게 읽을까요?';
+        else question.textContent='카드와 두 결과를 비교해 보세요. 어느 쪽을 고칠까요?';
         const result=element(controls,'div',undefined,'ct-readers');
         for(const id of ['A','B']){
           const reader=element(result,'div');element(reader,'small','판독기 '+id);
           element(reader,'strong',CT.readerOutput(state.test,id,state.fault,state.repair));
-          button(reader,id+' 방향 전환',()=>{
+          button(reader,id+' 방향 바꾸기',()=>{
             if(!alive())return;
-            if(CT.readerOutput(state.test,'A',state.fault,null)===CT.readerOutput(state.test,'B',state.fault,null)){
+            if(identical){
               message('두 판독기의 결과가 같아요. 결과가 달라지는 시험 카드를 먼저 찾아보세요.');return;
             }
             state.repair=state.repair===id?null:id;change();message('');draw();
           },{pressed:state.repair===id});
         }
-        confirm('새 출입증 ▲●★ 재검사',()=>{
+        confirm('새 출입증 ▲●★ 읽어 보기',()=>{
           if(!state.repair){message('검사 결과를 보고 고칠 판독기를 하나 고르세요.');return}
           const outputs=['A','B'].map(id=>CT.readerOutput('▲●★',id,state.fault,state.repair));
           message('새 출입증 ▲●★  ·  A '+outputs[0]+'  ·  B '+outputs[1]);

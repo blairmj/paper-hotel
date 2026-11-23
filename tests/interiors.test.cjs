@@ -308,6 +308,18 @@ test('repeat tapes are nested, use each available card once and replay the writt
  assert.equal(ct.music(['(',')']),null);
  assert.equal(ct.music(['딩',')']),null);
 });
+test('mural marks survive a reload separately from the result of dropping paint',()=>{
+ const ct=layoutContext.ct;
+ const restore=saved=>ct.restore('art',saved,ct.fresh('art'));
+ const positions=[0,1,3]; // The first two choices share an area.
+ assert.ok(new Set(ct.pigments(positions).flat()).size<ct.blankCount);
+ const oldSave=restore({drops:positions});
+ assert.deepEqual([...oldSave.drops],positions);
+ assert.equal(oldSave.applied,false);
+ assert.equal(restore({drops:positions,applied:true}).applied,true);
+ assert.equal(restore({drops:[0],applied:true}).applied,false);
+ assert.equal(restore({drops:[0,0,3],applied:true}).drops.length,0);
+});
 test('the rail flips only the gates visited by each ball and restores its original orientation on reload',()=>{
  const ct=layoutContext.ct;
  for(const [lower,cups] of [['left',['별','해','달']],['right',['달','해','별']]]){

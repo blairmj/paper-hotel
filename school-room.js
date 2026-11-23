@@ -52,6 +52,7 @@ run.solved=saved?.solved===true&&(!outdated||story);
 if(run.solved&&puzzle.control==='pin'){
   run.entry=puzzle.answer.slice();
 }
+if(run.solved&&room.kind==='art'&&run.device.drops.length===3)run.device.applied=true;
 
 function logPlay(kind,detail=''){
   if(story&&globalThis.SchoolRecords?.lesson)SchoolRecords.event(book(),room.kind,kind,detail);
@@ -230,11 +231,11 @@ function inventory(){
   }
 }
 
-function deviceInstructions(style='object-note'){
-  return '<p class="'+style+'" id="deviceInstructions">'+puzzle.instructions+'</p>';
+function deviceInstructions(text=puzzle.instructions){
+  return text?'<p class="object-note" id="deviceInstructions">'+text+'</p>':'';
 }
 
-function shelfPanel(firstCommand){
+function shelfPanel(){
   modal(puzzle.title,'<div class="shelf-ticket" id="shelfCount"></div>'+
     '<div class="shelf-row" id="shelfRow" role="group" tabindex="-1" aria-label="왼쪽부터 번호순으로 꽂힌 일곱 권"></div>'+
     '<p class="shelf-feedback" id="shelfFeedback" role="status"></p>','shelf');
@@ -281,7 +282,6 @@ function shelfPanel(firstCommand){
     else feedback.textContent=last+'번 책을 펼쳤어요.';
   }
   draw();
-  if(firstCommand)buttons.find(button=>button.dataset.command===firstCommand)?.click();
 }
 
 function ballLockerPanel(){
@@ -326,10 +326,10 @@ function ballLockerPanel(){
   }
   function draw(){
     const picked=run.picked;
-    let task='회수 순서에 맞춰 공을 하나씩 빼세요.';
+    let task='회수표에서 첫 번째 공은 무엇인가요?';
     if(picked){
-      task=picked+'번째로 '+BALL_PICKUP[picked-1]+' 공을 뺐어요. 뺀 공을 제외하고 자리가 바뀐 공은 몇 개인가요?';
-      if(picked===BALL_PICKUP.length)task+=' 네 번 센 개수를 문 옆 번호판에 누르세요.';
+      task=BALL_PICKUP[picked-1]+' 공을 뺐어요. 남은 공 중 몇 개가 자리를 옮겼을까요?';
+      if(picked===BALL_PICKUP.length)task+=' 네 번 센 수를 차례로 이어 쓰면 문이 열려요.';
       fillRow(before,ballRowAfter(picked-1),false);
     }
     byId('ballTask').textContent=task;
@@ -393,11 +393,11 @@ function sportsPinPanel(){
 
 function devicePanel(kind,title,command){
   const practice=kind==='practiceRail';
-  modal(title,(practice?'<p>'+CT.clues.practiceRail[1]+'</p>':deviceInstructions())+
+  modal(title,deviceInstructions(practice?CT.clues.practiceRail[1]:puzzle.devicePrompt)+
     '<div id="deviceSurface"></div>','ct-device');
   const host=byId('deviceSurface');
   CTDeviceUI.open(kind,run.device,host,{
-    save,solve,record:logPlay,
+    save,solve,record:logPlay,question:byId('deviceInstructions'),hasScore:run.found.includes('paper'),
     active:()=>dialog.open&&!countdown.check(),
     update:()=>world.setDigits(deviceEntry())
   },command);
@@ -406,7 +406,7 @@ function inspectLock(command){
   if(run.solved||!countdown||countdown.check())return;
   if(puzzle.control==='device')devicePanel(room.kind,puzzle.title,command);
   else if(puzzle.control==='pin')sportsPinPanel();
-  else shelfPanel(command);
+  else shelfPanel();
   if(!run.solved)appendRoomTextHint(content,countdown,puzzle.hint);
 }
 
@@ -520,7 +520,7 @@ function start(){
       if(!countdown||countdown.check())return;
       if(id===(room.lock?.id??'lock'))inspectLock(command);
       else if(id==='ballLine')ballLockerPanel();
-      else if(id==='doorGuide')modal(puzzle.doorTitle??(room.place+' 문제'),deviceInstructions(),'door-question');
+      else if(id==='doorGuide')modal(puzzle.doorTitle??(room.place+' 탈출'),deviceInstructions(),'door-question');
       else inspectClue(id);
     }
   }).then(created=>{

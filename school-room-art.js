@@ -95,12 +95,20 @@ function schoolLockArt(room,values){
   g.fillStyle='#213944';g.fillRect(38,39,344,158);
   g.textAlign='center';g.textBaseline='middle';
   if(room.kind==='art'){
-    const regions=CT.pigments(values?.drops??[]);
+    const drops=values?.drops??[];
+    const regions=values?.applied?CT.pigments(drops):[];
     const inks=['#e99539','#6398cf','#70ad85'];
     CT.wall.forEach((line,row)=>Array.from(line).forEach((c,col)=>{
-      const color=regions.findIndex(list=>list.includes(row*5+col));
+      const index=row*5+col,x=91+col*48,y=46+row*36;
+      const color=regions.findIndex(list=>list.includes(index));
       g.fillStyle=c==='#'?'#314555':inks[color]??'#f9f3e3';
-      g.fillRect(91+col*48,46+row*36,45,33);
+      g.fillRect(x,y,45,33);
+      const mark=drops.indexOf(index);
+      if(mark>=0){
+        g.beginPath();g.arc(x+22,y+16,12,0,Math.PI*2);g.fillStyle=inks[mark];g.fill();
+        g.strokeStyle='#354552';g.lineWidth=2;g.stroke();
+        g.fillStyle='#142832';g.font='bold 15px sans-serif';g.fillText(String(mark+1),x+22,y+17);
+      }
     }));
   }else if(room.kind==='computer'){
     for(const [i,id] of ['A','B'].entries()){

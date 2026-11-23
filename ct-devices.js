@@ -37,7 +37,7 @@ const CT = (() => {
     switch(kind){
       case 'classroom':return {cell:null};
       case 'music':return {program:[]};
-      case 'art':return {drops:[]};
+      case 'art':return {drops:[],applied:false};
       case 'science':return {lower:random()<.5?'left':'right',practice:0,cup:''};
       case 'broadcast':return {channels:[]};
       case 'computer':return {fault:random()<.5?'A':'B',test:null,repair:null};
@@ -110,7 +110,12 @@ const CT = (() => {
     switch(kind){
       case 'classroom': if(Number.isInteger(s.cell)&&s.cell>=0&&s.cell<16)base.cell=s.cell;break;
       case 'music':if(validProgram(s.program))base.program=s.program.slice();break;
-      case 'art':if(Array.isArray(s.drops)&&s.drops.length<=3&&s.drops.every(n=>colorRegion(n).length))base.drops=s.drops.slice();break;
+      case 'art':
+        if(Array.isArray(s.drops)&&s.drops.length<=3&&new Set(s.drops).size===s.drops.length&&s.drops.every(n=>colorRegion(n).length)){
+          base.drops=s.drops.slice();
+          base.applied=s.applied===true&&base.drops.length===3;
+        }
+        break;
       case 'science':
         if(['left','right'].includes(s.lower))base.lower=s.lower;
         if(Number.isSafeInteger(s.practice)&&s.practice>=0)base.practice=s.practice;
