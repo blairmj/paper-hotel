@@ -7,18 +7,18 @@
   <meta name="description" content="단서를 찾고 일곱 교실의 퍼즐을 푸는 1인칭 학교 방탈출 게임">
   <title>학교 탈출</title>
   <link rel="icon" href="data:,">
-  <link rel="stylesheet" href="school-start.css?v=entry66">
+  <link rel="stylesheet" href="school-start.css?v=school67">
   <script src="class-records.js?v=survey1" defer></script>
-  <script src="review-rooms.js?v=entry66" defer></script>
+  <script src="review-rooms.js?v=school67" defer></script>
   <script src="school-routes.js?v=entry66" defer></script>
-  <script src="school-map.js?v=entry66" defer></script>
-  <script src="school-start.js?v=entry66" defer></script>
+  <script src="school-map.js?v=school67" defer></script>
+  <script src="school-start.js?v=school67" defer></script>
 </head>
 <body>
   <div class="entry-shell">
     <header class="entry-nav">
       <details id="entryJump">
-        <summary>교실 바로가기</summary>
+        <summary>교실 미리보기</summary>
         <nav id="roomLinks" aria-label="검토용 교실 바로가기"></nav>
       </details>
       <nav class="class-links" aria-label="학급 메뉴">
@@ -31,7 +31,7 @@
       <section id="cover" aria-labelledby="gameTitle" class="entry-cover">
         <div class="cover-copy">
           <h1 id="gameTitle" tabindex="-1">학교 탈출</h1>
-          <p>하교 종이 울렸는데 문이 잠겼어요.<br>일곱 교실의 단서를 찾아 학교 출입 시스템을 복구하세요.</p>
+          <p>하교 종이 울렸는데 교실 문이 안 열려요.<br>컴퓨터실에 가면 학교 출입문을 다시 열 수 있대요.</p>
           <button type="button" class="primary" id="openGuide">게임 안내 보기 <span aria-hidden="true">→</span></button>
         </div>
         <img class="cover-art" src="rooms/interiors/classroom-approved.webp" width="1672" height="941" alt="보라색 벽과 파란 의자, 잠긴 주황색 문이 있는 우리 반 교실">
@@ -39,11 +39,11 @@
       <section id="guide" aria-labelledby="guideTitle" hidden>
         <button type="button" class="back" id="showCover">← 첫 화면</button>
         <h2 id="guideTitle" tabindex="-1">게임 안내</h2>
-        <p class="guide-goal">10분 안에 컴퓨터실에서 학교 출입문을 여세요.</p>
+        <p class="guide-goal">일곱 교실을 지나 10분 안에 하교할 수 있을까요?</p>
         <ul class="how-to">
-          <li>바닥을 누르면 이동하고, 화면을 끌면 방향을 바꿀 수 있어요.</li>
-          <li>물건을 눌러 단서를 찾으세요. 문 옆 장치에서 문제를 확인할 수 있어요.</li>
-          <li>퍼즐을 풀면 다음 교실로 이동해요. 힌트를 한 번 보면 <strong>30초</strong>가 줄어요.</li>
+          <li>가고 싶은 곳의 바닥을 누르세요. 화면을 끌면 몸을 돌릴 수 있어요.</li>
+          <li>문 옆 장치를 누르면 그 방의 문제가 나와요. 주변 물건을 눌러 단서를 찾아보세요.</li>
+          <li>퍼즐을 풀면 문이 열리고 다음 교실로 넘어가요. 힌트를 한 번 보면 <strong>30초</strong>가 줄어요.</li>
         </ul>
         <h3>교실 순서</h3>
         <div id="entryRoute"></div>

@@ -43,7 +43,7 @@ h1:focus, h2:focus { outline: none; }
 .school-route-plan { list-style: none; display: flex; flex-wrap: wrap; gap: .25rem .7rem; padding: .8rem 0; margin: 0 0 1.4rem; border-block: 1px solid #c9d2df; align-items: baseline; }
 .school-route-plan li { display: inline-flex; align-items: baseline; gap: .55rem; line-height: 1.7; font-size: .94rem; }
 .school-route-plan li + li::before { content: '›'; color: #69788f; }
-.school-route-plan li[aria-current], .school-route-plan li:last-child { color: #244eaf; }
+.school-route-plan li:first-child, .school-route-plan li:last-child { color: #244eaf; }
 .school-route-plan small { display:none; }
 .guide-actions { display: flex; flex-wrap: wrap; gap: .65rem; }
 .guide-actions .primary { order: -1; }

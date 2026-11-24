@@ -98,7 +98,7 @@ function setupReviewNavigation(number,{showJump=true,rooms=REVIEW_ROOMS,urlFor=r
   if(showJump){
     jump=document.createElement('details');
     jump.className='review-jump';jump.id='reviewJump';
-    const summary=document.createElement('summary');summary.textContent='바로가기';
+    const summary=document.createElement('summary');summary.textContent='교실 미리보기';
     const links=document.createElement('nav');links.setAttribute('aria-label','검토용 교실 바로가기');
     for(const room of rooms){
       const link=document.createElement('a');link.href=urlFor(room);link.textContent=room.place;

@@ -82,8 +82,8 @@ function clockDrawing(pair){
       const down=action(wheel,'▼',()=>turn(i,-1));down.setAttribute('aria-label',label+' 내리기');
     });
     paidOverlay(actions(),()=>{
-      if(run.found.includes('paper')){close();world.inspectTarget('clock')}
-      else modal('힌트',puzzle.hint+' 먼저 피아노에서 투명 악보를 챙기세요.');
+      if(run.found.includes('paper')){close();world.inspectTarget('clock','overlay')}
+      else modal('힌트','피아노 보면대에서 투명 악보를 챙기세요. 멈춘 벽시계에 겹쳐 볼 수 있어요.');
     });
   }
   return {showPaper,showClock,dial};

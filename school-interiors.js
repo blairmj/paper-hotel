@@ -33,7 +33,7 @@ const SchoolInterior = (() => {
       target('paper', '피아노 악보', SCORE_CENTER, SCORE.width, SCORE.height, -3.07, 2.35, SCORE.tilt),
       target('clock','멈춘 벽시계',[-.17,2.25,.135],.71,.71,-.17,1.58)
     ] : [
-      target('printSamples', '작업대의 벽화 밑그림', PRINT_SHEET.center, PRINT_SHEET.width, PRINT_SHEET.height, 2.25, 6.82, PRINT_SHEET.tilt),
+      target('printSamples', '작업대 견본', PRINT_SHEET.center, PRINT_SHEET.width, PRINT_SHEET.height, 2.25, 6.82, PRINT_SHEET.tilt),
       target('printRule', '게시판의 물감 번짐 견본', [-3.71, 2.13, .086], 1.20, .70, -3.10, 2.15)
     ];
     const entry = RECOVERY_ROOMS.find(item => item.kind === kind);

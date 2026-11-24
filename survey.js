@@ -32,8 +32,7 @@ function showStudentSurvey() {
   const destination = schoolRoomToPlay(progress, plan);
   back.href = lesson && !SchoolRecords.storyKey ? 'join.html' : plan ? recoveryRoomLink(destination, true) : schoolStartLink();
   if (!eligible) {
-    note.textContent = '게임을 마치면 다녀온 교실 중에서 답을 고를 수 있어요.';
-    for (const key of fields) form.elements.namedItem(key).hidden = true;
+    note.textContent = '게임이 끝나면 이곳에서 가장 기억에 남는 퍼즐을 고를 수 있어요.';
     back.textContent = lesson && !SchoolRecords.storyKey ? '학급으로 참여하기' : plan ? '게임으로 돌아가기' : '게임 시작';
     return;
   }
@@ -53,7 +52,8 @@ function showStudentSurvey() {
     if (focus) message.focus();
   }
   if (saved?.status === 'sent') { done(); return; }
-  if (!lesson) note.textContent = '혼자 플레이한 설문은 이 기기에 저장돼요.';
+  if (!lesson) note.textContent = '풀어 본 퍼즐을 떠올려 보세요. 답은 이 기기에 저장돼요.';
+  form.hidden = false;
   for (const select of selects) {
     for (const room of visited) select.add(new Option(room.place, room.kind));
     select.add(new Option('잘 모르겠어요', 'unsure'));

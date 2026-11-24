@@ -65,6 +65,16 @@ const CTDeviceUI=(()=>{
       element(host,'p',lines[1]);
       const demo=element(host,'div',undefined,'ink-demo');
       for(let i=0;i<3;i++)element(demo,'span',i===1?'●':'');
+    }else if(id==='recordA'){
+      const table=element(host,'table',undefined,'pad-log');
+      table.setAttribute('aria-label',lines[0]);
+      const headings=table.createTHead().insertRow();
+      for(const label of CT.padLog[0])element(headings,'th',label).scope='col';
+      const body=table.createTBody();
+      for(const pair of CT.padLog.slice(1)){
+        const row=body.insertRow();
+        for(const signs of pair)element(row,'td',signs);
+      }
     }else if(id==='broadcastLog')lamps(host);
     else if(id==='broadcastRules'){
       const list=element(host,'div',undefined,'ct-codebook');
@@ -123,7 +133,7 @@ const CTDeviceUI=(()=>{
       element(display,'span','패드 화면');
       if(!state.card){
         element(display,'strong','카드를 기다리는 중');
-        element(controls,'p','카드는 맨 뒷줄 왼쪽 책상의 옆 서랍에 있어요.');
+        element(controls,'p','교실 뒤쪽 컴퓨터에 카드를 어디에 두었는지 적혀 있어요.');
         return;
       }
       const reading=CT.readCard(state.card);
@@ -146,7 +156,7 @@ const CTDeviceUI=(()=>{
           if(!alive())return;
           state.cell=i;change();
           if(CT.parity(i)){const btn=controls.querySelectorAll('button')[i];btn.textContent=bits[i]?'○':'●';btn.setAttribute('aria-pressed',String(!bits[i]));solve(300)}
-          else incorrect('이 불을 바꾸어도 모든 줄이 짝수가 되지 않아요. 점검 기록을 다시 보세요.');
+          else incorrect('아직 불이 홀수 개 켜진 줄이 있어요. 가로줄과 세로줄을 하나씩 세어 보세요.');
         });
       }else if(kind==='art'){
         const paint=CT.paintCells(state.drops);
@@ -160,18 +170,18 @@ const CTDeviceUI=(()=>{
           const at=state.drops.indexOf(i);
           if(at>=0)state.drops.splice(at,1);
           else if(state.drops.length<CT.inkLimit)state.drops.push(i);
-          else{message('놓은 방울을 한 번 더 누르면 거둘 수 있어요.');return}
+          else{message('물감을 다 썼어요. 옮기고 싶은 방울을 다시 누르세요.');return}
           change();message('');draw();
           if(CT.artSolved(state.drops)){message('견본과 같은 무늬예요.');solve(750);return}
           if(state.drops.length===CT.inkLimit)incorrect('견본과 다른 칸을 찾아 방울을 옮겨 보세요.');
         });
         element(controls,'p','남은 물감 '+(CT.inkLimit-state.drops.length)+'방울');
         if(!hasSample)element(controls,'p','작업대에서 완성 견본을 찾아보세요.');
-        if(state.drops.length)again('마지막 방울 거두기',()=>state.drops.pop());
+        if(state.drops.length)again('마지막 방울 지우기',()=>state.drops.pop());
       }else if(kind==='science'){
         let top='left',lower=state.lower;
         const view=element(controls,'div');view.innerHTML=railSvg(top,lower,null,state.cup);
-        element(controls,'p','화살표는 열린 길, 빨간 가로막대는 막힌 길이에요.','rail-legend');
+        element(controls,'p','구슬은 화살표를 따라가요. 빨간 막대가 있는 쪽은 막혀 있어요.','rail-legend');
         const choices=group();
         for(const cup of CT.cups)button(choices,cup+' 컵',()=>{if(!busy&&alive()){state.cup=cup;change();message('');draw()}},{pressed:state.cup===cup});
         confirm('세 구슬 굴리기',async()=>{

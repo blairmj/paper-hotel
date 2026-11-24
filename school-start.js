@@ -24,7 +24,7 @@
     id('studentIdentity').textContent=student.label+' · '+student.seat+'번';
     id('studentIdentity').hidden=false;document.querySelector('.class-links').hidden=true;
   }
-  renderSchoolMap(id('entryRoute'),{position:'classroom'});
+  renderSchoolMap(id('entryRoute'));
 
   function updateGuide(){
     shown=progress();
@@ -35,7 +35,7 @@
     resume.classList.toggle('primary',active);
     start.textContent=shown.status==='new'?'우리 반 교실에서 시작':'처음부터 시작';
     resume.textContent=active?'이어서 하기':'지난 결과 보기';
-    if(active)note.textContent=shown.room.place+'까지 왔어요. 처음부터 시작하면 현재 풀이가 초기화돼요.';
+    if(active)note.textContent=shown.room.place+'에서 이어 할 수 있어요. 처음부터 시작하면 지난 풀이가 지워져요.';
     else if(!note.hidden)note.textContent=shown.status==='complete'?'지난번에 하교를 마쳤어요.':'지난 게임의 제한 시간이 끝났어요.';
     // Keep keyboard and visual order the same when continuing is the main action.
     if(active)start.before(resume);else start.after(resume);

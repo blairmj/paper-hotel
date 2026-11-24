@@ -24,7 +24,7 @@ function countBallMoves(first, removal) {
 const LOAN_NUMBER = 61;
 const SHELF_LIMIT = 3;
 const LIBRARY_NOTICES = {
-  shelfGuide:['책의 번호는 오른쪽으로 갈 수록 커집니다.', '3번 내로 필요한 책을 찾으세요.'],
+  shelfGuide:['책의 번호는 오른쪽으로 갈수록 커집니다.', '3번 내로 필요한 책을 찾으세요.'],
   loanSlip:['대출하려는 책의 번호는', LOAN_NUMBER+'번입니다.']
 };
 const SHELF_BINDINGS = ['#3b6a95','#b67a32','#9f584e','#36587d','#517c72','#95694a','#746889'];
@@ -53,13 +53,13 @@ const BROADCAST_COMMANDS = {
 };
 const SCHOOL_PUZZLES = {
   sports:{control:'pin',revision:2,title:'문 옆 번호판',keys:Array.from('1234567890'),answer:countBallMoves(BALLS,BALL_PICKUP),
-    instructions:'회수표대로 공을 하나 뺄 때마다, 남은 공 중 몇 개가 자리를 옮길까요? 네 번 센 수를 차례로 이어 쓰면 비밀번호예요.',
-    hint:'공을 빼면 그 오른쪽에 있던 공들이 한 칸씩 왼쪽으로 움직여요. 다음 공을 빼기 전, 이번에 움직인 공이 몇 개인지 기억하세요.'},
+    instructions:'회수표대로 공을 하나씩 빼 보세요. 그때마다 남은 공 중 몇 개가 자리를 옮겼나요? 네 번의 기록이 비밀번호예요.',
+    hint:'공을 빼면 그 오른쪽에 있던 공들만 왼쪽으로 한 칸씩 움직여요. 몇 개였는지 선반 아래 기록에서 확인해 보세요.'},
   library:{control:'shelf',revision:2,title:'곡선 서가',doorTitle:'도서실 탈출',
     instructions:'대출하려는 책은 어디에 있는지 찾아보세요.',
     hint:'남은 책의 가운데를 펼쳐 보세요. 찾는 번호가 더 크면 오른쪽에, 더 작으면 왼쪽에 있어요.'},
   classroom:{control:'device',revision:4,title:'교실 출입 패드',
-    instructions:'어느 불을 한 번 누르면 가로줄마다, 세로줄마다 켜진 불이 짝수 개가 될까요?',
+    instructions:'불 하나를 바꿀 수 있어요. 어느 칸을 누르면 모든 가로줄과 세로줄에 짝수 개의 불이 켜질까요?',
     hint:'켜진 불이 홀수 개인 가로줄과 세로줄을 각각 찾고, 두 줄이 만나는 칸을 살펴보세요.'},
   music:{control:'device',revision:5,title:'문 옆 다이얼',
     instructions:'악보에 적힌 네 개의 기록을 보고, 멈춘 시계의 두 바늘이 나타내는 수를 찾아보세요.',

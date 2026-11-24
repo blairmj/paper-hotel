@@ -187,12 +187,12 @@ function collectClue(id){
   byId('bag').hidden=false;
 }
 
-function inspectClue(id){
+function inspectClue(id,command){
   const clue=room.clues.find(item=>item.id===id);
   if(!clue)return;
   if(id==='paper'){MusicClock.showPaper();return}
   collectClue(id);
-  if(id==='clock'){MusicClock.showClock();return}
+  if(id==='clock'){MusicClock.showClock(command==='overlay'&&run.device.overlay&&run.found.includes('paper')?0:null);return}
   if(clue.lines){
     modal(clue.lines.join(' '),'','library-note');
     return;
@@ -242,7 +242,7 @@ function shelfPanel(){
     button.style.setProperty('--binding',color);
     return button;
   });
-  const retry=action(content,'새 서가로 다시 찾기',()=>{
+  const retry=action(content,'다시 찾기',()=>{
     if(countdown.check()||run.solved||opening)return;
     run.shelf=makeLibraryShelf();run.entry=[];
     world.setDigits(deviceEntry());save();draw();
@@ -264,7 +264,7 @@ function shelfPanel(){
     retry.hidden=remaining>0||found;
     if(found)feedback.textContent=LOAN_NUMBER+'번 책을 찾았어요!';
     else if(last===undefined)feedback.textContent='';
-    else if(!remaining)feedback.textContent=last+'번이에요. 세 권을 모두 펼쳤어요.';
+    else if(!remaining)feedback.textContent=last+'번이에요. 세 권을 다 펼쳤어요. 다시 찾기를 누르면 책이 번호순으로 새로 놓여요.';
     else feedback.textContent=last+'번 책을 펼쳤어요.';
   }
   draw();
@@ -288,8 +288,8 @@ function ballLockerPanel(){
     chip.setAttribute('aria-label',label+' 공 빼기');
     chip.style.setProperty('--ball',BALL_COLORS[i]);return chip;
   });
-  const replay=action(controls,'방금 움직임 다시 보기',()=>animate(run.picked));
-  const reset=action(controls,'처음 배열로',()=>{
+  const replay=action(controls,'움직임 다시 보기',()=>animate(run.picked));
+  const reset=action(controls,'공 다시 놓기',()=>{
     if(animating||countdown.check())return;
     run.picked=0;run.entry=[];world.setBalls(0);save();draw(0);showCounts(0);prompt();
   });
@@ -299,7 +299,7 @@ function ballLockerPanel(){
     for(let i=0;i<count;i++){
       const item=document.createElement('li'),value=document.createElement('b');
       value.textContent=puzzle.answer[i]+'개';
-      item.append(BALL_PICKUP[i]+' 뺀 뒤 ',value);counts.append(item);
+      item.append(BALL_PICKUP[i]+'를 뺀 뒤 ',value);counts.append(item);
     }
   }
   function draw(count){
@@ -501,7 +501,7 @@ function start(){
       else if(id==='cardDrawer')devicePanel(id,'책상 서랍');
       else if(id==='ballLine')ballLockerPanel();
       else if(id==='doorGuide')modal(puzzle.doorTitle??(room.place+' 탈출'),deviceInstructions(),'door-question');
-      else inspectClue(id);
+      else inspectClue(id,command);
     }
   }).then(created=>{
     world=created;resetWorld();byId('bag').hidden=!run.found.length&&!(room.kind==='computer'&&run.device.card);

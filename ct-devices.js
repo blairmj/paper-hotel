@@ -11,16 +11,20 @@ const CT = (() => {
   ];
   const fields={name:'이름',class:'반',id:'접수번호',time:'입장 시각'};
   const cards=['★●★','●★●','★★●'];
+  const padLog=[
+    ['넣은 카드','패드에 뜬 기호'],
+    ...['▲●★','★▲●'].map(card=>[card,readCard(card)].map(signs=>[...signs].join(' ')))
+  ];
   const posters=['별','달'];
   const cups=['왼쪽','가운데','오른쪽'];
   const clues={
-    powerNote:['모둠 책상의 점검 쪽지','출입 패드의 불 하나만 켜짐과 꺼짐이 뒤바뀌었습니다.'],
+    powerNote:['모둠 책상의 점검 쪽지','출입 패드에서 불 하나가 반대로 표시되고 있어요.'],
     printSamples:['작업대의 완성 견본','파란 칸을 견본과 똑같이 칠하세요. 흰 칸은 그대로 두세요.'],
-    printRule:['물감 견본','한 칸에 물감을 떨어뜨리면 그 칸과 바로 위·아래 한 칸씩 함께 칠해집니다.'],
+    printRule:['물감 번짐 견본','물감 한 방울은 떨어뜨린 칸과 바로 위·아래 한 칸씩을 칠해요.'],
     railNote:['실험 순서','흰 구슬 → 흰 구슬 → 파란 구슬','구슬이 지나간 갈림판만 반대쪽으로 돌아갑니다.'],
     broadcastRules:['방송 암호표','짧은 빛 하나 · 급식 안내','긴 빛 + 짧은 빛 · 날씨','긴 빛 + 긴 빛 · 신청곡'],
     broadcastLog:['신호등 수신 기록','긴 빛 · 짧은 빛 · 짧은 빛 · 긴 빛 · 긴 빛'],
-    recordA:['출입 패드 점검 기록','넣은 카드　→　패드에 뜬 기호','▲ ● ★　→　★ ● ▲','★ ▲ ●　→　● ▲ ★'],
+    recordA:['출입 패드 점검 기록',...padLog.map(row=>row.join('　→　'))],
     recordB:['카드 보관 메모','카드는 이 책상의 옆 서랍에 있어요.'],
     printJobs:['오늘의 주문서','별 포스터 한 장, 달 포스터 한 장.','세 번째 차례가 끝날 때 두 장 모두 인쇄되어야 합니다.'],
     printManual:['기계 안내','한 기계는 한 차례에 한 장을 처리합니다.','스캔이 끝난 포스터는 다음 차례부터 인쇄할 수 있습니다.'],
@@ -108,5 +112,5 @@ const CT = (() => {
     }
     return base;
   }
-  return {lights,artRows,artWidth,inkLimit,paintCells,artSolved,signal,tickets,fields,cards,posters,cups,clues,fresh,restore,parity,experiment,marblePath,readCard,schedule};
+  return {lights,artRows,artWidth,inkLimit,paintCells,artSolved,signal,tickets,fields,cards,padLog,posters,cups,clues,fresh,restore,parity,experiment,marblePath,readCard,schedule};
 })();
