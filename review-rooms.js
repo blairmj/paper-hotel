@@ -9,8 +9,9 @@ const REVIEW_ROOMS = [
   {n:209, place:'컴퓨터실', href:'computer.html', kind:'computer'}
 ];
 
-const RECOVERY_ROOMS = [{n:502,place:'우리 반 교실',href:'classroom.html',kind:'classroom'},...REVIEW_ROOMS];
+const RECOVERY_ROOMS = [{n:502,place:'우리 반 교실',href:'./',kind:'classroom'},...REVIEW_ROOMS];
 const SCHOOL_STORY_KEY = globalThis.SchoolRecords?.storyKey || 'paperhotel.recovery.school.v2';
+const SCHOOL_PREVIOUS_KEY = SCHOOL_STORY_KEY + '.previous';
 const SCHOOL_REVIEW_KEY = 'paperhotel.recovery.review.v1';
 const SCHOOL_ESCAPE_DURATION = 10*60_000;
 const HINT_COST_SECONDS = 30;
@@ -60,8 +61,9 @@ function beginSchoolAttempt(plan,lessonAttempt=null){
 }
 
 function retrySchool(){
-  writeSchoolBook(SCHOOL_STORY_KEY,{room:RECOVERY_ROOMS[0].n,visits:{}});
-  location.replace(schoolStartLink());
+  const url=new URL(schoolStartLink(),location.href);
+  url.searchParams.set('restart','1');
+  location.replace(url.href);
 }
 
 function showSchoolTimeout(dialog,retry){
@@ -116,6 +118,8 @@ function setupReviewNavigation(number,{showJump=true,rooms=REVIEW_ROOMS,urlFor=r
     const button=document.getElementById(id),label=button.textContent;
     button.setAttribute('aria-label',label);button.title=label;button.classList.add('menu-icon');
     button.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="'+path+'"/></svg>';
+    const caption=document.createElement('span');caption.className='menu-caption';caption.textContent=label;
+    button.append(caption);
   }
   return jump;
 }

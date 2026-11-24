@@ -3,7 +3,7 @@
   transform:translateX(-50%);margin:0;padding:9px 15px;
   width:max-content;max-width:min(40em,calc(100% - 30px));border-radius:7px;
   background:#1d2a32ee;color:#fff;box-shadow:0 2px 10px #18252b33;
-  text-align:center;font-size:.9375rem;line-height:1.5;word-break:keep-all;
+  text-align:center;font-size:1.05rem;line-height:1.5;word-break:keep-all;
   pointer-events:none;
 }
 #spots[inert] .device-guide,#musicGame:has(dialog[open]) .device-guide{display:none}
@@ -171,3 +171,5 @@ dialog p.floorplan-notice{
 .school-route-plan li[aria-current] small{color:#205a53}
 #inspect[data-panel=intro] #panelBody{display:block;overflow:auto}
 #inspect[data-panel=intro] .lesson-access{margin-top:.7rem}
+#inspect[data-panel=map] .lesson-access{align-items:center;gap:.4rem 1rem;margin-top:.6rem;font-size:1rem}
+#inspect[data-panel=map] .lesson-access a{display:inline-flex;align-items:center;min-height:2.5rem;text-underline-offset:.18em}

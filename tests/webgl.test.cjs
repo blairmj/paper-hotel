@@ -50,7 +50,7 @@ test('picking accounts for each repeated computer station and a ray starting ins
 });
 
 test('every playable classroom starts the native renderer',()=>{
-  for(const name of ['classroom','music','art','sports','library','science','computer']){
+  for(const name of ['index','music','art','sports','library','science','computer']){
     const html=fs.readFileSync(path.join(root,name+'.html'),'utf8');
     assert.doesNotMatch(html,/three\.min\.js/i);
     assert.match(html,/src="webgl\/renderer\.js/);
@@ -62,11 +62,18 @@ test('every playable classroom starts the native renderer',()=>{
   }
 });
 
-test('the student URL offers the guide before it loads a playable classroom',()=>{
+test('the student URL is the playable first room and earlier classroom links keep their parameters',()=>{
   const home=fs.readFileSync(path.join(root,'index.html'),'utf8');
-  assert.match(home,/id="cover"/);
-  assert.match(home,/id="openGuide"/);
-  assert.match(home,/id="guide"[^>]*hidden/);
-  assert.match(home,/id="startGame"/);
-  assert.doesNotMatch(home,/src="(?:webgl\/|school-room\.js)|id="roomView"/);
+  assert.match(home,/data-room="classroom"/);
+  assert.match(home,/id="roomView"/);
+  assert.match(home,/src="school-start\.js/);
+  assert.ok(home.indexOf('school-start.js')<home.indexOf('school-room.js'));
+  assert.doesNotMatch(home,/id="(?:cover|openGuide|startGame)"/);
+  const legacy=fs.readFileSync(path.join(root,'classroom.html'),'utf8');
+  const script=legacy.match(/<script>([^<]+)<\/script>/)[1];
+  for(const search of ['','?review=1','?school=1&lesson=1']){
+    let target;
+    vm.runInNewContext(script,{location:{search,hash:'#pad',replace:url=>target=url}});
+    assert.equal(target,'./'+search+'#pad');
+  }
 });

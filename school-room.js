@@ -11,37 +11,36 @@ const byId=id=>document.getElementById(id),dialog=byId('inspect'),content=byId('
 const roomHead=document.querySelector('.room-head'),movement=document.querySelector('.movement');
 const panelTop=dialog.querySelector('.panel-top');
 const freshSportsVisit=!story&&room.kind==='sports'&&!history.state?.sportsVisit;
-const saved=freshSportsVisit?null:book().visits[room.n]?.restoration;
-const outdated=saved?.revision!==puzzle.revision;
 
 function newRun(){
   if(puzzle.control==='shelf')return {revision:puzzle.revision,found:[],entry:[],shelf:makeLibraryShelf(),solved:false};
   if(puzzle.control==='device')return {revision:puzzle.revision,found:[],entry:[],device:CT.fresh(room.kind),solved:false};
   return {revision:puzzle.revision,found:[],entry:[],picked:0,solved:false};
 }
-let run=newRun(),world,countdown,attempt,reviewJump,opening=false,finished=false;
-if(saved&&(!outdated||puzzle.control==='shelf')){
-  run.found=Array.isArray(saved.found)?saved.found.filter(id=>room.clues.some(clue=>clue.id===id)&&!(outdated&&id==='loanSlip')):[];
-}
-if(saved&&!outdated){
-  if(puzzle.control==='pin'&&Number.isInteger(saved.picked)&&saved.picked>=0&&saved.picked<=BALL_PICKUP.length)run.picked=saved.picked;
-  if(puzzle.control==='device')run.device=CT.restore(room.kind,saved.device,run.device);
-  if(Array.isArray(saved.entry)){
-    if(puzzle.control==='shelf'){
-      if(validLibraryShelf(saved.shelf)){
-        run.shelf=saved.shelf;
-        for(const slot of saved.entry.slice(0,SHELF_LIMIT)){
-          if(!canOpenLibraryBook(run.shelf,run.entry,slot))break;
-          run.entry.push(slot);
+let run,world,countdown,attempt,reviewJump,opening=false,finished=false;
+function restoreRun(saved,outdated){
+  run=newRun();
+  if(saved&&(!outdated||puzzle.control==='shelf')){
+    run.found=Array.isArray(saved.found)?saved.found.filter(id=>room.clues.some(clue=>clue.id===id)&&!(outdated&&id==='loanSlip')):[];
+  }
+  if(saved&&!outdated){
+    if(puzzle.control==='pin'&&Number.isInteger(saved.picked)&&saved.picked>=0&&saved.picked<=BALL_PICKUP.length)run.picked=saved.picked;
+    if(puzzle.control==='device')run.device=CT.restore(room.kind,saved.device,run.device);
+    if(Array.isArray(saved.entry)){
+      if(puzzle.control==='shelf'){
+        if(validLibraryShelf(saved.shelf)){
+          run.shelf=saved.shelf;
+          for(const slot of saved.entry.slice(0,SHELF_LIMIT)){
+            if(!canOpenLibraryBook(run.shelf,run.entry,slot))break;
+            run.entry.push(slot);
+          }
         }
       }
+      else if(puzzle.control==='pin'&&saved.entry.length<puzzle.answer.length&&saved.entry.every(value=>puzzle.keys.includes(value)))run.entry=saved.entry.slice();
     }
-    else if(puzzle.control==='pin'&&saved.entry.length<puzzle.answer.length&&saved.entry.every(value=>puzzle.keys.includes(value)))run.entry=saved.entry.slice();
   }
-}
-run.solved=saved?.solved===true&&(!outdated||story);
-if(run.solved&&puzzle.control==='pin'){
-  run.entry=puzzle.answer.slice();
+  run.solved=saved?.solved===true&&(!outdated||story);
+  if(run.solved&&puzzle.control==='pin')run.entry=puzzle.answer.slice();
 }
 
 function logPlay(kind,detail=''){
@@ -405,6 +404,25 @@ function directory(){
   if(story){
     modal('학교 안내도','','map');
     renderSchoolMap(content,{position:room.kind});
+    const menu=document.createElement('nav');
+    menu.className='lesson-access';menu.setAttribute('aria-label','게임과 수업');
+    function link(label,href){
+      const a=document.createElement('a');a.href=href;a.textContent=label;menu.append(a);
+    }
+    if(SchoolRecords.lesson){
+      const student=SchoolRecords.context();
+      const name=document.createElement('span');name.textContent=student.label+' · '+student.seat+'번';menu.append(name);
+    }else{
+      link('학급 코드로 참여','join.html');
+      link('교사용 대시보드','teacher.html');
+    }
+    if(schoolEscapeTimer(readSchoolBook(SCHOOL_PREVIOUS_KEY))){
+      link('지난 게임 설문',SchoolRecords.lesson?'survey.html?lesson=1&previous=1':'survey.html?solo=1&previous=1');
+    }
+    content.append(menu);
+    action(actions(),'처음부터 다시 시작',()=>{
+      if(window.confirm('우리 반 교실에서 다시 시작할까요? 지금 풀던 게임의 진행은 지워져요.'))retrySchool();
+    });
   }else{
     modal('학교 안내도','<div class="map-list">'+RECOVERY_ROOMS.map(item=>
       '<a href="'+recoveryRoomLink(item,false)+'">'+item.place+'</a>').join('')+'</div>','map');
@@ -444,8 +462,24 @@ function beginTimer(){
 }
 function mandatoryDialog(){return dialog.dataset.panel==='timeout'}
 
-function start(){
+async function start(){
+  if(room.kind==='classroom'&&params.has('review')&&SchoolRecords.lesson){
+    location.replace(recoveryRoomLink(RECOVERY_ROOMS[0],false));return;
+  }
   if(SchoolRecords.lesson&&!SchoolRecords.storyKey){location.replace('join.html');return}
+  if(story&&room.kind==='classroom'){
+    try{
+      await enterSchool({restart:params.get('restart')==='1',keepResult:params.get('school')==='1'||!!history.state?.schoolAttempt});
+    }catch(error){
+      modal('게임을 시작하지 못했어요.','','error');
+      const reason=document.createElement('p');reason.textContent=error.message;content.append(reason);
+      action(actions(),'다시 열기',()=>location.reload(),true);
+      return;
+    }
+    const address=new URL(location.href);
+    address.searchParams.delete('restart');
+    history.replaceState({...history.state,schoolAttempt:schoolEscapeTimer(book()).startedAt},'',address.href);
+  }
   const progress=book(),plan=schoolEscapeTimer(progress)&&schoolRoute(progress);
   let updated=false;
   if(story){
@@ -461,6 +495,9 @@ function start(){
       updated=true;
     }
   }
+  const saved=freshSportsVisit?null:progress.visits[room.n]?.restoration;
+  const outdated=saved?.revision!==puzzle.revision;
+  restoreRun(saved,outdated);
   if(freshSportsVisit)history.replaceState({...history.state,sportsVisit:true},'');
   if(outdated&&!run.solved){
     progress.visits[room.n]={restoration:run};

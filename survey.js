@@ -10,7 +10,9 @@ function showStudentSurvey() {
   const params = new URLSearchParams(location.search);
   const lesson = SchoolRecords.lesson;
   const context = SchoolRecords.context();
-  const progress = readSchoolBook(SCHOOL_STORY_KEY);
+  const previous = params.get('previous') === '1';
+  const progressKey = previous ? SCHOOL_PREVIOUS_KEY : SCHOOL_STORY_KEY;
+  const progress = readSchoolBook(progressKey);
   const timer = schoolEscapeTimer(progress);
   if (!lesson && !params.has('solo') && context?.session) {
     const enrolled = readSchoolBook('school.escape.lesson.' + context.session);
@@ -30,14 +32,14 @@ function showStudentSurvey() {
   const stops = plan?.stops ?? progress.route?.stops;
   const eligible = Array.isArray(stops) && validLesson && (completed || timedOut);
   const destination = schoolRoomToPlay(progress, plan);
-  back.href = lesson && !SchoolRecords.storyKey ? 'join.html' : plan ? recoveryRoomLink(destination, true) : schoolStartLink();
+  back.href = lesson && !SchoolRecords.storyKey ? 'join.html' : previous || !plan ? schoolStartLink() : recoveryRoomLink(destination, true);
   if (!eligible) {
     note.textContent = '게임이 끝나면 이곳에서 가장 기억에 남는 퍼즐을 고를 수 있어요.';
     back.textContent = lesson && !SchoolRecords.storyKey ? '학급으로 참여하기' : plan ? '게임으로 돌아가기' : '게임 시작';
     return;
   }
 
-  back.textContent = plan ? '결과로 돌아가기' : '게임 시작';
+  back.textContent = previous ? '게임으로 돌아가기' : '결과로 돌아가기';
   const visited = ['classroom', ...new Set(stops), 'computer']
     .map(id => surveyRooms.find(room => room.kind === id))
     .filter(room => room && (roomRestored(progress, room) || room.kind === timedOut));
@@ -67,11 +69,18 @@ function showStudentSurvey() {
   function answers() {
     return Object.fromEntries(selects.map(select => [select.name, select.value]));
   }
+  function surveyRecord() {
+    // An open survey can outlast its game when a student opens the play link again.
+    for (const key of [progressKey, previous ? SCHOOL_STORY_KEY : SCHOOL_PREVIOUS_KEY]) {
+      const book = readSchoolBook(key);
+      if (book.escapeTimer?.startedAt === timer.startedAt) return {key,book};
+    }
+  }
   function remember(status, picks) {
-    const latest = readSchoolBook(SCHOOL_STORY_KEY);
-    if (latest.escapeTimer?.startedAt !== timer.startedAt) return false;
-    latest.survey = {status, answers:picks};
-    return writeSchoolBook(SCHOOL_STORY_KEY, latest);
+    const record = surveyRecord();
+    if (!record) return false;
+    record.book.survey = {status, answers:picks};
+    return writeSchoolBook(record.key, record.book);
   }
   form.addEventListener('change', () => {
     error.hidden = true;
@@ -81,7 +90,7 @@ function showStudentSurvey() {
   async function submit() {
     if (busy || form.hidden || !form.reportValidity()) return;
     const picks = answers();
-    if (readSchoolBook(SCHOOL_STORY_KEY).escapeTimer?.startedAt !== timer.startedAt) {
+    if (!surveyRecord()) {
       error.textContent = '새 플레이가 시작됐어요. 게임으로 돌아가 주세요.';
       error.hidden = false;
       return;
@@ -112,8 +121,7 @@ function showStudentSurvey() {
   }
   form.addEventListener('submit', e => { e.preventDefault(); submit(); });
   function resume() {
-    const latest = readSchoolBook(SCHOOL_STORY_KEY);
-    if (lesson && latest.escapeTimer?.startedAt === timer.startedAt && latest.survey?.status === 'pending') submit();
+    if (lesson && surveyRecord()?.book.survey?.status === 'pending') submit();
   }
   window.addEventListener('online', resume);
   if (navigator.onLine) resume();

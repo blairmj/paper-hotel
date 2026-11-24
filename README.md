@@ -6,7 +6,7 @@
 
 ## 학생용 게임
 
-1. 첫 화면에서 **게임 안내 보기**를 누릅니다. **우리 반 교실에서 시작**을 누르는 순간부터 10분이 흐릅니다.
+1. 학생용 주소를 열면 **우리 반 교실**에서 10분 도전이 바로 시작됩니다. 문 옆의 출입 패드를 누르면 첫 문제가 나옵니다.
 2. 가고 싶은 곳의 바닥을 누르고, 방향을 바꿀 때는 화면을 끕니다. 물건을 누르면 가까이에서 살펴볼 수 있습니다. 무엇을 풀어야 할지 궁금하면 문 옆 장치를 누르세요.
 3. 퍼즐을 풀면 문이 열리고 다음 교실로 넘어갑니다. **힌트 보기**를 누른 뒤 확인하면 남은 시간에서 30초가 줄어듭니다. 마지막 10초에는 타이머가 빨갛게 깜빡입니다.
 
@@ -14,12 +14,12 @@
 
 살펴본 쪽지는 **찾은 단서**에서 다시 읽을 수 있습니다. 키보드에서는 W·A·S·D로 걷고 방향키로 주위를 둘러봅니다. 마우스 휠이나 Ctrl과 +/−로 확대·축소하고 Ctrl과 0으로 원래 배율로 돌아갑니다.
 
-같은 브라우저에서 게임을 다시 열면 첫 화면이 나옵니다. 안내에서 **이어서 하기**를 누르면 풀던 교실로 돌아갑니다. 자리를 비운 동안에도 시간은 흐릅니다. 시간이 끝났거나 하교에 성공했다면 지난 결과를 보거나 처음부터 다시 도전할 수 있습니다.
+진행 중에 같은 브라우저로 학생용 주소를 다시 열면 남은 시간 그대로 풀던 교실로 돌아갑니다. 자리를 비운 동안에도 시간은 흐릅니다. 하교했거나 시간이 다 된 뒤 학생용 주소를 새로 열면 우리 반 교실에서 다시 시작합니다. 직전 게임의 설문은 **안내도 → 지난 게임 설문**에서 볼 수 있습니다.
 
 ## 수업에서 쓰려면
 
 1. **교사**는 전용 코드로 대시보드에 로그인해 **새 학급 만들기**를 누릅니다. **참여 링크 복사**로 학급 주소를 학생에게 나눠 주세요. [교사용 대시보드](https://blairmj.github.io/school-escape/teacher.html)
-2. **학생**은 학급 링크에서 출석번호를 입력하고 게임을 시작합니다. 참여 코드를 직접 입력할 수도 있습니다. [학급 코드로 참여](https://blairmj.github.io/school-escape/join.html)
+2. **학생**은 학급 링크에서 출석번호를 입력하면 바로 교실로 들어갑니다. 혼자 플레이하다가 학급에 참여하려면 **안내도 → 학급 코드로 참여**를 누르세요. [학급 코드로 참여](https://blairmj.github.io/school-escape/join.html)
 3. **수업 뒤**에는 대시보드에서 학생별 풀이 기록, 방별 소요 시간과 힌트 사용을 확인할 수 있습니다. 학생 설문은 가장 재미있었던 방, 가장 어려웠던 방, 가장 쉬웠던 방을 하나씩 묻습니다. 시간 안에 탈출하지 못한 학생도 답할 수 있습니다.
 
 학급 기록과 설문은 담당 교사가 조회하고 CSV로 내려받을 수 있습니다. 혼자 플레이한 학생의 진행 상황과 설문은 해당 브라우저에 저장됩니다.
@@ -41,7 +41,7 @@
 
 ## 한 교실만 미리 볼 때
 
-첫 화면이나 게임 왼쪽 위의 **교실 미리보기**에서 방을 고를 수 있습니다. 미리보기는 한 방에 2분이며 학생용 10분 도전과 별도로 저장됩니다.
+게임 왼쪽 위의 **교실 미리보기**에서 방을 고를 수 있습니다. 미리보기는 한 방에 2분이며 학생용 10분 도전과 별도로 저장됩니다.
 
 [우리 반 교실](https://blairmj.github.io/school-escape/classroom.html?review=1) · [음악실](https://blairmj.github.io/school-escape/music.html) · [미술실](https://blairmj.github.io/school-escape/art.html) · [체육 준비실](https://blairmj.github.io/school-escape/sports.html) · [도서실](https://blairmj.github.io/school-escape/library.html) · [과학실](https://blairmj.github.io/school-escape/science.html) · [컴퓨터실](https://blairmj.github.io/school-escape/computer.html)
 
@@ -49,4 +49,4 @@
 
 저장소 루트에서 `python -m http.server 8000`을 실행한 뒤 브라우저에서 `http://localhost:8000/`을 엽니다. `node --test`로 퍼즐 규칙, 교실 이동, 타이머, WebGL 클릭 판정을 검사할 수 있습니다. GitHub Pages는 `main` 브랜치의 루트에서 배포합니다.
 
-첫 화면과 안내는 `index.html`과 `school-start.js`, 첫 교실은 `classroom.html`에서 시작합니다. 방별 문제는 `school-puzzles.js`, 장치의 규칙과 조작은 `ct-devices.js`와 `ct-panels.js`, 교실 이동은 `school-room.js`와 `school-routes.js`에서 확인할 수 있습니다. 교실은 `webgl/`의 JavaScript 렌더러로 그리며 행렬 연산과 삼각분할에 외부 라이브러리를 사용합니다. [gl-matrix 라이선스](./vendor/gl-matrix-LICENSE.txt) · [earcut 라이선스](./vendor/earcut-LICENSE.txt)
+`index.html`이 우리 반 교실의 게임 화면이며, `school-start.js`가 새 게임과 이어 하기를 처리합니다. 방별 문제는 `school-puzzles.js`, 장치의 규칙과 조작은 `ct-devices.js`와 `ct-panels.js`, 교실 이동은 `school-room.js`와 `school-routes.js`에서 확인할 수 있습니다. 교실은 `webgl/`의 JavaScript 렌더러로 그리며 행렬 연산과 삼각분할에 외부 라이브러리를 사용합니다. [gl-matrix 라이선스](./vendor/gl-matrix-LICENSE.txt) · [earcut 라이선스](./vendor/earcut-LICENSE.txt)
