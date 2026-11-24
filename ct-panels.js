@@ -110,12 +110,12 @@ const CTDeviceUI=(()=>{
           if(!alive())return;
           state.card=card;state.wasRead=false;change();
           for(const other of tray.children)other.setAttribute('aria-pressed',String(other===chip));
-          insert.disabled=false;message([...card].join(' ')+' 카드를 챙겼어요.');
+          insert.parentElement.hidden=false;message([...card].join(' ')+' 카드를 챙겼어요.');
         },{label:card+' 카드 가져가기',pressed:card===state.card});
         chip.dataset.command=card;
       }
       const insert=confirm('출입 패드에 꽂기',()=>walkToDevice('lock'));
-      insert.disabled=!state.card;
+      insert.parentElement.hidden=!state.card;
       return;
     }
     if(kind==='computer'){
