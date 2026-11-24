@@ -502,9 +502,7 @@ async function start(){
   dialog.addEventListener('cancel',event=>{if(mandatoryDialog())event.preventDefault()});
   if(story&&room.kind==='classroom'){
     try{
-      await enterSchool({
-        restart:params.get('restart')==='1',keepResult:params.get('school')==='1'||!!history.state?.schoolAttempt
-      },async()=>{
+      await enterSchool({restart:params.get('restart')==='1'},async()=>{
         await loadRoomWorld();
         restoreRun(null,true);resetWorld();
         await new Promise(resolve=>showGameGuide(resolve));
@@ -516,15 +514,17 @@ async function start(){
       action(actions(),'다시 열기',()=>location.reload(),true).focus();
       return;
     }
-    const address=new URL(location.href);
-    address.searchParams.delete('restart');
-    history.replaceState({...history.state,schoolAttempt:schoolEscapeTimer(book()).startedAt},'',address.href);
+    if(params.has('restart')){
+      const address=new URL(location.href);
+      address.searchParams.delete('restart');
+      history.replaceState(history.state,'',address.href);
+    }
   }
-  const progress=book(),plan=schoolEscapeTimer(progress)&&schoolRoute(progress);
+  const progress=book();
   let updated=false;
   if(story){
-    if(!plan){location.replace(schoolStartLink());return}
-    const destination=schoolRoomToPlay(progress,plan);
+    const {status,room:destination,plan}=schoolEntryProgress(progress);
+    if(status==='new'||status==='expired'){location.replace(schoolStartLink());return}
     if(destination.kind!==room.kind){
       location.replace(recoveryRoomLink(destination,true));
       return;
@@ -535,7 +535,9 @@ async function start(){
       updated=true;
     }
   }
-  const saved=freshSportsVisit?null:progress.visits[room.n]?.restoration;
+  const visit=progress.visits[room.n];
+  const expiredPreview=!story&&!visit?.restoration?.solved&&visit?.escapeTimer?.deadline<=Date.now();
+  const saved=freshSportsVisit||expiredPreview?null:visit?.restoration;
   const outdated=saved?.revision!==puzzle.revision;
   restoreRun(saved,outdated);
   if(freshSportsVisit)history.replaceState({...history.state,sportsVisit:true},'');
@@ -570,6 +572,8 @@ async function start(){
   if(story)window.addEventListener('pageshow',event=>{if(event.persisted)location.reload()});
   try{
     await loadRoomWorld();
+    // Loading a room can outlast the last few seconds of a saved attempt.
+    if(story&&schoolEntryProgress(book()).status==='expired'){location.replace(schoolStartLink());return}
     resetWorld();byId('bag').hidden=!run.found.length&&!(room.kind==='computer'&&run.device.card);
     if(!beginTimer())return;
     if(run.solved){

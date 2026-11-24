@@ -1,5 +1,4 @@
 'use strict';
 
-const progress=readSchoolBook(SCHOOL_STORY_KEY);
-const plan=schoolEscapeTimer(progress)&&schoolRoute(progress);
-location.replace(plan?recoveryRoomLink(schoolRoomToPlay(progress,plan),true):schoolStartLink());
+const entry=schoolEntryProgress(readSchoolBook(SCHOOL_STORY_KEY));
+location.replace(entry.status==='active'||entry.status==='complete'?recoveryRoomLink(entry.room,true):schoolStartLink());

@@ -32,14 +32,14 @@ function showStudentSurvey() {
   const stops = plan?.stops ?? progress.route?.stops;
   const eligible = Array.isArray(stops) && validLesson && (completed || timedOut);
   const destination = schoolRoomToPlay(progress, plan);
-  back.href = lesson && !SchoolRecords.storyKey ? 'join.html' : previous || !plan ? schoolStartLink() : recoveryRoomLink(destination, true);
+  back.href = lesson && !SchoolRecords.storyKey ? 'join.html' : previous || !plan || timedOut ? schoolStartLink() : recoveryRoomLink(destination, true);
   if (!eligible) {
     note.textContent = '게임이 끝나면 이곳에서 가장 기억에 남는 퍼즐을 고를 수 있어요.';
     back.textContent = lesson && !SchoolRecords.storyKey ? '학급으로 참여하기' : plan ? '게임으로 돌아가기' : '게임 시작';
     return;
   }
 
-  back.textContent = previous ? '게임으로 돌아가기' : '결과로 돌아가기';
+  back.textContent = previous ? '게임으로 돌아가기' : timedOut ? '다시 도전하기' : '결과로 돌아가기';
   const visited = ['classroom', ...new Set(stops), 'computer']
     .map(id => surveyRooms.find(room => room.kind === id))
     .filter(room => room && (roomRestored(progress, room) || room.kind === timedOut));

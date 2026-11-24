@@ -25,5 +25,5 @@ function schoolEntryProgress(book,now=Date.now()){
   const room=schoolRoomToPlay(book,plan);
   const completed=timer.stopped&&roomRestored(book,RECOVERY_ROOMS.at(-1));
   const status=completed?'complete':timer.deadline<=now?'expired':'active';
-  return {status,room,startedAt:timer.startedAt};
+  return {status,room,plan,startedAt:timer.startedAt};
 }

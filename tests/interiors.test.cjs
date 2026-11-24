@@ -295,7 +295,7 @@ test('the classroom guide starts the clock on confirmation and preserves active 
  for(const file of ['review-rooms.js','school-routes.js','school-start.js']){
    vm.runInContext(fs.readFileSync(path.join(root,file),'utf8'),ctx);
  }
- const freshVisit={restart:false,keepResult:false},key=records.storyKey;
+ const freshVisit={restart:false},key=records.storyKey;
  const confirmGuide=async()=>{};
  const unexpectedGuide=()=>assert.fail('showed the guide while resuming a game');
  let startFirst,startSecond;
@@ -317,10 +317,15 @@ test('the classroom guide starts the clock on confirmation and preserves active 
  now+=1000;await ctx.enterSchool(freshVisit,unexpectedGuide);
  assert.equal(ctx.schoolRoomToPlay(ctx.readSchoolBook(key)).kind,'music');
  assert.equal(reservations,1);
- now+=600000;await ctx.enterSchool({restart:false,keepResult:true},unexpectedGuide);
+ now+=600000;
+ let confirmExpired;
+ const reload=ctx.enterSchool(freshVisit,()=>new Promise(resolve=>{confirmExpired=resolve}));
+ assert.equal(typeof confirmExpired,'function','reloading an expired attempt must show the classroom guide');
+ now+=45000;
+ assert.equal(storage.get(key),JSON.stringify(first));
  assert.equal(reservations,1);
  available=false;
- await assert.rejects(ctx.enterSchool(freshVisit,confirmGuide),/offline/);
+ confirmExpired();await assert.rejects(reload,/offline/);
  assert.equal(storage.get(key),JSON.stringify(first));
  available=true;await ctx.enterSchool(freshVisit,confirmGuide);
  const archive=ctx.readSchoolBook(key+'.previous');
@@ -330,9 +335,9 @@ test('the classroom guide starts the clock on confirmation and preserves active 
  assert.equal(ctx.readSchoolBook(key).escapeTimer.startedAt,now);
 });
 
-test('a saved hallway link resumes the current classroom',()=>{
- let saved=null,destination;
- const ctx=vm.createContext({localStorage:{getItem:()=>saved},location:{replace:url=>{destination=url}}});
+test('a hallway link resumes a live game and returns an expired game to the start guide',()=>{
+ let saved=null,destination,now=2000;
+ const ctx=vm.createContext({Date:{now:()=>now},localStorage:{getItem:()=>saved},location:{replace:url=>{destination=url}}});
  for(const file of ['review-rooms.js','school-routes.js'])vm.runInContext(fs.readFileSync(path.join(root,file),'utf8'),ctx);
  const redirect=fs.readFileSync(path.join(root,'school-hallway.js'),'utf8');
  vm.runInContext('{'+redirect+'}',ctx);
@@ -341,6 +346,9 @@ test('a saved hallway link resumes the current classroom',()=>{
   escapeTimer:{startedAt:1000,deadline:601000}});
  vm.runInContext('{'+redirect+'}',ctx);
  assert.equal(destination,'music.html?school=1');
+ now=601000;
+ vm.runInContext('{'+redirect+'}',ctx);
+ assert.equal(destination,'./');
 });
 
 test('one repair restores even parity in every row and column',()=>{

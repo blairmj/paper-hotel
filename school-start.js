@@ -1,21 +1,15 @@
 'use strict';
 
-function needsNewSchoolAttempt(entry, {restart, keepResult}) {
-  return restart || entry.status === 'new' ||
-    (!keepResult && (entry.status === 'expired' || entry.status === 'complete'));
-}
-
-async function enterSchool(options, showGuide) {
+async function enterSchool({restart}, showGuide) {
   const initial = schoolEntryProgress(readSchoolBook(SCHOOL_STORY_KEY));
-  if (!needsNewSchoolAttempt(initial, options)) return;
+  if (initial.status === 'active' && !restart) return;
   await showGuide();
 
   async function enter() {
     const previous = readSchoolBook(SCHOOL_STORY_KEY);
     const entry = schoolEntryProgress(previous);
     // Another tab may have started a game while this student was reading.
-    if (entry.startedAt !== initial.startedAt && entry.status !== 'new') return;
-    if (!needsNewSchoolAttempt(entry, options)) return;
+    if (entry.status === 'active' && (!restart || entry.startedAt !== initial.startedAt)) return;
 
     const plan = fixedSchoolRoute();
     const enrollment = SchoolRecords.lesson ? await SchoolRecords.reserve(plan.stops) : null;
