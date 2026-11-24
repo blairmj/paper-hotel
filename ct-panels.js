@@ -27,6 +27,8 @@ const CTDeviceUI=(()=>{
   }
   function mural(host,paint,drops,onPick){
     const grid=element(host,'div',undefined,'ct-stamp-grid');
+    grid.style.setProperty('--paint-columns',CT.artWidth);
+    grid.style.setProperty('--paint-rows',CT.artRows.length);
     CT.artRows.forEach((row,r)=>[...row].forEach((_,c)=>{
       const i=r*CT.artWidth+c,label=(r+1)+'행 '+(c+1)+'열',ink=paint.has(i),drop=drops.includes(i);
       const cell=onPick?button(grid,drop?'●':'',()=>onPick(i),{label:label+(drop?' 물감 방울':ink?' 칠한 칸':' 빈 칸'),pressed:drop}):element(grid,'span');
