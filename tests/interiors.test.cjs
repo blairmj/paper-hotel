@@ -282,7 +282,7 @@ test('entry distinguishes new, active, expired and finished games without changi
  assert.equal(complete.status,'complete');assert.equal(complete.room.kind,'computer');
 });
 
-test('direct entry resumes an active game and keeps the previous survey when a new game opens',async()=>{
+test('the classroom guide starts the clock on confirmation and preserves active games and previous surveys',async()=>{
  const storage=new Map(),events=[];
  const db={getItem:key=>storage.get(key),setItem:(key,value)=>storage.set(key,value)};
  let now=80000,available=true,reservations=0;
@@ -295,22 +295,34 @@ test('direct entry resumes an active game and keeps the previous survey when a n
  for(const file of ['review-rooms.js','school-routes.js','school-start.js']){
    vm.runInContext(fs.readFileSync(path.join(root,file),'utf8'),ctx);
  }
- const freshVisit={restart:false,keepResult:false};
- await ctx.enterSchool(freshVisit);
- const key=records.storyKey,first=ctx.readSchoolBook(key);
+ const freshVisit={restart:false,keepResult:false},key=records.storyKey;
+ const confirmGuide=async()=>{};
+ const unexpectedGuide=()=>assert.fail('showed the guide while resuming a game');
+ let startFirst,startSecond;
+ const firstTab=ctx.enterSchool(freshVisit,()=>new Promise(resolve=>{startFirst=resolve}));
+ const secondTab=ctx.enterSchool(freshVisit,()=>new Promise(resolve=>{startSecond=resolve}));
+ now+=150000;
+ assert.equal(storage.has(key),false);
+ assert.equal(reservations,0);
+ startFirst();await firstTab;
+ const first=ctx.readSchoolBook(key);
+ assert.equal(first.startGuideSeen,true);
  assert.equal(first.escapeTimer.deadline,now+600000);
+ now+=2000;startSecond();await secondTab;
+ assert.equal(ctx.readSchoolBook(key).escapeTimer.deadline,first.escapeTimer.deadline);
+ assert.equal(reservations,1);
  first.visits[502]={restoration:{solved:true}};
  first.survey={status:'draft'};
  ctx.writeSchoolBook(key,first);
- now+=1000;await ctx.enterSchool(freshVisit);
+ now+=1000;await ctx.enterSchool(freshVisit,unexpectedGuide);
  assert.equal(ctx.schoolRoomToPlay(ctx.readSchoolBook(key)).kind,'music');
  assert.equal(reservations,1);
- now+=600000;await ctx.enterSchool({restart:false,keepResult:true});
+ now+=600000;await ctx.enterSchool({restart:false,keepResult:true},unexpectedGuide);
  assert.equal(reservations,1);
  available=false;
- await assert.rejects(ctx.enterSchool(freshVisit),/offline/);
+ await assert.rejects(ctx.enterSchool(freshVisit,confirmGuide),/offline/);
  assert.equal(storage.get(key),JSON.stringify(first));
- available=true;await ctx.enterSchool(freshVisit);
+ available=true;await ctx.enterSchool(freshVisit,confirmGuide);
  const archive=ctx.readSchoolBook(key+'.previous');
  assert.equal(archive.survey.status,'draft');assert.equal(archive.surveyTimeoutRoom,'music');
  assert.deepEqual(events,[['music','timeout']]);assert.equal(reservations,2);

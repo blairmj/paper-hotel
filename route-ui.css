@@ -173,3 +173,21 @@ dialog p.floorplan-notice{
 #inspect[data-panel=intro] .lesson-access{margin-top:.7rem}
 #inspect[data-panel=map] .lesson-access{align-items:center;gap:.4rem 1rem;margin-top:.6rem;font-size:1rem}
 #inspect[data-panel=map] .lesson-access a{display:inline-flex;align-items:center;min-height:2.5rem;text-underline-offset:.18em}
+
+#inspect:is([data-panel=welcome],[data-panel=game-guide]){
+  --panel-width:23.5rem;
+  --panel-padding:1.05rem;
+  top:auto;
+  bottom:max(1rem,var(--edge-bottom));
+  margin:0 auto;
+  border-radius:.65rem;
+}
+#inspect:is([data-panel=welcome],[data-panel=game-guide])::backdrop{background:#1525282b}
+#inspect:is([data-panel=welcome],[data-panel=error]) #dismiss{display:none}
+#inspect #guideFirstMove{margin:.7rem 0}
+#inspect #guideTime{margin:.9rem 0 .3rem;padding-top:.65rem;border-top:1px solid #dee5e5;color:#425750}
+@media(min-width:800px) and (min-aspect-ratio:5/4){
+  #inspect:is([data-panel=welcome],[data-panel=game-guide]){
+    left:max(1.5rem,var(--edge-left));bottom:max(1.5rem,var(--edge-bottom));margin:0;
+  }
+}

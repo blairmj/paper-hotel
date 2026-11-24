@@ -400,6 +400,20 @@ function inspectLock(command){
   if(!run.solved)appendRoomTextHint(content,countdown,puzzle.hint);
 }
 
+function showGameGuide(onStart){
+  modal('학교 탈출',
+    '<p id="guideStory">하교 종이 울렸는데 문이 잠겼어요. 퍼즐을 풀고 컴퓨터실까지 가 보세요.</p>'+
+    '<p id="guideFirstMove"><strong>문 옆의 출입 패드</strong>를 눌러 보세요.</p>'+
+    '<p id="guideTime">제한 시간은 '+(SCHOOL_ESCAPE_DURATION/60_000)+'분이에요. 힌트를 보면 '+HINT_COST_SECONDS+'초가 줄어요.</p>',
+    onStart?'welcome':'game-guide');
+  dialog.setAttribute('aria-describedby','guideStory guideFirstMove guideTime');
+  const button=action(actions(),onStart?'게임 시작':'교실로 돌아가기',()=>{
+    if(!onStart){close();return}
+    button.disabled=true;button.textContent='시작하는 중…';onStart();
+  },true);
+  button.focus({preventScroll:true});
+}
+
 function directory(){
   if(story){
     modal('학교 안내도','','map');
@@ -420,7 +434,9 @@ function directory(){
       link('지난 게임 설문',SchoolRecords.lesson?'survey.html?lesson=1&previous=1':'survey.html?solo=1&previous=1');
     }
     content.append(menu);
-    action(actions(),'처음부터 다시 시작',()=>{
+    const buttons=actions();
+    action(buttons,'게임 안내 다시 보기',()=>showGameGuide());
+    action(buttons,'처음부터 다시 시작',()=>{
       if(window.confirm('우리 반 교실에서 다시 시작할까요? 지금 풀던 게임의 진행은 지워져요.'))retrySchool();
     });
   }else{
@@ -460,20 +476,44 @@ function beginTimer(){
   if(canPlay&&!run.solved)logPlay('enter');
   return canPlay;
 }
-function mandatoryDialog(){return dialog.dataset.panel==='timeout'}
+function mandatoryDialog(){return ['timeout','welcome','error'].includes(dialog.dataset.panel)}
+
+async function loadRoomWorld(){
+  if(world)return;
+  world=await createMusicWorld({
+    room,buildRoom:buildSchoolRoom,deviceInstructions:puzzle.instructions,
+    onReadyToMove:()=>!!countdown&&!dialog.open&&!opening&&!finished&&!countdown.expired,
+    onInspect:(id,command)=>{
+      if(!countdown||countdown.check())return;
+      if(id===(room.lock?.id??'lock'))inspectLock(command);
+      else if(id==='cardDrawer')devicePanel(id,'책상 서랍');
+      else if(id==='ballLine')ballLockerPanel();
+      else if(id==='doorGuide')modal(puzzle.doorTitle??(room.place+' 탈출'),deviceInstructions(),'door-question');
+      else inspectClue(id,command);
+    }
+  });
+}
 
 async function start(){
   if(room.kind==='classroom'&&params.has('review')&&SchoolRecords.lesson){
     location.replace(recoveryRoomLink(RECOVERY_ROOMS[0],false));return;
   }
   if(SchoolRecords.lesson&&!SchoolRecords.storyKey){location.replace('join.html');return}
+  dialog.addEventListener('cancel',event=>{if(mandatoryDialog())event.preventDefault()});
   if(story&&room.kind==='classroom'){
     try{
-      await enterSchool({restart:params.get('restart')==='1',keepResult:params.get('school')==='1'||!!history.state?.schoolAttempt});
+      await enterSchool({
+        restart:params.get('restart')==='1',keepResult:params.get('school')==='1'||!!history.state?.schoolAttempt
+      },async()=>{
+        await loadRoomWorld();
+        restoreRun(null,true);resetWorld();
+        await new Promise(resolve=>showGameGuide(resolve));
+      });
+      if(dialog.open)close();
     }catch(error){
       modal('게임을 시작하지 못했어요.','','error');
       const reason=document.createElement('p');reason.textContent=error.message;content.append(reason);
-      action(actions(),'다시 열기',()=>location.reload(),true);
+      action(actions(),'다시 열기',()=>location.reload(),true).focus();
       return;
     }
     const address=new URL(location.href);
@@ -505,7 +545,6 @@ async function start(){
   }
   if(updated)writeSchoolBook(bookKey,progress);
   byId('dismiss').onclick=close;byId('bag').onclick=inventory;byId('map').onclick=directory;
-  dialog.addEventListener('cancel',event=>{if(mandatoryDialog())event.preventDefault()});
   // A touch released in the room can open this dialog before the browser sends its click.
   let pressStartedInDialog=false;
   document.addEventListener('pointerdown',event=>{
@@ -529,27 +568,25 @@ async function start(){
   });
   reviewJump=setupReviewNavigation(story?null:room.n,{rooms:RECOVERY_ROOMS,urlFor:item=>recoveryRoomLink(item,false)});
   if(story)window.addEventListener('pageshow',event=>{if(event.persisted)location.reload()});
-  createMusicWorld({
-    room,buildRoom:buildSchoolRoom,deviceInstructions:puzzle.instructions,
-    onReadyToMove:()=>!!countdown&&!dialog.open&&!opening&&!finished&&!countdown.expired,
-    onInspect:(id,command)=>{
-      if(!countdown||countdown.check())return;
-      if(id===(room.lock?.id??'lock'))inspectLock(command);
-      else if(id==='cardDrawer')devicePanel(id,'책상 서랍');
-      else if(id==='ballLine')ballLockerPanel();
-      else if(id==='doorGuide')modal(puzzle.doorTitle??(room.place+' 탈출'),deviceInstructions(),'door-question');
-      else inspectClue(id,command);
-    }
-  }).then(created=>{
-    world=created;resetWorld();byId('bag').hidden=!run.found.length&&!(room.kind==='computer'&&run.device.card);
-    if(beginTimer()&&run.solved){
+  try{
+    await loadRoomWorld();
+    resetWorld();byId('bag').hidden=!run.found.length&&!(room.kind==='computer'&&run.device.card);
+    if(!beginTimer())return;
+    if(run.solved){
       if(story||history.state?.clearedReviewRoom===room.kind)showExit();
       else restart();
+    }else if(story&&room.kind==='classroom'){
+      const current=book();
+      if(!current.startGuideSeen){
+        // Students already in their first classroom when the guide was introduced.
+        current.startGuideSeen=true;writeSchoolBook(bookKey,current);
+        showGameGuide();
+      }
     }
-  }).catch(error=>{
+  }catch(error){
     console.error(error);
     modal('교실을 열지 못했어요.','','error');
-    action(actions(),'다시 열기',()=>location.reload(),true);
-  });
+    action(actions(),'다시 열기',()=>location.reload(),true).focus();
+  }
 }
 start();

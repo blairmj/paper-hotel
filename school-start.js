@@ -1,10 +1,21 @@
 'use strict';
 
-async function enterSchool({restart, keepResult}) {
+function needsNewSchoolAttempt(entry, {restart, keepResult}) {
+  return restart || entry.status === 'new' ||
+    (!keepResult && (entry.status === 'expired' || entry.status === 'complete'));
+}
+
+async function enterSchool(options, showGuide) {
+  const initial = schoolEntryProgress(readSchoolBook(SCHOOL_STORY_KEY));
+  if (!needsNewSchoolAttempt(initial, options)) return;
+  await showGuide();
+
   async function enter() {
     const previous = readSchoolBook(SCHOOL_STORY_KEY);
     const entry = schoolEntryProgress(previous);
-    if (!restart && (entry.status === 'active' || (keepResult && entry.status !== 'new'))) return;
+    // Another tab may have started a game while this student was reading.
+    if (entry.startedAt !== initial.startedAt && entry.status !== 'new') return;
+    if (!needsNewSchoolAttempt(entry, options)) return;
 
     const plan = fixedSchoolRoute();
     const enrollment = SchoolRecords.lesson ? await SchoolRecords.reserve(plan.stops) : null;
@@ -19,7 +30,7 @@ async function enterSchool({restart, keepResult}) {
     if (!beginSchoolAttempt(plan, enrollment)) throw Error(storageError);
     if (enrollment) SchoolRecords.started();
   }
-  // Two tabs opening the student link should join the same ten-minute game.
+  // Only claim the lock when the student is ready to play.
   if (navigator.locks) await navigator.locks.request(SCHOOL_STORY_KEY, enter);
   else await enter();
 }

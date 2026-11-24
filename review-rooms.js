@@ -55,7 +55,7 @@ function schoolEscapeTimer(book){
 function beginSchoolAttempt(plan,lessonAttempt=null){
   const startedAt=Date.now();
   return writeSchoolBook(SCHOOL_STORY_KEY,{
-    room:RECOVERY_ROOMS[0].n,visits:{},route:plan,...(lessonAttempt?{lessonAttempt}:{}),
+    room:RECOVERY_ROOMS[0].n,visits:{},route:plan,startGuideSeen:true,...(lessonAttempt?{lessonAttempt}:{}),
     escapeTimer:{startedAt,deadline:startedAt+SCHOOL_ESCAPE_DURATION}
   });
 }
@@ -68,6 +68,7 @@ function retrySchool(){
 
 function showSchoolTimeout(dialog,retry){
   dialog.dataset.panel='timeout';
+  dialog.removeAttribute('aria-describedby');
   dialog.querySelector('#panelTitle').textContent='시간이 끝났어요.';
   const actions=document.createElement('div');
   actions.className='actions';
