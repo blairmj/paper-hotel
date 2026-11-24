@@ -114,53 +114,49 @@ function openSurvey(){
 }
 
 function showFinish(){
-  finished=true;
   roomHead.hidden=true;byId('spots').hidden=true;movement.hidden=true;
   byId('roomView').setAttribute('aria-label','학교 현관');
-  const progress=book(),plan=schoolRoute(progress);
-  const preceding=RECOVERY_ROOMS.filter(item=>item.kind==='classroom'||plan?.stops.includes(item.kind));
-  const restored=preceding.filter(item=>roomRestored(progress,item)).length;
+  let result='컴퓨터실 판독기 복구';
+  if(story){
+    const progress=book(),plan=schoolRoute(progress);
+    const preceding=RECOVERY_ROOMS.filter(item=>item.kind==='classroom'||plan?.stops.includes(item.kind));
+    const restored=preceding.filter(item=>roomRestored(progress,item)).length;
+    result='교실 장치 '+restored+'/'+preceding.length+' 복구';
+  }
   const panel=document.createElement('section');
   panel.className='finale-status';panel.setAttribute('aria-label','학교 출입 복구 결과');
-  panel.innerHTML='<p role="status">교실 장치 '+restored+'/'+preceding.length+' 복구</p>';
+  panel.innerHTML='<p role="status">'+result+'</p>';
   byId('musicGame').append(panel);
   world.showFinale(buildSchoolFinale(),()=>{
-    panel.innerHTML='<p role="status">교실 장치 '+restored+'/'+preceding.length+' 복구 · 현관 열림</p><h1 tabindex="-1">하교 완료</h1>';
+    panel.innerHTML='<p role="status">'+result+' · 현관 열림</p><h1 tabindex="-1">하교 완료</h1>';
     panel.classList.add('finale-complete');
     const buttons=document.createElement('div');buttons.className='survey-actions';panel.append(buttons);
-    action(buttons,'학생 설문',openSurvey,true);
-    action(buttons,'처음부터',retrySchool);
+    if(story){
+      action(buttons,'학생 설문',openSurvey,true);
+      action(buttons,'처음부터',retrySchool);
+    }else{
+      action(buttons,'우리 반 교실부터 시작',()=>location.assign(recoveryRoomLink(RECOVERY_ROOMS[0],true)),true);
+      action(buttons,'다시 풀기',()=>{
+        history.replaceState(null,'');
+        location.reload();
+      });
+    }
     panel.querySelector('h1').focus({preventScroll:true});
   });
 }
 
 function showExit(){
-  if(countdown.check())return;
-  if(story){
-    if(room.kind==='computer'){
-      showFinish();
-      return;
-    }
-    const destination=schoolRoomToPlay(book());
-    const notice=byId('escape'),status=notice.querySelector('[role=status]');
-    movement.hidden=true;
-    notice.classList.add('room-transfer');
-    notice.querySelector('div').hidden=true;
-    status.classList.remove('sr-only');
-    notice.hidden=false;
-    status.textContent=destination.place+'로 이동합니다.';
-    setTimeout(()=>{
-      if(!countdown.check())location.replace(recoveryRoomLink(destination,true));
-    },1700);
-    return;
-  }
-  const next=RECOVERY_ROOMS[stage+1];
-  movement.hidden=true;byId('escape').hidden=false;
-  const link=byId('nextRoom');
-  link.href=next?recoveryRoomLink(next,false):'./';
-  link.textContent=next?next.place+'로 이동':'우리 반 교실부터 시작';
-  link.onclick=event=>{if(countdown.check())event.preventDefault()};
-  link.focus({preventScroll:true});
+  if(finished||countdown.check())return;
+  finished=true;
+  if(room.kind==='computer'){showFinish();return}
+  const destination=story?schoolRoomToPlay(book()):RECOVERY_ROOMS[stage+1];
+  const notice=byId('escape');
+  movement.hidden=true;
+  notice.hidden=false;
+  notice.textContent=destination.place+'로 이동합니다.';
+  setTimeout(()=>{
+    if(!countdown.check())location.replace(recoveryRoomLink(destination,story));
+  },1700);
 }
 function solve(revealMs=0){
   if(run.solved||opening||!countdown||countdown.check())return;
@@ -174,20 +170,15 @@ function solve(revealMs=0){
   run.solved=true;
   const saved=story&&room.kind!=='computer'?save():countdown.stop(recordRestoration);
   if(!saved){run.solved=false;return}
+  // A refresh during a review transfer should continue it. A new visit allows a replay.
+  if(!story)history.replaceState({...history.state,clearedReviewRoom:room.kind},'');
   logPlay('solve');
   opening=true;
   byId('spots').inert=true;roomHead.inert=true;
   function openDoor(){
     if(countdown.check())return;
     close();
-    world.facingDoor(()=>{
-      if(countdown.check())return;
-      if(!story){
-        opening=false;
-        byId('spots').inert=false;roomHead.inert=false;
-      }
-      showExit();
-    });
+    world.facingDoor(showExit);
   }
   if(revealMs){
     content.querySelectorAll('button').forEach(button=>{button.disabled=true});
@@ -488,7 +479,6 @@ function start(){
   }
   if(updated)writeSchoolBook(bookKey,progress);
   byId('dismiss').onclick=close;byId('bag').onclick=inventory;byId('map').onclick=directory;
-  byId('replay').onclick=restart;
   dialog.addEventListener('cancel',event=>{if(mandatoryDialog())event.preventDefault()});
   // A touch released in the room can open this dialog before the browser sends its click.
   let pressStartedInDialog=false;
@@ -526,7 +516,10 @@ function start(){
   }).then(created=>{
     world=created;resetWorld();byId('bag').hidden=!run.found.length;
     if(story&&!plan){intro();return}
-    if(beginTimer()&&run.solved)showExit();
+    if(beginTimer()&&run.solved){
+      if(story||history.state?.clearedReviewRoom===room.kind)showExit();
+      else restart();
+    }
   }).catch(error=>{
     console.error(error);
     modal('교실을 열지 못했어요.','','error');

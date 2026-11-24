@@ -175,12 +175,12 @@ test('a successful escape freezes time and retry starts a new two-minute attempt
  timer.reset();assert.equal(h.label,'2:00');h.advance(120_000);assert.equal(timer.check(),true);assert.equal(h.expires,1);
 });
 
-test('a hint shortens the saved deadline by ten seconds',()=>{
+test('a hint shortens the saved deadline by thirty seconds',()=>{
  const h=timerHarness(),timer=h.load();h.advance(6_000);
  assert.equal(timer.spendHint(),true);
- assert.equal(h.label,'1:44');
+ assert.equal(h.label,'1:24');
  h.advance(3_000);h.load();
- assert.equal(h.label,'1:41');
+ assert.equal(h.label,'1:21');
 });
 
 test('the last-ten-seconds warning begins at 0:10 and ends when the room is solved',()=>{
@@ -193,7 +193,7 @@ test('the last-ten-seconds warning begins at 0:10 and ends when the room is solv
 });
 
 test('when a hint uses all the remaining time, expiration happens instead of revealing it',()=>{
- const h=timerHarness(),timer=h.load();h.advance(111_000);
+ const h=timerHarness(),timer=h.load();h.advance(90_000);
  assert.equal(timer.spendHint(),false);assert.equal(h.label,'0:00');assert.equal(h.warning,false);
  assert.equal(h.expires,1);assert.equal(timer.spendHint(),false);assert.equal(h.expires,1);
  h.load();assert.equal(h.label,'0:00');
@@ -209,8 +209,9 @@ test('the same ten-minute countdown runs in solved rooms, the hallway and the ne
  const h=timerHarness();h.startSchool();h.load(false,h.storyKey,502);assert.equal(h.label,'10:00');
  h.advance(125_000);h.load(true,h.storyKey,502);assert.equal(h.label,'7:55');
  h.advance(5_000);h.load(false,h.storyKey,0);assert.equal(h.label,'7:50');
- const room=h.load(false,h.storyKey,205);assert.equal(room.spendHint(),true);assert.equal(h.label,'7:40');
- h.advance(450_000);
+ const room=h.load(false,h.storyKey,205);assert.equal(room.spendHint(),true);assert.equal(h.label,'7:20');
+ assert.equal(h.storyBook().escapeTimer.remaining,440_000);
+ h.advance(430_000);
  const last=h.load(false,h.storyKey,209);assert.equal(h.label,'0:10');assert.equal(h.warning,true);
  h.advance(10_000);assert.equal(last.stop(),false);assert.equal(last.check(),true);
  assert.equal(h.label,'0:00');assert.equal(h.expires,1);

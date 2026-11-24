@@ -16,6 +16,7 @@ const RECOVERY_ROOMS = [{n:502,place:'우리 반 교실',href:'index.html',kind:
 const SCHOOL_STORY_KEY = globalThis.SchoolRecords?.storyKey || 'paperhotel.recovery.school.v2';
 const SCHOOL_REVIEW_KEY = 'paperhotel.recovery.review.v1';
 const SCHOOL_ESCAPE_DURATION = 10*60_000;
+const HINT_COST_SECONDS = 30;
 
 function recoveryRoomLink(room, story) {
   const enrolled=story&&globalThis.SchoolRecords?.lesson;
@@ -129,7 +130,7 @@ function confirmRoomHint(timer, reveal){
   prompt.setAttribute('aria-describedby','hintCostMessage');
   prompt.innerHTML=`
     <form method="dialog">
-      <p id="hintCostMessage">힌트를 보면 시간이 10초 줄어듭니다. 그래도 보시겠습니까?</p>
+      <p id="hintCostMessage">힌트를 보면 시간이 ${HINT_COST_SECONDS}초 줄어듭니다. 그래도 보시겠습니까?</p>
       <div class="actions">
         <button value="cancel" autofocus>취소</button>
         <button value="confirm" class="primary">확인</button>
@@ -225,13 +226,12 @@ function setupSchoolTimer(number,{isSolved=()=>false,onExpire,key='paperhotel.ex
     get expired(){return replaced||expired||(!stopped&&Date.now()>=deadline)},check,
     spendHint(){
       if(check()||stopped)return false;
-      const originalDeadline=deadline;
-      deadline-=10_000;
-      if(shared&&!save()){deadline=originalDeadline;return false}
+      const originalDeadline=deadline,originalRemaining=remaining;
+      deadline-=HINT_COST_SECONDS*1000;
+      remaining=Math.max(0,deadline-Date.now());
+      if(!save()){deadline=originalDeadline;remaining=originalRemaining;return false}
       if(shared){const room=RECOVERY_ROOMS.find(item=>item.n===number);if(room)globalThis.SchoolRecords?.event(readSchoolBook(key),room.kind,'hint')}
-      if(check())return false;
-      if(!shared)save();
-      return true;
+      return !check();
     },
     stop(complete){
       if(check()||stopped)return false;
