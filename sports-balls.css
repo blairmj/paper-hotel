@@ -27,6 +27,13 @@ button.locker-ball:active:enabled{filter:brightness(.92)}
 button.locker-ball:disabled{cursor:default}
 .ball-feedback{margin:.5rem 0 0;color:#9a4032;font-size:.875rem;font-weight:650}
 .ball-feedback:empty{display:none}
+.ball-feedback.ball-next-step{color:#31594c}
+.ball-moves{margin:.65rem 0;color:#284843}
+.ball-moves>strong{display:block;margin-bottom:.25rem;font-size:.8rem}
+.ball-moves ol{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.3rem;margin:0;padding:0;list-style:none}
+.ball-moves li{display:grid;justify-items:center;padding:.22rem 0;background:#edf1ec;border:1px solid #becac4;border-radius:4px;font-size:.77rem}
+.ball-moves li:last-child{border-color:#47756b;background:#e0eee7}
+.ball-moves b{font-size:1.1rem;font-variant-numeric:tabular-nums}
 #inspect[data-panel=sports-pin]{--panel-width:clamp(22rem,41vw,28rem)}
 .pin-device{
   width:min(100%,14rem);margin:.8rem auto;padding:.75rem;

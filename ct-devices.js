@@ -20,8 +20,8 @@ const CT = (() => {
     railNote:['실험 순서','흰 구슬 → 흰 구슬 → 파란 구슬','구슬이 지나간 갈림판만 반대쪽으로 돌아갑니다.'],
     broadcastRules:['방송 암호표','짧은 빛 하나 · 급식 안내','긴 빛 + 짧은 빛 · 날씨','긴 빛 + 긴 빛 · 신청곡'],
     broadcastLog:['신호등 수신 기록','긴 빛 · 짧은 빛 · 짧은 빛 · 긴 빛 · 긴 빛'],
-    recordA:['판독기 점검 기록','두 판독기 중 한 대가 기호를 거꾸로 읽습니다.','정상 판독기는 카드의 기호를 왼쪽부터 읽습니다.'],
-    recordB:['수리 순서','시험 카드 비교 → 한 대의 방향 전환 → 새 출입증 재검사'],
+    recordA:['출입 패드 점검 기록','넣은 카드　→　패드에 뜬 기호','▲ ● ★　→　★ ● ▲','★ ▲ ●　→　● ▲ ★'],
+    recordB:['카드 보관 메모','카드는 이 책상의 옆 서랍에 있어요.'],
     printJobs:['오늘의 주문서','별 포스터 한 장, 달 포스터 한 장.','세 번째 차례가 끝날 때 두 장 모두 인쇄되어야 합니다.'],
     printManual:['기계 안내','한 기계는 한 차례에 한 장을 처리합니다.','스캔이 끝난 포스터는 다음 차례부터 인쇄할 수 있습니다.'],
     councilTickets:['나눠 준 접수증','윤서 · 5-2 · A17','민준 · 5-2 · B24'],
@@ -35,7 +35,7 @@ const CT = (() => {
       case 'art':return {drops:[]};
       case 'science':return {lower:random()<.5?'left':'right',cup:''};
       case 'broadcast':return {channels:[]};
-      case 'computer':return {fault:random()<.5?'A':'B',test:null,repair:null,seen:[]};
+      case 'computer':return {card:null,wasRead:false};
       case 'print':return {jobs:Array(6).fill('')};
       case 'council':return {columns:[]};
     }
@@ -65,8 +65,8 @@ const CT = (() => {
   function experiment(lower){
     let top='left';return [0,1,2].map(()=>{const step=marblePath(top,lower);top=step.nextTop;lower=step.nextLower;return step});
   }
-  function readerOutput(input,reader,fault,repair){
-    return (reader===fault)!==(reader===repair)?Array.from(input).reverse().join(''):input;
+  function readCard(card){
+    return Array.from(card).reverse().join('');
   }
   function schedule(jobs){
     const scanned=new Set(),printed=new Set();
@@ -98,11 +98,9 @@ const CT = (() => {
         if(cups.includes(s.cup))base.cup=s.cup;break;
       case 'broadcast':if(validList(s.channels,Object.keys(BROADCAST_COMMANDS),3))base.channels=s.channels.slice();break;
       case 'computer':
-        if(['A','B'].includes(s.fault))base.fault=s.fault;
-        if(cards.includes(s.test)){
-          base.test=s.test;
-          if(validList(s.seen,['A','B'],2))base.seen=[...new Set(s.seen)];
-          if(base.seen.length===2&&['A','B'].includes(s.repair))base.repair=s.repair;
+        if(cards.includes(s.card)){
+          base.card=s.card;
+          base.wasRead=s.wasRead===true;
         }
         break;
       case 'print':if(validList(s.jobs,['',...posters],6)&&s.jobs.length===6)base.jobs=s.jobs.slice();break;
@@ -110,5 +108,5 @@ const CT = (() => {
     }
     return base;
   }
-  return {lights,artRows,artWidth,inkLimit,paintCells,artSolved,signal,tickets,fields,cards,posters,cups,clues,fresh,restore,parity,experiment,marblePath,readerOutput,schedule};
+  return {lights,artRows,artWidth,inkLimit,paintCells,artSolved,signal,tickets,fields,cards,posters,cups,clues,fresh,restore,parity,experiment,marblePath,readCard,schedule};
 })();

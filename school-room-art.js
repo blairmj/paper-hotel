@@ -82,7 +82,7 @@ async function clueBoardArt(clue){
   return canvas;
 }
 
-function schoolLockArt(room,values,reader){
+function schoolLockArt(room,values){
   const canvas=document.createElement('canvas');canvas.width=420;canvas.height=236;
   const g=canvas.getContext('2d');
   const frame=g.createLinearGradient(0,0,420,236);
@@ -102,11 +102,11 @@ function schoolLockArt(room,values,reader){
       if(drops.includes(i)){g.fillStyle='#163854';g.beginPath();g.arc(x+16,y+11,5,0,Math.PI*2);g.fill()}
     }));
   }else if(room.kind==='computer'){
-    g.fillStyle=reader==='B'?'#eed19a':'#b7dcdf';g.fillRect(46,48,326,137);
-    g.fillStyle='#213946';g.font='bold 43px sans-serif';
-    g.fillText(reader?reader+' 판독기':'시험 카드함',210,88);
-    g.font='bold 28px sans-serif';
-    g.fillText(reader?(values?.seen?.includes(reader)?CT.readerOutput(values.test,reader,values.fault,values.repair):'카드 투입구'):(values?.test??'▲ ● ★'),210,143);
+    const reading=values?.wasRead?CT.readCard(values.card):null;
+    g.fillStyle=reading&&reading!==PAD_RECOVERY_CODE?'#f2d4a4':'#c4e5db';g.fillRect(46,45,328,125);
+    g.fillStyle='#1e3943';g.font='bold 32px sans-serif';g.fillText('출입 패드',210,80);
+    g.font='bold 30px sans-serif';
+    g.fillText((reading?'읽은 기호　':'복구 신호　')+[...(reading??PAD_RECOVERY_CODE)].join(' '),210,131);
   }else if(room.kind==='print'){
     g.fillStyle='#b4d4c3';g.font='bold 22px Malgun Gothic,sans-serif';
     g.fillText('차례',100,63);g.fillText('스캔',210,63);g.fillText('인쇄',313,63);

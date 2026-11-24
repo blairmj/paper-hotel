@@ -58,11 +58,11 @@ const SportsComputerInteriors = (() => {
   function computerLayout() {
     const columns = [-3.91, -2.63, -1.35, 1.35, 2.63, 3.91];
     const rows = [1.62, 3.37, 5.12, 6.87].map(z => columns.map(x => ({x,z})));
-    const rearStation = rows[3][3];
+    const rearStation = rows[3][0];
     const clues = [
-      {id:'recordA', name:'판독기 점검 기록', xyz:[-.16,1.94,.057],
+      {id:'recordA', name:'출입 패드 점검 기록', xyz:[-.16,1.94,.057],
         surface:{width:1.28,height:.75}, approach:{x:0,z:1.02}},
-      {id:'recordB', name:'판독기 수리 순서',
+      {id:'recordB', name:'카드 보관 메모',
         xyz:[rearStation.x,SCREEN.y,rearStation.z+SCREEN.z], surface:SCREEN,
         approach:{x:rearStation.x,z:rearStation.z+1.30}}
     ];
@@ -76,7 +76,13 @@ const SportsComputerInteriors = (() => {
       [x-.29,x+.29,.873,1.24,z-.153,z+SCREEN.z-.001],
       [x-.24,x+.24,.56,.94,z+.76,z+.93]
     ]);
-    return {rows, rearStation, clues, obstacles, occluders};
+    const drawerX=rearStation.x-DESK.width/2-.012;
+    const drawer={id:'cardDrawer',name:'책상 옆 서랍',xyz:[drawerX,.53,rearStation.z],
+      rotationY:-Math.PI/2,surface:{width:.45,height:.24},approach:{x:drawerX-1.55,z:rearStation.z},
+      inspectionView:{wide:[drawerX,.53,rearStation.z+.50],compact:[drawerX,.33,rearStation.z]}};
+    // Keep the side aisle walkable while reserving space for the pulled-out tray.
+    obstacles.push([drawerX-.45,drawerX+.05,rearStation.z-.30,rearStation.z+.30]);
+    return {rows,rearStation,drawer,clues,obstacles,occluders};
   }
 
   function definition(kind) {
@@ -86,12 +92,10 @@ const SportsComputerInteriors = (() => {
     const doorway = sports
       ? {x:4.20,width:1.27,height:2.24,moldingColor:'#747b7d',recessColor:'#363d41'}
       : {x:4.20,width:1.42,height:2.27,moldingColor:'#224875',recessColor:'#152c49'};
-    const lock={center:[doorway.x-doorway.width/2-.52,1.28,.073],width:sports ? .36 : .53,height:sports ? .49 : .53};
+    const lock={center:[doorway.x-doorway.width/2-.52,1.28,.073],width:sports ? .36 : .64,height:sports ? .49 : .45};
     const targets=[{id:'lock',name:SCHOOL_PUZZLES[kind].title,xyz:lock.center,surface:lock,
       approach:{x:lock.center[0],z:.99}},...clues];
-    if(!sports)for(const [id,x] of [['A',-4.55],['B',1.35]]){
-      targets.push({id:'reader'+id,name:id+' 판독기',xyz:[x,1.48,.098],surface:{width:.72,height:.46},approach:{x,z:.99}});
-    }
+    if(!sports)targets.push(layout.drawer);
     const startX = sports ? -1.54 : 0;
     return {
       ...RECOVERY_ROOMS.find(item => item.kind === kind),
@@ -573,6 +577,57 @@ const SportsComputerInteriors = (() => {
     patchPlane(scene,front.surface.width,front.surface.height,...front.xyz,imageMap(frontCard));
   }
 
+  function cardDrawer(scene,slot){
+    const unit=new School3D.Group(),tray=new School3D.Group();
+    unit.position.set(...slot.xyz);unit.rotation.y=slot.rotationY;scene.add(unit);unit.add(tray);
+    const navy=standard('#354c61',.57),metal=standard('#b6c7d0',.38,.36),wood=standard('#bf8c54',.65);
+    const {width:w,height:h}=slot.surface,depth=.48;
+    for(const sign of [-1,1]){
+      box(unit,.016,h,depth,sign*(w/2-.008),0,-depth/2,navy);
+      box(unit,w,.017,depth,0,sign*h/2,-depth/2,navy);
+      box(unit,.022,.076,.31,sign*(w/2-.027),.158,-depth/2,metal);
+    }
+    box(unit,w,h,.018,0,0,-depth,navy);
+    box(tray,w-.032,.021,depth-.028,0,-.091,-depth/2,wood);
+    for(const sign of [-1,1])box(tray,.012,.05,depth-.032,sign*(w/2-.023),-.065,-depth/2,wood);
+    rounded(tray,w,.21,.027,0,0,0,standard('#4c7883',.54),.009);
+    for(const x of [-.072,.072])box(tray,.013,.015,.04,x,.017,.024,metal);
+    rounded(tray,.164,.019,.02,0,.017,.049,metal,.004);
+    box(tray,w-.038,.10,.14,0,-.030,-.155,navy);
+    const cards=CT.cards.map((code,i)=>{
+      const map=InteriorArtwork.canvasMap(192,125,(g,width,height)=>{
+        g.fillStyle='#faf3de';g.fillRect(0,0,width,height);
+        g.fillStyle='#b9783c';g.fillRect(0,10,width,11);
+        g.fillStyle='#253f52';g.font='bold 46px sans-serif';g.textAlign='center';g.textBaseline='middle';
+        g.fillText(code,width/2,73);
+      });
+      const card=new School3D.Group();
+      card.position.set((i-1)*.136,.070,-.15);card.rotation.x=-.40;tray.add(card);
+      box(card,.125,.085,.005,0,0,0,wood);
+      const face=patchPlane(card,.123,.083,0,0,.003,map);
+      face.userData.command=code;
+      return {card,face};
+    });
+    let open=false,amount=0;
+    return {
+      commandPads:cards.map(entry=>entry.face),
+      onInspect(id){open=id===slot.id},
+      onWalk(x,z,toX,toZ){if(Math.hypot(toX-slot.xyz[0],toZ-slot.xyz[2])>2.4)open=false},
+      animate(dt,reduced){
+        const target=open?1:0;
+        if(amount===target)return false;
+        const step=reduced?1:dt/.28;
+        amount=open?Math.min(1,amount+step):Math.max(0,amount-step);
+        tray.position.z=.34*amount*(2-amount);
+        return amount!==target;
+      },
+      resetFurniture(){open=false;amount=0;tray.position.z=0},
+      setCard(carried){
+        cards.forEach(({card,face},i)=>{face.visible=card.visible=CT.cards[i]!==carried});
+      }
+    };
+  }
+
   function sportsKeypad(scene,lock){
     const [x,y,z]=lock.center;
     rounded(scene,lock.width+.032,lock.height+.032,.059,x,y,z-.036,standard('#49545a',.53),.012);
@@ -629,17 +684,15 @@ const SportsComputerInteriors = (() => {
       };
     }
     await computers(scene,room,shadow);
-    const devices=room.targets.filter(t=>['lock','readerA','readerB'].includes(t.id)).map(t=>{
-      const reader=t.id==='lock'?null:t.id.slice(-1);
-      const [x,y,z]=t.xyz,{width:w,height:h}=t.surface;
-      rounded(scene,w+.052,h+.064,.074,x,y,z-.045,standard(reader==='B'?'#94703e':'#46656d',.56),.016);
-      const texture=imageMap(schoolLockArt(room,null,reader));
-      patchPlane(scene,w,h,x,y,z,texture);
-      if(reader)box(scene,w*.61,.037,.026,x,y-h*.32,z+.012,standard('#263943'));
-      return {texture,reader};
-    });
-    return {setDoor:swingDoor,setDigits(state){
-      for(const {texture,reader} of devices){texture.image=schoolLockArt(room,state,reader);texture.needsUpdate=true}
+    const drawer=cardDrawer(scene,room.layout.drawer);
+    const {width:w,height:h,center:[x,y,z]}=room.lock;
+    rounded(scene,w+.052,h+.064,.074,x,y,z-.045,standard('#46656d',.56),.016);
+    const screen=imageMap(schoolLockArt(room));
+    patchPlane(scene,w,h,x,y,z,screen);
+    box(scene,w*.57,.027,.018,x,y-h*.36,z+.008,standard('#101e2b'));
+    return {...drawer,setDoor:swingDoor,setDigits(state){
+      drawer.setCard(state?.card);
+      screen.image=schoolLockArt(room,state);screen.needsUpdate=true;
     }};
   }
 

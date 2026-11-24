@@ -106,7 +106,7 @@ function openSurvey(){
 function showFinish(){
   roomHead.hidden=true;byId('spots').hidden=true;movement.hidden=true;
   byId('roomView').setAttribute('aria-label','학교 현관');
-  let result='컴퓨터실 판독기 복구';
+  let result='컴퓨터실 출입 패드 복구';
   if(story){
     const progress=book();
     const restored=RECOVERY_ROOMS.filter(item=>roomRestored(progress,item)).length;
@@ -204,6 +204,11 @@ function inspectClue(id){
 }
 function inventory(){
   modal('찾은 단서','<div class="collected-clues" id="collectedClues"></div>');
+  if(room.kind==='computer'&&run.device.card){
+    const carried=document.createElement('p');
+    carried.textContent='가져온 카드　'+[...run.device.card].join(' ');
+    byId('collectedClues').append(carried);
+  }
   for(const clue of room.clues.filter(clue=>run.found.includes(clue.id))){
     action(byId('collectedClues'),clue.name,()=>{
       inspectClue(clue.id);
@@ -271,8 +276,10 @@ function ballLockerPanel(){
   modal('공 꺼내기','<p class="ball-task" id="ballTask" role="status"></p>'+
     '<div class="ball-slots" aria-hidden="true">'+BALLS.map((_,i)=>'<span>'+(i+1)+'</span>').join('')+'</div>'+
     '<div class="ball-lane" id="ballCurrent" role="group" aria-label="여섯 자리 공 선반"></div>'+
+    '<div class="ball-moves" id="ballMoves" role="status" aria-atomic="true" hidden><strong>움직인 공</strong><ol></ol></div>'+
     '<p class="ball-feedback" id="entryFeedback" role="status"></p>','ball-locker');
   const lane=byId('ballCurrent'),status=byId('ballTask'),feedback=byId('entryFeedback');
+  const moves=byId('ballMoves'),counts=moves.querySelector('ol');
   const controls=actions();
   let animating=false;
   const chips=BALLS.map((label,i)=>{
@@ -284,8 +291,17 @@ function ballLockerPanel(){
   const replay=action(controls,'방금 움직임 다시 보기',()=>animate(run.picked));
   const reset=action(controls,'처음 배열로',()=>{
     if(animating||countdown.check())return;
-    run.picked=0;run.entry=[];world.setBalls(0);save();draw(0);prompt();
+    run.picked=0;run.entry=[];world.setBalls(0);save();draw(0);showCounts(0);prompt();
   });
+  function showCounts(count){
+    moves.hidden=count===0;
+    counts.replaceChildren();
+    for(let i=0;i<count;i++){
+      const item=document.createElement('li'),value=document.createElement('b');
+      value.textContent=puzzle.answer[i]+'개';
+      item.append(BALL_PICKUP[i]+' 뺀 뒤 ',value);counts.append(item);
+    }
+  }
   function draw(count){
     const balls=ballRowAfter(count);
     chips.forEach((chip,i)=>{
@@ -296,8 +312,12 @@ function ballLockerPanel(){
   }
   function prompt(){
     const n=run.picked;
-    status.textContent=n?BALL_PICKUP[n-1]+' 공을 뺐어요. 남은 공 중 몇 개가 왼쪽으로 움직였나요?':'선반에 공이 여섯 개 있어요. 회수표의 첫 번째 공을 눌러 보세요.';
-    feedback.textContent=n===BALL_PICKUP.length?'네 번 센 수를 문 옆 번호판에 차례로 입력하세요.':'';
+    if(!n)status.textContent='선반에 공이 여섯 개 있어요. 회수표의 첫 번째 공을 눌러 보세요.';
+    else if(animating)status.textContent=BALL_PICKUP[n-1]+' 공을 빼는 중이에요.';
+    else status.textContent=BALL_PICKUP[n-1]+' 공을 빼자 남은 공 '+puzzle.answer[n-1]+'개가 왼쪽으로 움직였어요.';
+    const complete=!animating&&n===BALL_PICKUP.length;
+    feedback.classList.toggle('ball-next-step',complete);
+    feedback.textContent=complete?'네 번의 기록을 문 옆 번호판에 차례로 입력하세요.':'';
     replay.hidden=reset.hidden=!n;
     replay.disabled=reset.disabled=animating;
   }
@@ -308,7 +328,7 @@ function ballLockerPanel(){
     setTimeout(()=>{
       if(!lane.isConnected)return;
       removed.classList.remove('leaving');lane.classList.add('sliding');draw(n);
-      setTimeout(()=>{if(!lane.isConnected)return;animating=false;draw(n);prompt()},850);
+      setTimeout(()=>{if(!lane.isConnected)return;animating=false;draw(n);showCounts(n);prompt()},850);
     },340);
   }
   function pick(label){
@@ -316,7 +336,7 @@ function ballLockerPanel(){
     if(label!==BALL_PICKUP[run.picked]){logPlay('wrong');feedback.textContent='회수표에서 다음에 뺄 공을 확인해 보세요.';return}
     run.picked++;save();world.setBalls(run.picked,true);animate(run.picked);
   }
-  draw(run.picked);prompt();
+  draw(run.picked);showCounts(run.picked);prompt();
 }
 
 function sportsPinPanel(){
@@ -358,14 +378,18 @@ function sportsPinPanel(){
 }
 
 function devicePanel(kind,title,command){
-  modal(title,deviceInstructions()+
-    '<div id="deviceSurface"></div>','ct-device');
+  const inDrawer=kind==='cardDrawer';
+  modal(title,deviceInstructions(inDrawer?'출입 패드에 꽂을 카드를 한 장 고르세요.':puzzle.instructions)+
+    '<div id="deviceSurface"></div>',inDrawer?'card-drawer':'ct-device');
   const host=byId('deviceSurface');
   CTDeviceUI.open(kind,run.device,host,{
     save,solve,record:logPlay,hasSample:run.found.includes('printSamples'),
-    visitReader:id=>{close();world.inspectTarget(id)},
+    walkToDevice:id=>{close();world.inspectTarget(id)},
     active:()=>dialog.open&&!countdown.check(),
-    update:()=>world.setDigits(deviceEntry())
+    update:()=>{
+      world.setDigits(deviceEntry());
+      if(inDrawer&&run.device.card)byId('bag').hidden=false;
+    }
   },command);
 }
 function inspectLock(command){
@@ -472,7 +496,7 @@ function start(){
     if(event.target!==dialog||mandatoryDialog())return;
     const r=dialog.getBoundingClientRect();
     if(event.clientX>=r.left&&event.clientX<=r.right&&event.clientY>=r.top&&event.clientY<=r.bottom)return;
-    const command=['mixer','shelf','ball-locker'].includes(dialog.dataset.panel)&&world.commandAt?.(event.clientX,event.clientY);
+    const command=['mixer','shelf','ball-locker','card-drawer'].includes(dialog.dataset.panel)&&world.commandAt?.(event.clientX,event.clientY);
     if(command){
       content.querySelector('[data-command="'+command+'"]')?.click();
       return;
@@ -487,13 +511,13 @@ function start(){
     onInspect:(id,command)=>{
       if(!countdown||countdown.check())return;
       if(id===(room.lock?.id??'lock'))inspectLock(command);
-      else if(id==='readerA'||id==='readerB')devicePanel(id,id.slice(-1)+' 판독기');
+      else if(id==='cardDrawer')devicePanel(id,'책상 서랍');
       else if(id==='ballLine')ballLockerPanel();
       else if(id==='doorGuide')modal(puzzle.doorTitle??(room.place+' 탈출'),deviceInstructions(),'door-question');
       else inspectClue(id);
     }
   }).then(created=>{
-    world=created;resetWorld();byId('bag').hidden=!run.found.length;
+    world=created;resetWorld();byId('bag').hidden=!run.found.length&&!(room.kind==='computer'&&run.device.card);
     if(story&&!plan){intro();return}
     if(beginTimer()&&run.solved){
       if(story||history.state?.clearedReviewRoom===room.kind)showExit();

@@ -81,8 +81,11 @@ for(const kind of ['classroom','music','art','sports','computer','library','scie
  if(kind==='computer'){
   const {rows}=room.layout;
   assert.equal(rows.length,4);
-  const [a,b]=['readerA','readerB'].map(id=>room.targets.find(t=>t.id===id));
-  assert.ok(Math.abs(a.xyz[0]-b.xyz[0])>5,'readers are on separate stands');
+  const {drawer,rearStation}=room.layout;
+  assert.deepEqual(Array.from(room.targets,t=>t.id),['lock','recordA','recordB','cardDrawer']);
+  assert.equal(rearStation,rows.at(-1)[0]);
+  assert.ok(drawer.xyz[0]<rearStation.x&&drawer.xyz[1]<.72&&drawer.xyz[2]===rearStation.z,'drawer is under the back left desk');
+  assert.ok(drawer.approach.x<drawer.xyz[0]&&Math.hypot(drawer.xyz[0]-device.xyz[0],drawer.xyz[2]-device.xyz[2])>6);
   assert.ok(rows.every(row=>row.length===6&&row.filter(seat=>seat.x<0).length===3));
   assert.ok(Array.from({length:40},(_,i)=>i*.20+1).every(z=>open(0,z)),'central aisle is unobstructed');
  }
@@ -329,15 +332,31 @@ test('the rail changes only visited gates and the predicted cup survives a reloa
   assert.equal(state.lower,lower);assert.equal(state.cup,cups[2]);assert.equal(state.practice,undefined);
  }
 });
-test('signal codewords are prefix-free, the two palindromes conceal the reader fault, and a new pass verifies the repair',()=>{
+test('signal codewords are prefix-free',()=>{
  const ct=layoutContext.ct,commands=vm.runInContext('BROADCAST_COMMANDS',layoutContext);
  const words=Object.values(commands).map(x=>x.code.split(' '));
  for(const a of words)for(const b of words){if(a!==b)assert.ok(!a.every((v,i)=>v===b[i]))}
  assert.equal(['weather','meal','song'].map(id=>commands[id].code).join(' '),ct.signal.join(' '));
- for(const fault of ['A','B']){
-   for(const card of ct.cards.slice(0,2))assert.equal(ct.readerOutput(card,'A',fault,null),ct.readerOutput(card,'B',fault,null));
-   assert.notEqual(ct.readerOutput(ct.cards[2],'A',fault,null),ct.readerOutput(ct.cards[2],'B',fault,null));
-   for(const id of ['A','B'])assert.equal(ct.readerOutput('▲●★',id,fault,fault),'▲●★');
+});
+test('exactly one drawer card produces the recovery signal on the single pad',()=>{
+ const ct=layoutContext.ct,goal=vm.runInContext('PAD_RECOVERY_CODE',layoutContext);
+ for(const pair of ct.clues.recordA.slice(2)){
+  const [input,reading]=pair.replace(/\s/g,'').split('→');
+  assert.equal(ct.readCard(input),reading);
+ }
+ assert.deepEqual(Array.from(ct.cards).filter(c=>ct.readCard(c)===goal),['★★●']);
+ const restore=s=>ct.restore('computer',s,ct.fresh('computer'));
+ assert.equal(restore({card:'★★●',wasRead:true}).wasRead,true);
+ assert.equal(restore({card:'★●★'}).card,'★●★');
+ assert.equal(restore({test:'★★●',seen:['A','B'],fault:'A'}).card,null);
+ assert.equal(restore({card:'absent',wasRead:true}).wasRead,false);
+});
+test('the four displayed move counts agree with the surviving balls that changed slots',()=>{
+ const {ballRowAfter}=layoutContext;
+ const counts=vm.runInContext('SCHOOL_PUZZLES.sports.answer',layoutContext);
+ for(let i=0;i<counts.length;i++){
+  const before=ballRowAfter(i),after=ballRowAfter(i+1);
+  assert.equal(after.filter((ball,slot)=>before.indexOf(ball)!==slot).length,Number(counts[i]));
  }
 });
 test('only the two feasible print schedules succeed and the ticket display preserves both privacy and identification',()=>{

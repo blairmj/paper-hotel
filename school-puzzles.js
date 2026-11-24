@@ -2,6 +2,7 @@
 
 const MUSIC_CLOCK = Object.freeze({hour:4,minuteMark:12});
 const MUSIC_SCORE = [[9,6],[12,3],[2,4],[7,11]].map(([a,b])=>({a,b,value:a*b}));
+const PAD_RECOVERY_CODE = '●★★';
 
 const BALLS = ['A','B','C','D','E','F'];
 const BALL_COLORS = ['#b76744','#527e9d','#6d8c62','#a97a45','#86678f','#5c9b91'];
@@ -61,7 +62,7 @@ const SCHOOL_PUZZLES = {
     instructions:'어느 불을 한 번 누르면 가로줄마다, 세로줄마다 켜진 불이 짝수 개가 될까요?',
     hint:'켜진 불이 홀수 개인 가로줄과 세로줄을 각각 찾고, 두 줄이 만나는 칸을 살펴보세요.'},
   music:{control:'device',revision:5,title:'문 옆 다이얼',
-    instructions:'악보에 적힌 네 기록을 보면, 멈춘 시계의 두 바늘은 어떤 수를 나타낼까요?',
+    instructions:'악보에 적힌 네 개의 기록을 보고, 멈춘 시계의 두 바늘이 나타내는 수를 찾아보세요.',
     hint:'악보에 그린 두 바늘을 시계판에 겹쳐 보세요.'},
   art:{control:'device',revision:5,title:'벽화 물감판',
     instructions:'물감 일곱 방울로 견본과 똑같은 무늬를 만들려면 어느 칸에 떨어뜨려야 할까요?',
@@ -72,9 +73,9 @@ const SCHOOL_PUZZLES = {
   broadcast:{control:'device',revision:4,title:'방송 믹서',
     instructions:'방송 순서가 불빛으로 도착했어요. 세 방송을 어떤 순서로 틀라는 뜻일까요?',
     hint:'짧은 빛으로 시작하면 한 번에 한 방송이에요. 긴 빛으로 시작하면 다음 빛까지 함께 읽으세요.'},
-  computer:{control:'device',revision:5,title:'문 옆 카드함',
-    instructions:'같은 시험 카드를 A와 B에서 읽어 보세요. 어느 판독기가 거꾸로 읽나요? 그쪽에서 방향을 고친 뒤 새 출입증을 검사하세요.',
-    hint:'앞뒤로 읽어도 똑같은 카드는 두 판독기를 구별할 수 없어요. 첫 기호와 끝 기호가 다른 카드를 골라 보세요.'},
+  computer:{control:'device',revision:6,title:'출입 패드',
+    instructions:'출입 패드가 고장 났어요. 어떤 카드를 꽂으면 복구 신호 '+[...PAD_RECOVERY_CODE].join(' ')+'가 뜰까요?',
+    hint:'점검 기록을 보세요. 카드의 마지막 기호가 화면에서는 맨 앞에 나와요.'},
   print:{control:'device',revision:1,title:'인쇄 작업표',
     instructions:'별 포스터와 달 포스터가 한 장씩 필요해요. 세 차례 안에 모두 인쇄하려면 두 기계에 언제 어떤 포스터를 맡겨야 할까요?',
     hint:'첫 포스터를 인쇄하는 동안 비어 있는 스캐너는 두 번째 포스터를 읽을 수 있어요.'},

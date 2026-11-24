@@ -44,14 +44,14 @@ dialog{
 }
 dialog[open]{display:flex;flex-direction:column}
 dialog[data-panel=lock]{--panel-width:clamp(25rem,46vw,35rem)}
-dialog:is([data-panel=shelf],[data-panel=ball-locker],[data-panel=mixer]){
+dialog:is([data-panel=shelf],[data-panel=ball-locker],[data-panel=mixer],[data-panel=card-drawer]){
   --panel-width:clamp(25rem,70vw,34rem);
   top:auto;
   margin:0 auto;
 }
 /* The device camera uses the same breakpoint to leave the instrument in view. */
 @media(min-width:800px) and (min-aspect-ratio:5/4){
-  dialog:is([data-panel=shelf],[data-panel=ball-locker],[data-panel=mixer]){
+  dialog:is([data-panel=shelf],[data-panel=ball-locker],[data-panel=mixer],[data-panel=card-drawer]){
     --panel-width:clamp(18rem,33vw,32rem);
     top:var(--edge-top);left:auto;
     margin:auto 0;

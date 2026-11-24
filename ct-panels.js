@@ -91,7 +91,7 @@ const CTDeviceUI=(()=>{
     const moving=ball?'<circle r="7.5" fill="'+(ball==='blue'?'#215edf':'#fff')+'" stroke="#1f3557" stroke-width="2.2"><animateMotion dur="'+rollTime+'ms" fill="freeze" path="'+travel+'"/></circle>':'';
     return '<svg xmlns="http://www.w3.org/2000/svg" class="ct-rail" viewBox="0 0 300 187" role="img" aria-label="위 갈림길 '+(top==='left'?'왼쪽':'오른쪽')+' 열림, 아래 갈림길 '+(lower==='left'?'왼쪽':'오른쪽')+' 열림"><rect width="300" height="187" rx="8" fill="#edf4f8"/>'+line([150,9],above,'#52697c',7)+fork(above,below,ends[2],top)+fork(below,ends[0],ends[1],lower)+chute+moving+'</svg>';
   }
-  function open(kind,state,host,{save,solve,active,update,record,hasSample,visitReader},command){
+  function open(kind,state,host,{save,solve,active,update,record,hasSample,walkToDevice},command){
     const controls=element(host,'div',undefined,'ct-controls');
     const status=element(host,'p','', 'ct-feedback');
     status.setAttribute('role','status');
@@ -102,6 +102,41 @@ const CTDeviceUI=(()=>{
     const group=()=>element(controls,'div',undefined,'ct-buttons');
     const confirm=(label,fn)=>button(group(),label,()=>{if(alive())fn()},{cls:'primary'});
     const again=(label,fn)=>button(group(),label,()=>{if(alive()){fn();message('');change();draw()}});
+    if(kind==='cardDrawer'){
+      const tray=element(controls,'div',undefined,'recovery-cards');
+      tray.setAttribute('role','group');tray.setAttribute('aria-label','서랍 속 카드');
+      for(const card of CT.cards){
+        const chip=button(tray,[...card].join(' '),()=>{
+          if(!alive())return;
+          state.card=card;state.wasRead=false;change();
+          for(const other of tray.children)other.setAttribute('aria-pressed',String(other===chip));
+          insert.disabled=false;message([...card].join(' ')+' 카드를 챙겼어요.');
+        },{label:card+' 카드 가져가기',pressed:card===state.card});
+        chip.dataset.command=card;
+      }
+      const insert=confirm('출입 패드에 꽂기',()=>walkToDevice('lock'));
+      insert.disabled=!state.card;
+      return;
+    }
+    if(kind==='computer'){
+      const display=element(controls,'div',undefined,'recovery-screen');
+      element(display,'span','패드 화면');
+      if(!state.card){
+        element(display,'strong','카드를 기다리는 중');
+        element(controls,'p','카드는 맨 뒷줄 왼쪽 책상의 옆 서랍에 있어요.');
+        return;
+      }
+      const reading=CT.readCard(state.card);
+      element(display,'output',[...reading].join(' '));
+      state.wasRead=true;record('test',state.card);
+      if(reading===PAD_RECOVERY_CODE){
+        update();message('복구 신호가 맞아요. 문이 열립니다!');solve(700);
+      }else{
+        change();incorrect('복구 신호와 달라요. 다른 카드를 골라 보세요.');
+        confirm('서랍으로 돌아가기',()=>walkToDevice('cardDrawer'));
+      }
+      return;
+    }
     let busy=false;
     function draw(){
       controls.replaceChildren();
@@ -174,43 +209,6 @@ const CTDeviceUI=(()=>{
           else if(state.channels.length<3)message('아직 빈 방송 자리가 있어요.');
           else incorrect('고른 방송을 불빛으로 바꾸면, 신호등에서 본 순서와 같을까요?');
         });
-      }else if(kind==='computer'){
-        const keys=group();
-        for(const card of CT.cards)button(keys,card,()=>{
-          if(!alive()||state.test===card)return;
-          state.test=card;state.seen=[];state.repair=null;record('test',card);change();message('');draw();
-        },{label:'시험 카드 '+card,pressed:state.test===card});
-        if(!state.test)return;
-        const stations=group();
-        for(const id of ['A','B'])button(stations,id+' 판독기로 가기',()=>visitReader('reader'+id));
-        element(controls,'p','확인한 판독기 '+(state.seen.join(' · ')||'없음'));
-        if(state.seen.length===2&&!state.repair&&state.test===[...state.test].reverse().join(''))message('앞뒤가 똑같은 카드예요. 다른 카드도 시험해 보세요.');
-        confirm('새 출입증 ▲●★ 검사',()=>{
-          if(!state.repair){message('두 판독기에서 시험한 뒤 거꾸로 읽는 쪽의 방향을 바꿔 보세요.');return}
-          if(['A','B'].every(id=>CT.readerOutput('▲●★',id,state.fault,state.repair)==='▲●★')){message('새 출입증을 바르게 읽었어요.');solve(550)}
-          else incorrect('새 출입증도 거꾸로 읽는 곳이 있어요. 방향을 다시 확인해 보세요.');
-        });
-      }else if(kind==='readerA'||kind==='readerB'){
-        const id=kind.slice(-1);
-        if(!state.test){element(controls,'p','문 옆 카드함에서 시험 카드를 가져오세요.');button(group(),'카드함으로 가기',()=>visitReader('lock'));return}
-        element(controls,'p','가져온 카드  '+state.test);
-        confirm('시험 카드 읽기',()=>{
-          if(!state.seen.includes(id))state.seen.push(id);
-          change();message('');draw();
-        });
-        if(state.seen.includes(id)){
-          const result=element(controls,'output',CT.readerOutput(state.test,id,state.fault,state.repair),'reader-result');
-          result.setAttribute('aria-label',id+' 판독 결과');
-          button(group(),id+' 방향 바꾸기',()=>{
-            if(!alive())return;
-            if(state.seen.length<2){message('같은 카드를 다른 판독기에도 넣어 보세요.');return}
-            if(state.test===[...state.test].reverse().join('')){message('앞뒤가 똑같은 카드예요. 다른 시험 카드를 가져오세요.');return}
-            state.repair=state.repair===id?null:id;change();draw();message(state.repair?'방향을 바꿨어요. 카드함에서 새 출입증으로 확인하세요.':'처음 방향으로 돌렸어요.');
-          },{pressed:state.repair===id});
-        }
-        const travel=group(),other=id==='A'?'B':'A';
-        button(travel,other+' 판독기로 가기',()=>visitReader('reader'+other));
-        button(travel,'카드함으로 가기',()=>visitReader('lock'));
       }else if(kind==='print'){
         const grid=element(controls,'div',undefined,'ct-jobs');
         for(const t of ['차례','스캐너','프린터'])element(grid,'strong',t);
