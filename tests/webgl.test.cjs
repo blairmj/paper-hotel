@@ -15,7 +15,7 @@ test('camera zoom scales the view and picks the same cabinet door on portrait an
   const scene=new Scene(),hinge=new Group(),leaf=new Mesh(new BoxGeometry(.6,1,.03),new MeshBasicMaterial());
   hinge.add(leaf);scene.add(hinge);hinge.position.set(.3,1,0);leaf.position.x=.3;
   const camera=new PerspectiveCamera(55,1,.04,42);camera.position.set(.4,1.55,2.5);camera.lookAt(.6,1,0);
-  for(const [aspect,baseFov] of [[.48,74],[1.77,55]])for(const zoom of [.7,1,1.2,2])for(const turn of [0,.85]){
+  for(const [aspect,baseFov] of [[.48,74],[1.77,55]])for(const zoom of [.5,.7,1,1.2,2])for(const turn of [0,.85]){
     camera.aspect=aspect;camera.fov=runtime.roomViewFov(55,aspect,zoom);camera.updateProjectionMatrix();
     assert.ok(Math.abs(camera.projection[5]*Math.tan(baseFov*Math.PI/360)-zoom)<1e-6);
     hinge.rotation.y=turn;hinge.updateMatrix();scene.updateMatrixWorld();

@@ -110,7 +110,7 @@ const CTDeviceUI=(()=>{
     const trail=practice?'M150 14V46 L'+(top==='left'?60:240)+' 121':'M150 14V44 '+(top==='right'?'L241 140':'L100 83 L'+(lower==='left'?38:137)+' 140');
     return '<svg class="ct-rail" aria-label="위 갈림판 '+(top==='left'?'왼쪽':'오른쪽')+(practice?'':', 아래 갈림판 '+(lower==='left'?'왼쪽':'오른쪽'))+'" viewBox="0 0 300 '+(practice?160:181)+'" role="img">'+defs+'<rect width="300" height="181" rx="9" fill="#e4eff6"/><rect width="300" height="181" fill="url(#railGrid)"/><path d="'+paths+'" fill="none" stroke="#a5b5c3" stroke-width="11" stroke-linejoin="round"/><path d="'+paths+'" fill="none" stroke="white" stroke-width="5"/>'+gate(150,practice?46:44,top)+(practice?'':gate(100,83,lower))+cups.map(outlet).join('')+(ball?'<circle r="7" fill="'+(ball==='blue'?'#2367d9':'#fff')+'" stroke="#416183" stroke-width="2"><animateMotion dur=".55s" fill="freeze" path="'+trail+'"/></circle>':'')+'</svg>';
   }
-  function open(kind,state,host,{save,solve,active,update,record,question,hasScore},command){
+  function open(kind,state,host,{save,solve,active,update,record,hasScore},command){
     const controls=element(host,'div',undefined,'ct-controls');
     const status=element(host,'p','', 'ct-feedback');
     status.setAttribute('role','status');
@@ -252,9 +252,9 @@ const CTDeviceUI=(()=>{
         },{label:'시험 카드 '+card,pressed:state.test===card});
         if(!state.test)return;
         const identical=CT.readerOutput(state.test,'A',state.fault,null)===CT.readerOutput(state.test,'B',state.fault,null);
-        if(identical)question.textContent='두 판독기가 똑같이 읽었어요. 어느 카드로 다시 시험해 볼까요?';
-        else if(state.repair)question.textContent='고친 판독기는 새 출입증도 바르게 읽을까요?';
-        else question.textContent='카드와 두 결과를 비교해 보세요. 어느 쪽을 고칠까요?';
+        if(identical)message('두 판독기가 똑같이 읽었어요. 어느 카드로 다시 시험해 볼까요?');
+        else if(state.repair)message('고친 판독기는 새 출입증도 바르게 읽을까요?');
+        else message('카드와 두 결과를 비교해 보세요. 어느 쪽을 고칠까요?');
         const result=element(controls,'div',undefined,'ct-readers');
         for(const id of ['A','B']){
           const reader=element(result,'div');element(reader,'small','판독기 '+id);

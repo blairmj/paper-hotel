@@ -120,7 +120,19 @@ async function createMusicWorld({onInspect,onReadyToMove,deviceInstructions,room
     button.onpointerdown=e=>startPointer(e,o.id);
     spots.append(button);
     const surface=o.surface || (o.id==='clock'?room.clock:o.id==='lock'?room.lock:{width:.79,height:.50});
-    return {...o,point:new School3D.Vector3(...o.xyz),surface,button};
+    const point=new School3D.Vector3(...o.xyz);
+    const sin=Math.sin(o.rotationY??0),cos=Math.cos(o.rotationY??0);
+    const tilt=surface.tilt??0,up=Math.cos(tilt),lean=Math.sin(tilt);
+    const normal=new School3D.Vector3(sin*up,-lean,cos*up);
+    const corners=[];
+    const depth=surface.depth??0;
+    for(const dx of [-surface.width/2,surface.width/2])for(const dy of [-surface.height/2,surface.height/2]){
+      for(const dz of depth?[-depth/2,depth/2]:[0]){
+        const localZ=dy*lean+dz*up;
+        corners.push(new School3D.Vector3(point.x+dx*cos+localZ*sin,point.y+dy*up-dz*lean,point.z-dx*sin+localZ*cos));
+      }
+    }
+    return {...o,point,normal,corners,surface,button};
   });
   const stopPoints=room.stops;
   const puzzleTarget=room.lock?.id??'lock';
@@ -152,7 +164,7 @@ async function createMusicWorld({onInspect,onReadyToMove,deviceInstructions,room
     }
   }
   let width=1,height=1,yaw=0,pitch=0,openness=0,journey,trail,drag,finale,raf=0,previousTime=0;
-  const zoomStep=1.2;
+  const maxZoom=2,zoomStep=maxZoom**.25;
   let zoom=1,targetZoom=1,roomZoom=1;
   let fullRatio=1,movingRatio=1,wasMoving=false,slowFrames=0;
   const clamp=School3D.MathUtils.clamp, wrap=angle=>Math.atan2(Math.sin(angle),Math.cos(angle));
@@ -163,7 +175,7 @@ async function createMusicWorld({onInspect,onReadyToMove,deviceInstructions,room
     camera.updateProjectionMatrix();
   }
   function setZoom(value){
-    targetZoom=clamp(value,.7,2);
+    targetZoom=clamp(value,1/maxZoom,maxZoom);
     queue();
   }
   function resize(){
@@ -216,21 +228,14 @@ async function createMusicWorld({onInspect,onReadyToMove,deviceInstructions,room
       point.copy(target.point);
       const v=point.project(camera),px=width*(1+v.x)/2,py=height*(1-v.y)/2;
       const b=target.button;
-      const sin=Math.sin(target.rotationY||0),cos=Math.cos(target.rotationY||0);
-      const viewNormal=new School3D.Vector3(sin,0,cos);
-      const behindSurface=!target.inspectFromAnySide&&viewNormal.dot(new School3D.Vector3().subVectors(eye,target.point))<.025;
+      const behindSurface=!target.inspectFromAnySide&&target.normal.dot(corner.subVectors(eye,target.point))<.025;
       b.hidden=behindSurface||v.z<0||v.z>=1||px<20||px>width-20||py<55||py>height-56||!!journey||
         (openness===1&&devices.includes(target))||model.canInspect?.(target.id)===false||targetOccluded(target);
       target.px=px;target.py=py;
       if(b.hidden)continue;
       let halfWidth=0,halfHeight=0;
-      const depth=target.surface.depth??0,depthOffsets=depth?[-depth/2,depth/2]:[0];
-      for(const dx of [-.5,.5])for(const dy of [-.5,.5])for(const dz of depthOffsets){
-        corner.copy(target.point);
-        corner.x+=dx*target.surface.width*cos+dz*sin;
-        corner.z+=dz*cos-dx*target.surface.width*sin;
-        corner.y+=dy*target.surface.height;
-        corner.project(camera);
+      for(const vertex of target.corners){
+        corner.copy(vertex).project(camera);
         halfWidth=Math.max(halfWidth,Math.abs(width*(1+corner.x)/2-px));
         halfHeight=Math.max(halfHeight,Math.abs(height*(1-corner.y)/2-py));
       }
@@ -238,8 +243,9 @@ async function createMusicWorld({onInspect,onReadyToMove,deviceInstructions,room
       b.style.left=px+'px';b.style.top=py+'px';b.classList.toggle('label-left',px>width-95);
     }
     if(deviceGuide){
-      const show=guideTargets.some(target=>nearDevice(target)||(!target.button.hidden&&
-        (target.button.matches(':hover')||target.button===document.activeElement)));
+      const show=guideTargets.some(target=>!target.button.hidden&&(
+        target.button.matches(':hover')||target.button===document.activeElement||
+        (nearDevice(target)&&Math.abs(target.px-width/2)<width*.24&&Math.abs(target.py-height/2)<height*.27)));
       deviceGuide.hidden=openness>0||!!journey?.door||!!trail?.automatic||!show;
     }
   }
@@ -437,8 +443,8 @@ async function createMusicWorld({onInspect,onReadyToMove,deviceInstructions,room
       return;
     }
     if(zoom!==targetZoom){
-      const gap=targetZoom-zoom;
-      zoom=reducedMotion.matches||Math.abs(gap)<.001 ? targetZoom : zoom+gap*(1-Math.exp(-20*dt));
+      const ratio=targetZoom/zoom;
+      zoom=reducedMotion.matches||Math.abs(Math.log(ratio))<.001 ? targetZoom : zoom*ratio**(1-Math.exp(-20*dt));
       updateProjection();
     }
     if(journey){
@@ -524,10 +530,8 @@ async function createMusicWorld({onInspect,onReadyToMove,deviceInstructions,room
     const mode=e.deltaMode;
     if(e.defaultPrevented||!onReadyToMove()||journey?.door||!e.deltaY)return;
     e.preventDefault();
-    let pixels=e.deltaY;
-    if(mode===WheelEvent.DOM_DELTA_LINE)pixels*=16;
-    if(mode===WheelEvent.DOM_DELTA_PAGE)pixels*=height;
-    const steps=clamp(-pixels/100,-2,2);
+    const units=mode===WheelEvent.DOM_DELTA_LINE?3:mode===WheelEvent.DOM_DELTA_PAGE?1:100;
+    const steps=clamp(-e.deltaY/units,-2,2);
     setZoom(targetZoom*(zoomStep**steps));
   }
   for(const surface of [canvas,spots,workbench?.surface].filter(Boolean))surface.addEventListener('wheel',wheelZoom,{passive:false});

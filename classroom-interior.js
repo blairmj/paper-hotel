@@ -7,10 +7,11 @@ const ClassroomInterior=(()=>{
   const doorway={x:3.10,width:1.26,height:2.34,casingColor:'#d76d58',
     moldingColor:'#bd5946',recessColor:'#943e31',opensOut:true};
   const groups=[{x:-.48,z:2.24},{x:-1.02,z:4.11},{x:-1.56,z:5.98}];
+  const deskSurfaceY=.773;
   const boardNote={id:'resetOrder',name:'칠판의 점검 기록',xyz:[.36,1.94,.110],
     surface:{width:1.12,height:.65},approach:{x:.36,z:1.22}};
-  const deskNote={id:'powerNote',name:'모둠 책상의 점검 쪽지',xyz:[-1.03,.855,6.18],
-    surface:{width:.50,height:.32},approach:{x:-.81,z:7.22},tilt:-1.04};
+  const deskNote={id:'powerNote',name:'모둠 책상의 점검 쪽지',xyz:[-1.06,deskSurfaceY+.002,6.05],
+    surface:{width:.42,height:.28,tilt:-Math.PI/2},approach:{x:-.81,z:7.22},inspectFromAnySide:true};
   const lock={center:[1.94,1.42,.131],width:.70,height:.36};
 
   function definition(){
@@ -107,7 +108,7 @@ const ClassroomInterior=(()=>{
       shadow(2.52,1.94,x,z,.006,.72);
       for(const cx of [x-.497,x+.497]){
         rounded(scene,.98,.047,.81,cx,.748,z,edge,.014);
-        flat(scene,.952,.784,cx,.773,z,top);
+        flat(scene,.952,.784,cx,deskSurfaceY,z,top);
         box(scene,.80,.074,.50,cx,.686,z,tray);
         for(const dx of [-.382,.382])for(const dz of [-.292,.292]){
           rod(scene,[cx+dx,.725,z+dz],[cx+dx*1.062,.026,z+dz*1.075],.018,frame);
@@ -224,11 +225,7 @@ const ClassroomInterior=(()=>{
     }
     const shadow=groundShadow(scene);
     buildDesks(scene,artwork,shadow,silver);
-    const slip=patchPlane(scene,deskNote.surface.width,deskNote.surface.height,...deskNote.xyz,imageMap(deskCard));
-    slip.rotation.x=deskNote.tilt;
-    const [nx,ny,nz]=deskNote.xyz;
-    const backing=box(scene,.515,.329,.016,nx,ny-.009,nz-.005,standard('#b093c4',.85));
-    backing.rotation.x=deskNote.tilt;
+    flat(scene,deskNote.surface.width,deskNote.surface.height,...deskNote.xyz,imageMap(deskCard));
     readingCorner(scene,artwork,shadow,silver);
     const plaque=InteriorArtwork.canvasMap(460,115,(g,w,h)=>{
       g.fillStyle='#c6a483';g.fillRect(0,0,w,h);

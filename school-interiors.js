@@ -23,16 +23,16 @@ const SchoolInterior = (() => {
     const wall = {width: WIDTH, height, z: 0, back: DEPTH};
     const bounds = {left: -WIDTH / 2 + .28, right: WIDTH / 2 - .28, front: .29, back: DEPTH - .28};
     const lock = {center: [music ? 2.96 : 2.82, 1.26, .14], width: music ? .61 : .91, height: .40};
-    const target = (id, name, xyz, width, height, x, z) => ({
-      id, name, xyz, surface: {width, height}, approach: {x, z}
+    const target = (id, name, xyz, width, height, x, z, tilt=0) => ({
+      id, name, xyz, surface: {width, height, tilt}, approach: {x, z}
     });
     const clues = music ? [
-      target('paper', '피아노 악보', SCORE_CENTER, SCORE.width, SCORE.height, -3.07, 2.35),
+      target('paper', '피아노 악보', SCORE_CENTER, SCORE.width, SCORE.height, -3.07, 2.35, SCORE.tilt),
       target('musicSample', '보면대의 반복 띠 안내',
         [REHEARSAL_SEATS[0].x+STAND_OFFSET,1.172,REHEARSAL_SEATS[0].z-STAND_DISTANCE+.026],
-        MUSIC_SAMPLE.width,MUSIC_SAMPLE.height,-3.55,4.03)
+        MUSIC_SAMPLE.width,MUSIC_SAMPLE.height,-3.55,4.03,-.32)
     ] : [
-      target('printSamples', '작업대의 벽화 밑그림', PRINT_SHEET.center, PRINT_SHEET.width, PRINT_SHEET.height, 2.25, 6.82),
+      target('printSamples', '작업대의 벽화 밑그림', PRINT_SHEET.center, PRINT_SHEET.width, PRINT_SHEET.height, 2.25, 6.82, PRINT_SHEET.tilt),
       target('printRule', '게시판의 물감 번짐 견본', [-3.71, 2.13, .086], 1.20, .70, -3.10, 2.15)
     ];
     const entry = RECOVERY_ROOMS.find(item => item.kind === kind);
@@ -656,9 +656,15 @@ const SchoolInterior = (() => {
       for (const z of [benchZ-.264,benchZ+.264]) box(scene,.13,.803,.13,x,.402,z,wood);
     }
     for (let i=0;i<4;i++) box(scene,.792,.009,.405,benchX-.31,.902+i*.009,benchZ,paper);
-    const [sheetX,,sheetZ]=PRINT_SHEET.center;
+    const [sheetX,sheetY,sheetZ]=PRINT_SHEET.center;
     box(scene,.95,.018,.41,sheetX,.958,sheetZ,wood);
     box(scene,.87,.031,.033,sheetX,.974,sheetZ+.190,woodFace);
+    const tilt=PRINT_SHEET.tilt;
+    const drawingBoard=box(scene,.94,.54,.018,sheetX,sheetY+.011*Math.sin(tilt),sheetZ-.011*Math.cos(tilt),wood);
+    drawingBoard.rotation.x=tilt;
+    for(const dx of [-.33,.33]){
+      rod(scene,[sheetX+dx,.965,sheetZ-.17],[sheetX+dx,sheetY+.12,sheetZ-.15],.013,woodFace);
+    }
 
     // Beveled tile, two recessed basins and a cabinet photographed in the concept.
     const counter = standard('#535451', .5);

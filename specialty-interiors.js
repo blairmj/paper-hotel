@@ -63,7 +63,7 @@ const SpecialtyInteriors = (() => {
       obstacles:[[-2.97,.69,.90,2.39],[-3.60,-2.86,3.35,5.55],[1.26,3.22,3.70,4.66]],
       clues:[
         {id:'printJobs',name:'벽의 포스터 주문서',xyz:[-.25,1.98,.065],surface:{width:.90,height:.57},approach:{x:.97,z:1.74}},
-        {id:'printManual',name:'재단대의 기계 안내',xyz:[2.31,1.12,4.22],surface:{width:.69,height:.41},placement:'stand',approach:{x:2.31,z:5.16}}
+        {id:'printManual',name:'재단대의 기계 안내',xyz:[2.31,1.075,4.22],surface:{width:.69,height:.41},placement:'stand',approach:{x:2.31,z:5.16}}
       ], build:printShop
     },
     council:{
@@ -73,7 +73,7 @@ const SpecialtyInteriors = (() => {
       start:[.78,1.55,6.32],view:[-.72,1.36,.29],viewAngle:58,
       obstacles:[[-2.44,.10,2.64,4.55],[-3.87,-3.26,3.78,5.75],[2.41,3.67,3.90,4.85]],
       clues:[
-        {id:'councilTickets',name:'회의 탁자의 접수증',xyz:[-1.20,.99,4.05],surface:{width:.73,height:.38},placement:'stand',approach:{x:-1.20,z:5.30}},
+        {id:'councilTickets',name:'회의 탁자의 접수증',xyz:[-1.20,.832,4.01],surface:{width:.54,height:.31,tilt:-quarterTurn},placement:'paper',inspectFromAnySide:true,approach:{x:-1.20,z:5.30}},
         {id:'councilNotice',name:'게시판의 운영 약속',xyz:[-2.89,1.62,.09],surface:{width:1.0,height:.61},approach:{x:-2.58,z:1.39}}
       ],build:councilChamber
     },
@@ -543,20 +543,24 @@ const SpecialtyInteriors = (() => {
     rounded(scene,3.50,.065,1.26,-1.13,.834,1.64,wood,.018);
     rounded(scene,.89,.145,.60,-2.18,.938,1.63,ink,.026);
     rounded(scene,.75,.025,.47,-2.18,1.014,1.64,glass,.016);
-    const lid=rounded(scene,.85,.055,.52,-2.18,1.22,1.39,cream,.016);lid.rotation.x=-.88;
+    const lid=rounded(scene,.85,.055,.52,-2.18,1.22,1.52,cream,.016);lid.rotation.x=-.88;
+    box(scene,.60,.046,.063,-2.18,1.013,1.355,ink);
     rounded(scene,.83,.49,.57,.08,1.112,1.54,cream,.035);
     rounded(scene,.58,.10,.026,.08,1.16,1.837,ink,.008);
     rounded(scene,.45,.014,.29,.08,1.112,1.959,paper,.003);
     for(const dy of [.96,1.04])box(scene,.60,.01,.014,.08,dy,1.834,ink);
     const [x,y,z]=room.lock.center;
+    box(scene,.31,.19,.10,x,.955,z-.072,ink);
     rounded(scene,.86,.54,.11,x,y,z-.06,ink,.030);
     const device=patchPlane(scene,.81,.49,x,y,z+.002,imageMap(schoolLockArt(room,[])));
     rounded(scene,1.73,.79,.69,2.25,.405,4.19,wood,.035);
     rounded(scene,1.82,.055,.78,2.25,.83,4.19,cream,.021);
+    for(const end of [3.78,5.30])box(scene,.57,.52,.032,-3.26,.26,end,wood);
+    box(scene,.036,.51,1.52,-3.52,.255,4.54,wood);
+    box(scene,.57,.032,1.56,-3.26,.50,4.54,wood);
     for(let i=0;i<3;i++){
       const center=4.02+i*.52;
-      box(scene,.57,.031,.42,-3.26,.50,center,wood);
-      for(let k=0;k<4;k++)box(scene,.43,.024,.31,-3.26,.54+k*.027,center,k===3?trim:paper);
+      for(let k=0;k<4;k++)box(scene,.43,.024,.31,-3.26,.528+k*.024,center,k===3?trim:paper);
     }
     for(const [px,tone,mark] of [[-2.72,'#e29436','★'],[-1.72,'#5a77aa','☾']]){
       const poster=InteriorArtwork.canvasMap(180,226,(g,w,h)=>{
@@ -580,7 +584,9 @@ const SpecialtyInteriors = (() => {
     box(scene,.36,.24,.29,2.98,.92,4.40,paper);
     box(scene,.19,.013,.11,2.98,1.045,4.40,dark);
     rounded(scene,1.54,.99,.05,-2.88,1.62,.033,oak,.027);
-    for(let i=0;i<4;i++)box(scene,.41,.055,.46,-3.51,.42+i*.27,4.68,oak);
+    for(const end of [4.41,4.95])box(scene,.44,1.29,.035,-3.51,.645,end,oak);
+    box(scene,.03,1.29,.54,-3.715,.645,4.68,oak);
+    for(const y of [.08,.42,.69,.96,1.23])box(scene,.41,.045,.52,-3.51,y,4.68,oak);
     const [x,y,z]=room.lock.center;
     rounded(scene,1.83,.89,.079,x,y,z-.047,dark,.035);
     const map=InteriorArtwork.canvasMap(640,287,()=>{});
@@ -1111,6 +1117,10 @@ const SpecialtyInteriors = (() => {
   function addCard(scene,clue,card){
     if(clue.placement==='instrument')return;
     const {width,height}=clue.surface,group=positionGroup(scene,...clue.xyz,clue.rotationY??0);
+    if(clue.placement==='paper'){
+      patchPlane(group,width,height,0,0,0,imageMap(card)).rotation.x=clue.surface.tilt;
+      return;
+    }
     if(clue.placement==='monitor'){
       const casing=standard('#29323a',.60),steel=standard('#647078',.42);
       const top=.94-clue.xyz[1];

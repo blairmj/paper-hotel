@@ -236,7 +236,7 @@ function deviceInstructions(text=puzzle.instructions){
 }
 
 function shelfPanel(){
-  modal(puzzle.title,'<div class="shelf-ticket" id="shelfCount"></div>'+
+  modal(puzzle.title,deviceInstructions()+'<div class="shelf-ticket" id="shelfCount"></div>'+
     '<div class="shelf-row" id="shelfRow" role="group" tabindex="-1" aria-label="왼쪽부터 번호순으로 꽂힌 일곱 권"></div>'+
     '<p class="shelf-feedback" id="shelfFeedback" role="status"></p>','shelf');
   const feedback=byId('shelfFeedback'),row=byId('shelfRow');
@@ -393,11 +393,11 @@ function sportsPinPanel(){
 
 function devicePanel(kind,title,command){
   const practice=kind==='practiceRail';
-  modal(title,deviceInstructions(practice?CT.clues.practiceRail[1]:puzzle.devicePrompt)+
+  modal(title,deviceInstructions(practice?CT.clues.practiceRail[1]:puzzle.instructions)+
     '<div id="deviceSurface"></div>','ct-device');
   const host=byId('deviceSurface');
   CTDeviceUI.open(kind,run.device,host,{
-    save,solve,record:logPlay,question:byId('deviceInstructions'),hasScore:run.found.includes('paper'),
+    save,solve,record:logPlay,hasScore:run.found.includes('paper'),
     active:()=>dialog.open&&!countdown.check(),
     update:()=>world.setDigits(deviceEntry())
   },command);
