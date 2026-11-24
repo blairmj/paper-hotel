@@ -124,7 +124,7 @@ function showFinish(){
       action(buttons,'학생 설문',openSurvey,true);
       action(buttons,'처음부터',retrySchool);
     }else{
-      action(buttons,'우리 반 교실부터 시작',()=>location.assign(recoveryRoomLink(RECOVERY_ROOMS[0],true)),true);
+      action(buttons,'우리 반 교실부터 시작',()=>location.assign(schoolStartLink()),true);
       action(buttons,'다시 풀기',()=>{
         history.replaceState(null,'');
         location.reload();
@@ -442,40 +442,27 @@ function beginTimer(){
   if(canPlay&&!run.solved)logPlay('enter');
   return canPlay;
 }
-function intro(){
-  placeJumpInDialog();
-  modal('학교 탈출','','intro');
-  renderSchoolStart(content,async plan=>{
-    const progress=book();
-    if(schoolEscapeTimer(progress)&&schoolRoute(progress)){location.reload();return}
-    const enrollment=await SchoolRecords.reserve(plan.stops);
-    if(!beginSchoolAttempt(plan,enrollment))return false;
-    if(enrollment)SchoolRecords.started();
-    run=newRun();resetWorld();byId('bag').hidden=true;
-    close();beginTimer();save();
-  });
-}
-function mandatoryDialog(){return ['intro','timeout'].includes(dialog.dataset.panel)}
+function mandatoryDialog(){return dialog.dataset.panel==='timeout'}
 
 function start(){
   if(SchoolRecords.lesson&&!SchoolRecords.storyKey){location.replace('join.html');return}
   const progress=book(),plan=schoolEscapeTimer(progress)&&schoolRoute(progress);
   let updated=false;
   if(story){
-    if(!plan)run=newRun();
+    if(!plan){location.replace(schoolStartLink());return}
     const destination=schoolRoomToPlay(progress,plan);
     if(destination.kind!==room.kind){
       location.replace(recoveryRoomLink(destination,true));
       return;
     }
-    if(plan&&plan.path[plan.step]!==room.kind){
+    if(plan.path[plan.step]!==room.kind){
       progress.route={...plan,step:plan.path.indexOf(room.kind)};
       progress.room=room.n;
       updated=true;
     }
   }
   if(freshSportsVisit)history.replaceState({...history.state,sportsVisit:true},'');
-  if(outdated&&!run.solved&&(!story||plan)){
+  if(outdated&&!run.solved){
     progress.visits[room.n]={restoration:run};
     updated=true;
   }
@@ -518,7 +505,6 @@ function start(){
     }
   }).then(created=>{
     world=created;resetWorld();byId('bag').hidden=!run.found.length&&!(room.kind==='computer'&&run.device.card);
-    if(story&&!plan){intro();return}
     if(beginTimer()&&run.solved){
       if(story||history.state?.clearedReviewRoom===room.kind)showExit();
       else restart();

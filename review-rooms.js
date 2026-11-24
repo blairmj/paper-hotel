@@ -9,16 +9,19 @@ const REVIEW_ROOMS = [
   {n:209, place:'컴퓨터실', href:'computer.html', kind:'computer'}
 ];
 
-const RECOVERY_ROOMS = [{n:502,place:'우리 반 교실',href:'index.html',kind:'classroom'},...REVIEW_ROOMS];
+const RECOVERY_ROOMS = [{n:502,place:'우리 반 교실',href:'classroom.html',kind:'classroom'},...REVIEW_ROOMS];
 const SCHOOL_STORY_KEY = globalThis.SchoolRecords?.storyKey || 'paperhotel.recovery.school.v2';
 const SCHOOL_REVIEW_KEY = 'paperhotel.recovery.review.v1';
 const SCHOOL_ESCAPE_DURATION = 10*60_000;
 const HINT_COST_SECONDS = 30;
 
+function schoolStartLink() {
+  return globalThis.SchoolRecords?.lesson?'./?lesson=1':'./';
+}
+
 function recoveryRoomLink(room, story) {
   const enrolled=story&&globalThis.SchoolRecords?.lesson;
-  if (room.kind==='classroom') return story ? (enrolled?'./?lesson=1':'./') : 'index.html?review=1';
-  return room.href+(enrolled?'?school=1&lesson=1':story?'?school=1':'');
+  return room.href+(enrolled?'?school=1&lesson=1':story?'?school=1':room.kind==='classroom'?'?review=1':'');
 }
 
 function roomRestored(book, room) {
@@ -58,7 +61,7 @@ function beginSchoolAttempt(plan,lessonAttempt=null){
 
 function retrySchool(){
   writeSchoolBook(SCHOOL_STORY_KEY,{room:RECOVERY_ROOMS[0].n,visits:{}});
-  location.replace(recoveryRoomLink(RECOVERY_ROOMS[0],true));
+  location.replace(schoolStartLink());
 }
 
 function showSchoolTimeout(dialog,retry){

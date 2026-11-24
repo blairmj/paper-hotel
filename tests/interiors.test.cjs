@@ -265,6 +265,23 @@ test('returning to the school resumes the first unfinished room',()=>{
  assert.equal(ctx.schoolRoomToPlay(progress).kind,'computer');
 });
 
+test('the guide distinguishes new, active, expired and finished games without changing the save',()=>{
+ const {schoolEntryProgress,fixedSchoolRoute}=routeContext;
+ const book={visits:{502:{restoration:{solved:true}}},route:fixedSchoolRoute()};
+ assert.equal(schoolEntryProgress(book,9000).status,'new');
+ book.escapeTimer={startedAt:1000,deadline:12000};
+ assert.equal(schoolEntryProgress({...book,route:null},9000).status,'new');
+ const saved=JSON.stringify(book);
+ const active=schoolEntryProgress(book,9000);
+ assert.equal(active.status,'active');assert.equal(active.room.kind,'music');assert.equal(active.startedAt,1000);
+ assert.equal(schoolEntryProgress(book,12000).status,'expired');
+ assert.equal(JSON.stringify(book),saved);
+ for(const n of [203,207,208,205,204,209])book.visits[n]={restoration:{solved:true}};
+ book.escapeTimer.stopped=true;
+ const complete=schoolEntryProgress(book,40000);
+ assert.equal(complete.status,'complete');assert.equal(complete.room.kind,'computer');
+});
+
 test('a saved hallway link resumes the current classroom',()=>{
  let saved=null,destination;
  const ctx=vm.createContext({localStorage:{getItem:()=>saved},location:{replace:url=>{destination=url}}});

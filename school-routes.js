@@ -18,3 +18,12 @@ function schoolRoomToPlay(book,plan=schoolRoute(book)){
   if(!plan)return RECOVERY_ROOMS[0];
   return RECOVERY_ROOMS.find(room=>!roomRestored(book,room))??RECOVERY_ROOMS.at(-1);
 }
+
+function schoolEntryProgress(book,now=Date.now()){
+  const timer=schoolEscapeTimer(book),plan=schoolRoute(book);
+  if(!timer||!plan)return {status:'new'};
+  const room=schoolRoomToPlay(book,plan);
+  const completed=timer.stopped&&roomRestored(book,RECOVERY_ROOMS.at(-1));
+  const status=completed?'complete':timer.deadline<=now?'expired':'active';
+  return {status,room,startedAt:timer.startedAt};
+}

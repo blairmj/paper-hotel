@@ -50,7 +50,7 @@ test('picking accounts for each repeated computer station and a ray starting ins
 });
 
 test('every playable classroom starts the native renderer',()=>{
-  for(const name of ['index','music','art','sports','library','science','computer']){
+  for(const name of ['classroom','music','art','sports','library','science','computer']){
     const html=fs.readFileSync(path.join(root,name+'.html'),'utf8');
     assert.doesNotMatch(html,/three\.min\.js/i);
     assert.match(html,/src="webgl\/renderer\.js/);
@@ -60,4 +60,13 @@ test('every playable classroom starts the native renderer',()=>{
     const html=fs.readFileSync(path.join(root,name+'.html'),'utf8');
     assert.match(html,/location\.replace/);assert.doesNotMatch(html,/webgl\/renderer\.js/);
   }
+});
+
+test('the student URL offers the guide before it loads a playable classroom',()=>{
+  const home=fs.readFileSync(path.join(root,'index.html'),'utf8');
+  assert.match(home,/id="cover"/);
+  assert.match(home,/id="openGuide"/);
+  assert.match(home,/id="guide"[^>]*hidden/);
+  assert.match(home,/id="startGame"/);
+  assert.doesNotMatch(home,/src="(?:webgl\/|school-room\.js)|id="roomView"/);
 });

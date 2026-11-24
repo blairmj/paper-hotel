@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#f4f6f7">
+  <title>우리 반 교실 | 학교 탈출</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="music.css?v=school64">
+  <link rel="stylesheet" href="route-ui.css?v=school62">
+  <link rel="stylesheet" href="ct-devices.css?v=school64">
+  <link rel="stylesheet" href="lesson.css?v=survey1">
+</head>
+<body data-room="classroom">
+  <main id="musicGame" aria-label="학교 탈출 우리 반 교실">
+    <canvas id="roomView" tabindex="0" aria-label="우리 반 교실 내부. 바닥을 눌러 이동하고 화면을 끌어 둘러보세요."></canvas>
+    <header class="room-head">
+      <strong class="school">우리 반 교실</strong>
+      <nav aria-label="메뉴"><button id="bag" type="button" hidden>찾은 단서</button><button id="map" type="button">안내도</button></nav>
+    </header>
+    <div id="spots" aria-label="조사할 물건"></div>
+    <footer class="room-foot">
+      <div class="movement" aria-label="이동">
+        <button id="left" type="button" aria-label="왼쪽 보기">‹</button>
+        <button id="walk" type="button" aria-label="한 걸음 앞으로">↑</button>
+        <button id="stepBack" type="button" aria-label="한 걸음 뒤로">↓</button>
+        <button id="right" type="button" aria-label="오른쪽 보기">›</button>
+      </div>
+    </footer>
+    <div id="escape" class="room-transfer" role="status" hidden></div>
+    <dialog id="inspect" aria-labelledby="panelTitle">
+      <div class="panel-top"><h1 id="panelTitle"></h1><button id="dismiss" type="button" aria-label="닫기">×</button></div>
+      <div id="panelBody"></div>
+    </dialog>
+    <noscript>게임을 플레이하려면 자바스크립트를 켜 주세요.</noscript>
+  </main>
+  <script src="vendor/gl-matrix.min.js"></script>
+  <script src="vendor/earcut.min.js"></script>
+  <script src="webgl/model.js?v=webgl50"></script>
+  <script src="webgl/geometry.js?v=webgl50"></script>
+  <script src="webgl/picking.js?v=webgl50"></script>
+  <script src="webgl/shaders.js?v=webgl50"></script>
+  <script src="webgl/renderer.js?v=webgl50"></script>
+  <script src="class-records.js?v=survey1"></script>
+  <script src="review-rooms.js?v=entry66"></script>
+  <script src="school-routes.js?v=entry66"></script>
+  <script src="school-map.js?v=entry66"></script>
+  <script src="school-puzzles.js?v=school64"></script>
+  <script src="ct-devices.js?v=school64"></script>
+  <script src="ct-panels.js?v=school64"></script>
+  <script src="music-art.js?v=webgl50"></script>
+  <script src="music-world.js?v=room60"></script>
+  <script src="interior-artwork.js?v=webgl50"></script>
+  <script src="school-corridor.js?v=webgl50"></script>
+  <script src="school-interiors.js?v=school62"></script>
+  <script src="classroom-interior.js?v=school62"></script>
+  <script src="school-room-art.js?v=school64"></script>
+  <script src="school-room.js?v=entry66"></script>
+</body>
+</html>

@@ -30,7 +30,7 @@ function showStudentSurvey() {
   const stops = plan?.stops ?? progress.route?.stops;
   const eligible = Array.isArray(stops) && validLesson && (completed || timedOut);
   const destination = schoolRoomToPlay(progress, plan);
-  back.href = lesson && !SchoolRecords.storyKey ? 'join.html' : recoveryRoomLink(destination, true);
+  back.href = lesson && !SchoolRecords.storyKey ? 'join.html' : plan ? recoveryRoomLink(destination, true) : schoolStartLink();
   if (!eligible) {
     note.textContent = '게임을 마치면 다녀온 교실 중에서 답을 고를 수 있어요.';
     for (const key of fields) form.elements.namedItem(key).hidden = true;
