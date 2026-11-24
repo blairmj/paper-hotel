@@ -10,18 +10,9 @@ const book=()=>readSchoolBook(bookKey);
 const byId=id=>document.getElementById(id),dialog=byId('inspect'),content=byId('panelBody');
 const roomHead=document.querySelector('.room-head'),movement=document.querySelector('.movement');
 const panelTop=dialog.querySelector('.panel-top');
-const stored=book().visits[room.n]?.restoration;
-const saved=puzzle.control==='pin' ? migrateSportsProgress(stored) : stored;
+const freshSportsVisit=!story&&room.kind==='sports'&&!history.state?.sportsVisit;
+const saved=freshSportsVisit?null:book().visits[room.n]?.restoration;
 const outdated=saved?.revision!==puzzle.revision;
-
-function migrateSportsProgress(previous){
-  if(!previous||previous.revision!==undefined)return previous;
-  // In the old puzzle entry held confirmed move counts. None were typed at the door.
-  let picked=0;
-  while(picked<puzzle.answer.length&&previous.entry?.[picked]===puzzle.answer[picked])picked++;
-  if(previous.awaitingCount===true&&picked<BALL_PICKUP.length)picked++;
-  return {...previous,revision:puzzle.revision,picked,entry:[]};
-}
 
 function newRun(){
   if(puzzle.control==='shelf')return {revision:puzzle.revision,found:[],entry:[],shelf:makeLibraryShelf(),solved:false};
@@ -30,7 +21,7 @@ function newRun(){
 }
 let run=newRun(),world,countdown,attempt,reviewJump,opening=false,finished=false;
 if(saved&&(!outdated||puzzle.control==='shelf')){
-  run.found=Array.isArray(saved.found)?saved.found.filter(id=>room.clues.some(clue=>clue.id===id)):[];
+  run.found=Array.isArray(saved.found)?saved.found.filter(id=>room.clues.some(clue=>clue.id===id)&&!(outdated&&id==='loanSlip')):[];
 }
 if(saved&&!outdated){
   if(puzzle.control==='pin'&&Number.isInteger(saved.picked)&&saved.picked>=0&&saved.picked<=BALL_PICKUP.length)run.picked=saved.picked;
@@ -52,7 +43,6 @@ run.solved=saved?.solved===true&&(!outdated||story);
 if(run.solved&&puzzle.control==='pin'){
   run.entry=puzzle.answer.slice();
 }
-if(run.solved&&room.kind==='art'&&run.device.drops.length===3)run.device.applied=true;
 
 function logPlay(kind,detail=''){
   if(story&&globalThis.SchoolRecords?.lesson)SchoolRecords.event(book(),room.kind,kind,detail);
@@ -118,10 +108,9 @@ function showFinish(){
   byId('roomView').setAttribute('aria-label','학교 현관');
   let result='컴퓨터실 판독기 복구';
   if(story){
-    const progress=book(),plan=schoolRoute(progress);
-    const preceding=RECOVERY_ROOMS.filter(item=>item.kind==='classroom'||plan?.stops.includes(item.kind));
-    const restored=preceding.filter(item=>roomRestored(progress,item)).length;
-    result='교실 장치 '+restored+'/'+preceding.length+' 복구';
+    const progress=book();
+    const restored=RECOVERY_ROOMS.filter(item=>roomRestored(progress,item)).length;
+    result='교실 장치 '+restored+'/'+RECOVERY_ROOMS.length+' 복구';
   }
   const panel=document.createElement('section');
   panel.className='finale-status';panel.setAttribute('aria-label','학교 출입 복구 결과');
@@ -201,12 +190,13 @@ function collectClue(id){
 function inspectClue(id){
   const clue=room.clues.find(item=>item.id===id);
   if(!clue)return;
+  if(id==='paper'){MusicClock.showPaper();return}
   collectClue(id);
+  if(id==='clock'){MusicClock.showClock();return}
   if(clue.lines){
     modal(clue.lines.join(' '),'','library-note');
     return;
   }
-  if(id==='practiceRail'){devicePanel(id,clue.name);return}
   if(CT.clues[id]){
     modal(clue.name,'<div class="ct-clue" id="clueDetail"></div>','ct-clue');
     CTDeviceUI.clue(id,byId('clueDetail'));
@@ -216,8 +206,7 @@ function inventory(){
   modal('찾은 단서','<div class="collected-clues" id="collectedClues"></div>');
   for(const clue of room.clues.filter(clue=>run.found.includes(clue.id))){
     action(byId('collectedClues'),clue.name,()=>{
-      if(clue.id==='practiceRail'){close();world.inspectTarget(clue.id)}
-      else inspectClue(clue.id);
+      inspectClue(clue.id);
     });
   }
 }
@@ -234,6 +223,7 @@ function shelfPanel(){
   const buttons=SHELF_BINDINGS.map((color,slot)=>{
     const button=action(row,'',()=>{
       if(opening||run.solved||countdown.check()||!canOpenLibraryBook(run.shelf,run.entry,slot))return;
+      if(!run.found.includes('loanSlip')){feedback.textContent='서가의 책 사이에 대출 쪽지가 있어요. 쪽지부터 찾아보세요.';return}
       run.entry.push(slot);
       logPlay('book',(slot+1)+':'+run.shelf[slot]);
       world.setDigits(deviceEntry());draw();
@@ -279,69 +269,54 @@ function ballLockerPanel(){
   if(run.solved)return;
   collectClue('ballLine');
   modal('공 꺼내기','<p class="ball-task" id="ballTask" role="status"></p>'+
-    '<div class="ball-row-label" id="ballBeforeBox" hidden>빼기 전<div class="ball-row" id="ballBefore"></div></div>'+
-    '<div class="ball-row-label">지금 놓인 공<div class="ball-row" id="ballCurrent" role="group" aria-label="남은 공"></div></div>'+
+    '<div class="ball-slots" aria-hidden="true">'+BALLS.map((_,i)=>'<span>'+(i+1)+'</span>').join('')+'</div>'+
+    '<div class="ball-lane" id="ballCurrent" role="group" aria-label="여섯 자리 공 선반"></div>'+
     '<p class="ball-feedback" id="entryFeedback" role="status"></p>','ball-locker');
-  const tray=byId('ballCurrent'),before=byId('ballBefore');
-  const feedback=byId('entryFeedback');
-  const pickers=new Map(BALLS.map((label,i)=>{
-    const button=action(tray,label,()=>pick(label));
-    button.className='locker-ball';
-    button.dataset.command=label;
-    button.setAttribute('aria-label',label+' 공 빼기');
-    button.style.setProperty('--ball',BALL_COLORS[i]);
-    return [label,button];
-  }));
-  const reset=action(actions(),'공 다시 놓기',()=>{
-    if(countdown.check()||run.solved)return;
-    run.picked=0;world.setBalls(0);save();draw();
-    tray.querySelector('button')?.focus({preventScroll:true});
+  const lane=byId('ballCurrent'),status=byId('ballTask'),feedback=byId('entryFeedback');
+  const controls=actions();
+  let animating=false;
+  const chips=BALLS.map((label,i)=>{
+    const chip=action(lane,label,()=>pick(label));
+    chip.className='locker-ball';chip.dataset.command=label;
+    chip.setAttribute('aria-label',label+' 공 빼기');
+    chip.style.setProperty('--ball',BALL_COLORS[i]);return chip;
   });
-  function fillRow(host,row,interactive){
-    host.replaceChildren();
-    for(const label of row){
-      const chip=interactive?pickers.get(label):document.createElement('span');
-      if(interactive)chip.disabled=run.picked===BALL_PICKUP.length;
-      else{
-        chip.className='locker-ball';
-        chip.textContent=label;
-        chip.style.setProperty('--ball',BALL_COLORS[BALLS.indexOf(label)]);
-      }
-      host.append(chip);
-    }
-    for(let i=row.length;i<BALLS.length;i++){
-      const gap=document.createElement('span');
-      gap.className='ball-empty';
-      host.append(gap);
-    }
+  const replay=action(controls,'방금 움직임 다시 보기',()=>animate(run.picked));
+  const reset=action(controls,'처음 배열로',()=>{
+    if(animating||countdown.check())return;
+    run.picked=0;run.entry=[];world.setBalls(0);save();draw(0);prompt();
+  });
+  function draw(count){
+    const balls=ballRowAfter(count);
+    chips.forEach((chip,i)=>{
+      const pos=balls.indexOf(BALLS[i]);chip.hidden=pos<0;
+      if(pos>=0)chip.style.left=((pos+.5)*100/BALLS.length)+'%';
+      chip.disabled=animating||count===BALL_PICKUP.length;
+    });
   }
-  function draw(){
-    const picked=run.picked;
-    let task='회수표에서 첫 번째 공은 무엇인가요?';
-    if(picked){
-      task=BALL_PICKUP[picked-1]+' 공을 뺐어요. 남은 공 중 몇 개가 자리를 옮겼을까요?';
-      if(picked===BALL_PICKUP.length)task+=' 네 번 센 수를 차례로 이어 쓰면 문이 열려요.';
-      fillRow(before,ballRowAfter(picked-1),false);
-    }
-    byId('ballTask').textContent=task;
-    byId('ballBeforeBox').hidden=!picked;
-    reset.hidden=!picked;
-    fillRow(tray,ballRowAfter(picked),true);
-    feedback.textContent='';
+  function prompt(){
+    const n=run.picked;
+    status.textContent=n?BALL_PICKUP[n-1]+' 공을 뺐어요. 남은 공 중 몇 개가 왼쪽으로 움직였나요?':'선반에 공이 여섯 개 있어요. 회수표의 첫 번째 공을 눌러 보세요.';
+    feedback.textContent=n===BALL_PICKUP.length?'네 번 센 수를 문 옆 번호판에 차례로 입력하세요.':'';
+    replay.hidden=reset.hidden=!n;
+    replay.disabled=reset.disabled=animating;
+  }
+  function animate(n){
+    if(animating||!n||countdown.check())return;
+    animating=true;lane.classList.remove('sliding');draw(n-1);prompt();
+    const removed=chips[BALLS.indexOf(BALL_PICKUP[n-1])];removed.classList.add('leaving');
+    setTimeout(()=>{
+      if(!lane.isConnected)return;
+      removed.classList.remove('leaving');lane.classList.add('sliding');draw(n);
+      setTimeout(()=>{if(!lane.isConnected)return;animating=false;draw(n);prompt()},850);
+    },340);
   }
   function pick(label){
-    if(countdown.check()||run.solved||run.picked===BALL_PICKUP.length)return;
-    if(label!==BALL_PICKUP[run.picked]){
-      logPlay('wrong');
-      feedback.textContent='회수 순서 단서를 다시 확인해 보세요.';
-      return;
-    }
-    run.picked++;
-    world.setBalls(run.picked,true);
-    save();draw();
-    (tray.querySelector('button:enabled')??reset).focus({preventScroll:true});
+    if(animating||countdown.check()||run.solved)return;
+    if(label!==BALL_PICKUP[run.picked]){logPlay('wrong');feedback.textContent='회수표에서 다음에 뺄 공을 확인해 보세요.';return}
+    run.picked++;save();world.setBalls(run.picked,true);animate(run.picked);
   }
-  draw();
+  draw(run.picked);prompt();
 }
 
 function sportsPinPanel(){
@@ -383,18 +358,19 @@ function sportsPinPanel(){
 }
 
 function devicePanel(kind,title,command){
-  const practice=kind==='practiceRail';
-  modal(title,deviceInstructions(practice?CT.clues.practiceRail[1]:puzzle.instructions)+
+  modal(title,deviceInstructions()+
     '<div id="deviceSurface"></div>','ct-device');
   const host=byId('deviceSurface');
   CTDeviceUI.open(kind,run.device,host,{
-    save,solve,record:logPlay,hasScore:run.found.includes('paper'),
+    save,solve,record:logPlay,hasSample:run.found.includes('printSamples'),
+    visitReader:id=>{close();world.inspectTarget(id)},
     active:()=>dialog.open&&!countdown.check(),
     update:()=>world.setDigits(deviceEntry())
   },command);
 }
 function inspectLock(command){
   if(run.solved||!countdown||countdown.check())return;
+  if(room.kind==='music'){MusicClock.dial();return}
   if(puzzle.control==='device')devicePanel(room.kind,puzzle.title,command);
   else if(puzzle.control==='pin')sportsPinPanel();
   else shelfPanel();
@@ -404,7 +380,7 @@ function inspectLock(command){
 function directory(){
   if(story){
     modal('학교 안내도','','map');
-    renderSchoolMap(content,{plan:schoolRoute(book()),position:room.kind});
+    renderSchoolMap(content,{position:room.kind});
   }else{
     modal('학교 안내도','<div class="map-list">'+RECOVERY_ROOMS.map(item=>
       '<a href="'+recoveryRoomLink(item,false)+'">'+item.place+'</a>').join('')+'</div>','map');
@@ -444,8 +420,8 @@ function beginTimer(){
 }
 function intro(){
   placeJumpInDialog();
-  modal('들를 교실 고르기','','intro');
-  renderSchoolRoutePicker(content,{heading:byId('panelTitle'),onStart:async plan=>{
+  modal('학교 탈출','','intro');
+  renderSchoolStart(content,async plan=>{
     const progress=book();
     if(schoolEscapeTimer(progress)&&schoolRoute(progress)){location.reload();return}
     const enrollment=await SchoolRecords.reserve(plan.stops);
@@ -453,7 +429,7 @@ function intro(){
     if(enrollment)SchoolRecords.started();
     run=newRun();resetWorld();byId('bag').hidden=true;
     close();beginTimer();save();
-  }});
+  });
 }
 function mandatoryDialog(){return ['intro','timeout'].includes(dialog.dataset.panel)}
 
@@ -462,6 +438,7 @@ function start(){
   const progress=book(),plan=schoolEscapeTimer(progress)&&schoolRoute(progress);
   let updated=false;
   if(story){
+    if(!plan)run=newRun();
     const destination=schoolRoomToPlay(progress,plan);
     if(destination.kind!==room.kind){
       location.replace(recoveryRoomLink(destination,true));
@@ -473,7 +450,8 @@ function start(){
       updated=true;
     }
   }
-  if((outdated||saved!==stored)&&!run.solved&&(!story||plan)){
+  if(freshSportsVisit)history.replaceState({...history.state,sportsVisit:true},'');
+  if(outdated&&!run.solved&&(!story||plan)){
     progress.visits[room.n]={restoration:run};
     updated=true;
   }
@@ -509,6 +487,7 @@ function start(){
     onInspect:(id,command)=>{
       if(!countdown||countdown.check())return;
       if(id===(room.lock?.id??'lock'))inspectLock(command);
+      else if(id==='readerA'||id==='readerB')devicePanel(id,id.slice(-1)+' 판독기');
       else if(id==='ballLine')ballLockerPanel();
       else if(id==='doorGuide')modal(puzzle.doorTitle??(room.place+' 탈출'),deviceInstructions(),'door-question');
       else inspectClue(id);

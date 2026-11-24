@@ -51,7 +51,10 @@ for(const kind of ['classroom','music','art','sports','computer','library','scie
    'the door has a guide even when the puzzle is solved at another station');
  assert.ok(open(room.doorReveal.x,room.doorReveal.z)&&seen.has(index(room.doorReveal.x,room.doorReveal.z).join(',')),
    'the open doorway can be viewed from a reachable position');
- if(kind==='music')assert.deepEqual(Object.values(room.finishes),Array(4).fill('black-acoustic'));
+ if(kind==='music'){
+  assert.deepEqual(Object.values(room.finishes),Array(4).fill('maple-acoustic'));
+  assert.deepEqual(Array.from(room.clues,c=>c.id),['paper','clock']);
+ }
  if(kind==='art'){
   const [samples,record]=room.clues;
   assert.ok(samples.xyz[0]>1&&samples.xyz[2]>4,'new designs sit on the right workshop table');
@@ -78,6 +81,8 @@ for(const kind of ['classroom','music','art','sports','computer','library','scie
  if(kind==='computer'){
   const {rows}=room.layout;
   assert.equal(rows.length,4);
+  const [a,b]=['readerA','readerB'].map(id=>room.targets.find(t=>t.id===id));
+  assert.ok(Math.abs(a.xyz[0]-b.xyz[0])>5,'readers are on separate stands');
   assert.ok(rows.every(row=>row.length===6&&row.filter(seat=>seat.x<0).length===3));
   assert.ok(Array.from({length:40},(_,i)=>i*.20+1).every(z=>open(0,z)),'central aisle is unobstructed');
  }
@@ -227,109 +232,101 @@ test('finishing writes the last puzzle and freezes the shared time together',()=
  assert.equal(h.label,'8:52');assert.equal(h.expires,0);
 });
 
-test('every supported selection creates a route through at least three distinct rooms',()=>{
- const ctx=vm.createContext({});
- vm.runInContext(fs.readFileSync(path.join(root,'school-routes.js'),'utf8'),ctx);
- const rooms=['library','music','art','broadcast','science','sports','print','council'];
- for(let mask=0;mask<(1<<rooms.length);mask++){
-  const selected=rooms.filter((_,i)=>mask&(1<<i));
-  const plan=ctx.planSchoolRoute(selected);
-  if(selected.length<3){assert.equal(plan,null);continue}
-  assert.equal(ctx.schoolRoute({route:plan}),plan,selected.join(', '));
-  assert.deepEqual([...plan.stops].sort(),selected.slice().sort());
-  assert.deepEqual([...plan.stops],[...new Set(plan.path.filter(id=>selected.includes(id)))]);
-  assert.equal(plan.path[0],'classroom');assert.equal(plan.path.at(-1),'computer');
-  assert.equal(plan.path.some((id,i)=>[id,plan.path[i+1]].sort().join(',')==='center,music'),false);
- }
- assert.equal(ctx.planSchoolRoute(['library','library','art']),null);
- assert.equal(ctx.planSchoolRoute(['library','music','computer']),null);
- assert.deepEqual([...ctx.planSchoolRoute(['art','music','library']).path],['classroom','west','library','music','art','east','computer']);
- assert.equal(ctx.planSchoolRoute(rooms.slice(0,6)).path.length-1,12);
- const blocked={path:['classroom','west','library','west','center','music','art','east','computer'],stops:['library','music','art'],step:0};
- assert.equal(ctx.schoolRoute({route:blocked}),null);
+const routeContext=vm.createContext({});
+for(const file of ['review-rooms.js','school-routes.js']){
+ vm.runInContext(fs.readFileSync(path.join(root,file),'utf8'),routeContext);
+}
+const schoolOrder=['classroom','music','art','sports','library','science','computer'];
+test('the school has one fixed route with five intermediate rooms',()=>{
+ const {fixedSchoolRoute,schoolRoute}=routeContext;
+ const route=fixedSchoolRoute();
+ assert.deepEqual([...route.path],schoolOrder);
+ assert.deepEqual([...route.stops],schoolOrder.slice(1,-1));
+ assert.equal(schoolRoute({route:{...route,step:4}}).step,4);
+ assert.equal(schoolRoute({route:{...route,stops:route.stops.slice(1)}}),null);
+ assert.equal(schoolRoute({route:{...route,path:[...route.path].reverse()}}),null);
+ assert.equal(schoolRoute({route:{path:['classroom','broadcast','computer'],stops:['broadcast'],step:0}}),null);
 });
 
-test('direct transitions follow the confirmed visits from any saved corridor step',()=>{
- const ctx=vm.createContext({});
- for(const file of ['review-rooms.js','school-routes.js']){
-  vm.runInContext(fs.readFileSync(path.join(root,file),'utf8'),ctx);
- }
- const progress={visits:{}};
+test('returning to the school resumes the first unfinished room',()=>{
+ const progress={visits:{}},ctx=routeContext;
  assert.equal(ctx.schoolRoomToPlay(progress).kind,'classroom');
- progress.route=ctx.planSchoolRoute(['sports','art','music']);
- assert.deepEqual([...progress.route.stops],['music','art','sports']);
- assert.ok(progress.route.path.includes('library'),'the diagram passes a classroom that was not selected');
- for(const [kind,n] of [['classroom',502],['music',203],['art',207],['sports',208]]){
-  for(let step=0;step<progress.route.path.length;step++){
+ progress.route=ctx.fixedSchoolRoute();
+ for(const [i,n] of [502,203,207,208,205,204,209].entries()){
+  for(let step=0;step<schoolOrder.length;step++){
    progress.route.step=step;
-   assert.equal(ctx.schoolRoomToPlay(progress).kind,kind);
+   assert.equal(ctx.schoolRoomToPlay(progress).kind,schoolOrder[i]);
   }
   progress.visits[n]={restoration:{solved:true}};
  }
  assert.equal(ctx.schoolRoomToPlay(progress).kind,'computer');
- progress.visits[209]={restoration:{solved:true}};
- assert.equal(ctx.schoolRoomToPlay(progress).kind,'computer','a completed attempt can reopen its ending');
 });
 
-test('a saved hallway link resumes the current selected classroom',()=>{
+test('a saved hallway link resumes the current classroom',()=>{
  let saved=null,destination;
- const ctx=vm.createContext({
-  localStorage:{getItem:()=>saved},
-  location:{replace:url=>{destination=url}}
- });
- for(const file of ['review-rooms.js','school-routes.js']){
-  vm.runInContext(fs.readFileSync(path.join(root,file),'utf8'),ctx);
- }
+ const ctx=vm.createContext({localStorage:{getItem:()=>saved},location:{replace:url=>{destination=url}}});
+ for(const file of ['review-rooms.js','school-routes.js'])vm.runInContext(fs.readFileSync(path.join(root,file),'utf8'),ctx);
  const redirect=fs.readFileSync(path.join(root,'school-hallway.js'),'utf8');
  vm.runInContext('{'+redirect+'}',ctx);
  assert.equal(destination,'./');
- const route=ctx.planSchoolRoute(['sports','art','music']);
- route.step=route.path.indexOf('library');
- saved=JSON.stringify({route,visits:{502:{restoration:{solved:true}}},
-  escapeTimer:{startedAt:1_000,deadline:601_000}});
+ saved=JSON.stringify({route:ctx.fixedSchoolRoute(),visits:{502:{restoration:{solved:true}}},
+  escapeTimer:{startedAt:1000,deadline:601000}});
  vm.runInContext('{'+redirect+'}',ctx);
  assert.equal(destination,'music.html?school=1');
 });
 
-test('the damaged light has a single repair and every blank art tile belongs to one of three regions',()=>{
+test('one repair restores even parity in every row and column',()=>{
  const ct=layoutContext.ct;
  assert.deepEqual(Array.from({length:16},(_,i)=>i).filter(i=>ct.parity(i)),[9]);
- const groups=new Set();
- for(let i=0;i<20;i++){const cells=ct.colorRegion(i);if(cells.length)groups.add([...cells].sort().join(','))}
- assert.equal(groups.size,3);
- assert.equal(ct.colorRegion(2).length,0);
- assert.equal(new Set(ct.pigments([0,3,19]).flat()).size,ct.wall.join('').split('.').length-1);
 });
-test('repeat tapes are nested, use each available card once and replay the written rhythm',()=>{
- const ct=layoutContext.ct,program=['(','(','북','짝',')','딩',')'];
- assert.equal(ct.validProgram(program),true);
- assert.equal(ct.validProgram(['북','북']),false);
- assert.deepEqual([...ct.music(program)],[...ct.motif]);
- assert.equal(ct.music(['(','딩']),null);
- assert.equal(ct.music(['(',')']),null);
- assert.equal(ct.music(['딩',')']),null);
+
+test('each transparent score gives the product of its hands and the clock uses the same rule',()=>{
+ const [marks,clock]=vm.runInContext('[MUSIC_SCORE,MUSIC_CLOCK]',layoutContext);
+ assert.deepEqual(Array.from(marks,m=>m.value),[54,36,8,77]);
+ assert.ok(marks.every(m=>m.a*m.b===m.value));
+ assert.ok(new Set(marks.map(({a,b})=>Math.min(Math.abs(a-b),12-Math.abs(a-b)))).size>=3);
+ assert.equal(clock.hour*clock.minuteMark,48);
+ const ct=layoutContext.ct,state=ct.restore('music',{digits:[4,7],overlay:true},ct.fresh('music'));
+ assert.deepEqual([...state.digits],[4,7]);assert.ok(state.overlay);
 });
-test('mural marks survive a reload separately from the result of dropping paint',()=>{
+
+test('a paint drop covers only its vertical neighbors, including edges and overlaps',()=>{
  const ct=layoutContext.ct;
- const restore=saved=>ct.restore('art',saved,ct.fresh('art'));
- const positions=[0,1,3]; // The first two choices share an area.
- assert.ok(new Set(ct.pigments(positions).flat()).size<ct.blankCount);
- const oldSave=restore({drops:positions});
- assert.deepEqual([...oldSave.drops],positions);
- assert.equal(oldSave.applied,false);
- assert.equal(restore({drops:positions,applied:true}).applied,true);
- assert.equal(restore({drops:[0],applied:true}).applied,false);
- assert.equal(restore({drops:[0,0,3],applied:true}).drops.length,0);
+ assert.deepEqual([...ct.paintCells([9])],[5,9,13]);
+ assert.deepEqual([...ct.paintCells([0])],[0,4]);
+ assert.deepEqual([...ct.paintCells([23])],[19,23]);
+ assert.deepEqual([...ct.paintCells([9,13])],[5,9,13,17]);
+ const chosen=[0,16,9,13,6,18,23];
+ assert.ok(ct.artSolved(chosen));assert.equal(ct.artSolved(chosen.slice(1)),false);
+ const restore=drops=>[...ct.restore('art',{drops},ct.fresh('art')).drops];
+ assert.deepEqual(restore(chosen),chosen);assert.deepEqual(restore([9,9]),[]);assert.deepEqual(restore([24]),[]);
 });
-test('the rail flips only the gates visited by each ball and restores its original orientation on reload',()=>{
+
+test('the art reference needs exactly the available seven drops and has a unique minimum solution',()=>{
+ const ct=layoutContext.ct,w=ct.artWidth,h=ct.artRows.length;
+ let total=0;
+ for(let col=0;col<w;col++){
+  const matches=[];
+  for(let mask=0;mask<2**h;mask++){
+   const drops=[];
+   for(let r=0;r<h;r++)if(mask&(1<<r))drops.push(r*w+col);
+   const paint=ct.paintCells(drops);
+   if(ct.artRows.every((line,r)=>paint.has(r*w+col)===(line[col]==='#')))matches.push(drops.length);
+  }
+  const min=Math.min(...matches);
+  assert.equal(matches.filter(n=>n===min).length,1);
+  total+=min;
+ }
+ assert.equal(total,ct.inkLimit);
+});
+test('the rail changes only visited gates and the predicted cup survives a reload',()=>{
  const ct=layoutContext.ct;
- for(const [lower,cups] of [['left',['별','해','달']],['right',['달','해','별']]]){
-   const steps=ct.experiment(lower);
-   assert.deepEqual(Array.from(steps,r=>r.cup),cups);
-   assert.equal(steps[1].lowerVisited,false);
-   assert.equal(steps[0].nextLower,steps[1].nextLower);
-   const state=ct.restore('science',{lower,practice:3,cup:'달'},ct.fresh('science'));
-   assert.equal(state.lower,lower);assert.equal(state.practice,3);
+ for(const [lower,cups] of [['left',['왼쪽','오른쪽','가운데']],['right',['가운데','오른쪽','왼쪽']]]){
+  const steps=ct.experiment(lower);
+  assert.deepEqual(Array.from(steps,r=>r.cup),cups);
+  assert.equal(steps[1].lowerVisited,false);assert.equal(steps[0].nextLower,steps[1].nextLower);
+  const state=ct.restore('science',{lower,cup:cups[2]},ct.fresh('science'));
+  assert.equal(state.lower,lower);assert.equal(state.cup,cups[2]);assert.equal(state.practice,undefined);
  }
 });
 test('signal codewords are prefix-free, the two palindromes conceal the reader fault, and a new pass verifies the repair',()=>{

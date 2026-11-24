@@ -11,7 +11,10 @@ const SchoolInterior = (() => {
     SCORE.restY - .006 + Math.cos(SCORE.tilt) * SCORE.height / 2,
     SCORE.restZ + Math.sin(SCORE.tilt) * SCORE.height / 2
   ];
-  const REHEARSAL_SEATS = [{x: -4.81, z: 3.24}, {x: -3.82, z: 3.40}];
+  const REHEARSAL_SEATS = [
+    [-2.75,4.35],[-1.08,5.10],[1.08,5.10],[2.75,4.35],
+    [-3.92,5.78],[-1.86,6.93],[1.86,6.93],[3.92,5.78]
+  ].map(([x,z])=>({x,z,yaw:Math.atan2(x,z-1.72)}));
   const STAND_DISTANCE = .72;
   const STAND_OFFSET = .10;
   const MUSIC_SAMPLE = {width:.42,height:.245,offset:.028};
@@ -28,9 +31,7 @@ const SchoolInterior = (() => {
     });
     const clues = music ? [
       target('paper', '피아노 악보', SCORE_CENTER, SCORE.width, SCORE.height, -3.07, 2.35, SCORE.tilt),
-      target('musicSample', '보면대의 반복 띠 안내',
-        [REHEARSAL_SEATS[0].x+STAND_OFFSET,1.172,REHEARSAL_SEATS[0].z-STAND_DISTANCE+.026],
-        MUSIC_SAMPLE.width,MUSIC_SAMPLE.height,-3.55,4.03,-.32)
+      target('clock','멈춘 벽시계',[-.17,2.25,.135],.71,.71,-.17,1.58)
     ] : [
       target('printSamples', '작업대의 벽화 밑그림', PRINT_SHEET.center, PRINT_SHEET.width, PRINT_SHEET.height, 2.25, 6.82, PRINT_SHEET.tilt),
       target('printRule', '게시판의 물감 번짐 견본', [-3.71, 2.13, .086], 1.20, .70, -3.10, 2.15)
@@ -43,9 +44,12 @@ const SchoolInterior = (() => {
       door: [DOOR.x, DOOR.height / 2, .05], doorReveal:{x:DOOR.x-.18,z:2.62}, lock, clues,
       targets: [target('lock', SCHOOL_PUZZLES[kind].title, lock.center, lock.width, lock.height, lock.center[0], 1.85), ...clues],
       obstacles: music ? [
-        [-1.82, 1.82, 4.06, 6.48], [-5.19, -2.55, .05, 1.42],
-        [3.07, 3.73, 3.27, 3.97], [4.45, 5.75, 2.16, 2.67],
-        ...REHEARSAL_SEATS.map(({x, z}) => [x - .40, x + .40, z - STAND_DISTANCE - .32, z + .36])
+        [-5.24,-2.49,.05,1.47],[-.72,.72,1.83,2.56],[4.86,6.23,3.33,4.82],
+        [-6.25,-5.18,3.60,5.18],
+        ...REHEARSAL_SEATS.map(({x,z,yaw})=>{
+          const standX=x-.72*Math.sin(yaw),standZ=z-.72*Math.cos(yaw);
+          return [Math.min(x,standX)-.38,Math.max(x,standX)+.38,standZ-.28,z+.38];
+        })
       ] : [
         [-3.91, -.59, 3.45, 6.15], [.59, 3.91, 3.45, 6.15],
         [-5.65, -1.85, .05, 1.35], [-1.68, 1.28, .05, 1.02], [1.20, 2.60, .05, 1],
@@ -56,7 +60,7 @@ const SchoolInterior = (() => {
         [WIDTH / 2, 1.55, DEPTH / 2], [0, 1.55, DEPTH], [-WIDTH / 2, 1.55, DEPTH / 2]
       ],
       finishes: music
-        ? {front: 'black-acoustic', back: 'black-acoustic', left: 'black-acoustic', right: 'black-acoustic'}
+        ? {front:'maple-acoustic',back:'maple-acoustic',left:'maple-acoustic',right:'maple-acoustic'}
         : {front:'chaekgeori', right:'chaekgeori', back:'chaekgeori', left:'chaekgeori', floor:'light-birch'}
     };
   }
@@ -218,17 +222,17 @@ const SchoolInterior = (() => {
     const low = room.ceilingMinimum;
     const music = room.kind === 'music';
     const roofAt = x => low + (x + w / 2) * (h - low) / w;
-    enclosure(scene, room, artwork, music ? '#5c5552' : '#bba17b');
+    enclosure(scene, room, music?OrchestraRoom.finishes(artwork):artwork, music ? '#a8835d' : '#bba17b');
     if (music) {
       const cornerTrim = standard('#625d5b', .8);
       for (const x of [-w/2 + .012, w/2 - .012]) {
         for (const z of [.012, d - .012]) box(scene, .036, h, .036, x, h/2, z, cornerTrim);
       }
-      const slat = standard('#302a28', .88);
+      const slat = standard('#bd955f', .88);
       for (let x = -5.15; x <= -2.52; x += .097) {
         rounded(scene, .044, 3.02, .036, x, 1.71, .039, slat, .007);
       }
-      const cloudSurface = artwork.surface('cloud', 2.52, 1.24);
+      const cloudSurface = OrchestraRoom.reflector();
       const cloud = faces(cloudSurface, .9, .8);
       cloud[3] = painted(cloudSurface);
       const wire = standard('#6a605b', .52, .26);
@@ -337,23 +341,15 @@ const SchoolInterior = (() => {
       g.quadraticCurveTo(173,296,12,322);
       g.closePath();
       g.fill();
-      g.strokeStyle='#776650';
-      g.lineWidth=1.5;
-      for(const left of [54,327])for(let y=137;y<=189;y+=13){
-        g.beginPath();
-        g.moveTo(left,y);g.lineTo(left+215,y);g.stroke();
-      }
-      g.fillStyle = '#392e29';
-      g.font='600 29px Malgun Gothic,sans-serif';
-      g.textAlign='center';
-      for (const [i,number] of CT.motif.entries()) {
-        const x=(i<5?70:345)+(i%5)*44, y=number==='북'?175:number==='짝'?160:146;
-        g.beginPath();
-        g.ellipse(x,y,11,7,-.28,0,Math.PI*2);
-        g.fill();
-        g.fillRect(x+8,y-43,3,43);
-        g.fillText(number,x,247);
-      }
+      g.lineCap='round';g.fillStyle='#354450';g.textAlign='left';g.font='600 30px Georgia,serif';
+      MUSIC_SCORE.forEach(({a,b,value},i)=>{
+        const x=90+(i%2)*270,y=105+Math.floor(i/2)*134;
+        for(const [mark,r,weight] of [[a,41,4],[b,30,7]]){
+          const [dx,dy]=clockPoint(mark,r);
+          g.strokeStyle='#324350';g.lineWidth=weight;g.beginPath();g.moveTo(x,y);g.lineTo(x+dx,y+dy);g.stroke();
+        }
+        g.beginPath();g.arc(x,y,5,0,Math.PI*2);g.fill();g.fillText('= '+value,x+48,y+10);
+      });
     });
   }
 
@@ -400,23 +396,12 @@ const SchoolInterior = (() => {
       for (const dz of [-.143,.143]) box(scene,.079,.47,.075,x+dx,.235,1+dz,benchWood);
     }
 
-    const guitar = artwork.patch([249,316,55,155], g => {
-      g.moveTo(23,1); g.lineTo(37,1); g.lineTo(37,22); g.lineTo(34,28);
-      g.lineTo(34,79);
-      g.bezierCurveTo(61,81,41,106,51,119);
-      g.bezierCurveTo(66,154,5,165,2,135);
-      g.bezierCurveTo(0,126,12,110,9,103);
-      g.bezierCurveTo(3,91,10,80,23,79);
-      g.lineTo(23,24); g.lineTo(18,23); g.lineTo(18,9); g.closePath();
-    });
-    patchPlane(scene,.49,1.47,-5.61,1.77,.097,guitar,true);
-
-    const clock = artwork.patch([780,309,78,79], (g,w,h) => g.ellipse(w/2,h/2,w/2-1,h/2-1,0,0,Math.PI*2));
+    const clock=imageMap(clockArtwork());
     cylinder(scene,.345,.345,.047,-.17,2.25,.104,brass).rotation.x = Math.PI/2;
     patchPlane(scene,.71,.71,-.17,2.25,.131,clock,true);
   }
 
-  function rehearsalFurniture(scene, artwork, sampleMap) {
+  function rehearsalFurniture(scene, artwork) {
     const fabric = standard('#80716c', .91);
     const chairFrame = standard('#585856', .49, .23);
     const standFrame = standard('#2e2d2c', .51, .20);
@@ -442,10 +427,10 @@ const SchoolInterior = (() => {
       depth: .007, bevelEnabled: false, curveSegments: 10
     });
 
-    for (const {x, z} of REHEARSAL_SEATS) {
+    for (const {x,z,yaw} of REHEARSAL_SEATS) {
+      const group=new School3D.Group();group.position.set(x,0,z);group.rotation.y=yaw;scene.add(group);
       const chair = new School3D.Group();
-      chair.position.set(x, 0, z);
-      scene.add(chair);
+      group.add(chair);
       rounded(chair,.51,.076,.445,0,.465,0,fabric,.023);
       flat(chair,.462,.394,0,.505,0,artwork.sample('chair'));
       const back = new School3D.Group();
@@ -462,143 +447,24 @@ const SchoolInterior = (() => {
         rod(chair,[dx,.441,.159],[dx,.717,.202],.016,chairFrame);
       }
 
-      const standX = x + STAND_OFFSET, standZ = z - STAND_DISTANCE;
-      rod(scene,[standX,.058,standZ],[standX,1.095,standZ],.013,standFrame);
-      cylinder(scene,.024,.024,.034,standX,.307,standZ,standFrame,20);
+      const standX = STAND_OFFSET, standZ = -STAND_DISTANCE;
+      rod(group,[standX,.058,standZ],[standX,1.095,standZ],.013,standFrame);
+      cylinder(group,.024,.024,.034,standX,.307,standZ,standFrame,20);
       for (const [dx,dz] of [[-.221,.14],[.221,.14],[0,-.248]]) {
-        rod(scene,[standX,.234,standZ],[standX+dx,.028,standZ+dz],.012,standFrame);
-        cylinder(scene,.014,.017,.021,standX+dx,.014,standZ+dz,foot,16);
+        rod(group,[standX,.234,standZ],[standX+dx,.028,standZ+dz],.012,standFrame);
+        cylinder(group,.014,.017,.021,standX+dx,.014,standZ+dz,foot,16);
       }
       const tray = new School3D.Group();
       tray.position.set(standX,1.163,standZ);
       tray.rotation.x = -.32;
-      scene.add(tray);
+      group.add(tray);
       tray.add(new School3D.Mesh(trayGeometry, standFrame));
       rounded(tray,.493,.026,.067,0,-.140,.025,standFrame,.008);
-      if(x===REHEARSAL_SEATS[0].x){
-        patchPlane(tray,MUSIC_SAMPLE.width,MUSIC_SAMPLE.height,0,0,MUSIC_SAMPLE.offset,sampleMap);
-      }
+      if(x<0)OrchestraRoom.standScore(tray);
     }
   }
 
-  function musicWorkstation(scene, artwork) {
-    const wood = faces(artwork.sample('deskWood'), .97, .66);
-    const slab = standard('#4b4240', .52);
-    const equipment = standard('#272421', .49);
-    const steel = standard('#53504b', .42, .28);
-    const fabric = faces(artwork.sample('chair'), 1.05, .85);
-
-    flat(scene,3.63,2.45,0,.006,5.10,artwork.surface('rug',3.63,2.45));
-    const rugEdge = standard('#4e4240', .88);
-    for (const x of [-1.82,1.82]) box(scene,.029,.011,2.47,x,.006,5.10,rugEdge);
-    for (const z of [3.875,6.325]) box(scene,3.66,.011,.029,0,.006,z,rugEdge);
-
-    rounded(scene,3.15,.088,1.06,0,.817,4.85,slab,.012);
-    flat(scene,3.125,1.04,0,.864,4.85,artwork.sample('deskTop'));
-    patchPlane(scene,3.111,.069,0,.817,5.381,artwork.patch([492,596,208,18]));
-    for (const x of [-1.35,1.35]) box(scene,.25,.78,.88,x,.392,4.83,wood);
-    box(scene,2.54,.283,.084,0,.655,4.426,wood);
-    rounded(scene,.274,.522,.432,1.016,.268,4.755,equipment,.018);
-    box(scene,.038,.008,.012,1.05,.454,4.977,steel);
-
-    rounded(scene,1.237,.529,.073,-.003,1.280,4.566,equipment,.017);
-    patchPlane(scene,1.218,.527,-.003,1.28,4.609,artwork.patch([713,425,241,105], (path,w,h) => {
-      path.roundRect(1,1,w-2,h-2,5);
-    }),true);
-    box(scene,.079,.242,.081,0,.979,4.536,equipment);
-    rounded(scene,.347,.030,.237,0,.883,4.546,equipment,.008);
-
-    const speakerFace = artwork.patch([578,433,79,110], (path,w,h) => path.roundRect(1,1,w-2,h-2,8));
-    for (const x of [-1.13,1.13]) {
-      rounded(scene,.410,.617,.337,x,1.211,4.59,equipment,.028);
-      patchPlane(scene,.403,.608,x,1.211,4.762,speakerFace,true);
-      rounded(scene,.417,.061,.343,x,.879,4.588,steel,.012);
-      cylinder(scene,.037,.037,.012,x,1.125,4.417,steel).rotation.x = Math.PI/2;
-    }
-
-    const deck = (x, z, w, d, imageCorners) => {
-      rounded(scene,w,.045,d,x,.891,z,equipment,.011);
-      scene.add(artwork.facePixels([
-        [x-w/2+.013,.916,z-d/2+.01], [x+w/2-.013,.916,z-d/2+.01],
-        [x+w/2-.013,.916,z+d/2-.01], [x-w/2+.013,.916,z+d/2-.01]
-      ], imageCorners));
-    };
-    deck(0,5.119,1.37,.306,[[709,550],[963,550],[974,580],[696,580]]);
-    deck(-.993,5.132,.635,.28,[[565,550],[672,550],[659,581],[541,581]]);
-
-    const phones = new School3D.Group();
-    phones.position.set(.945, .978, 5.12);
-    phones.rotation.y = -.32;
-    scene.add(phones);
-    torus(phones,.113,.018,0,.031,0,equipment,Math.PI);
-    torus(phones,.097,.010,0,.029,0,steel,Math.PI);
-    for (const x of [-.112,.112]) {
-      rounded(phones,.048,.132,.081,x,-.025,0,equipment,.019);
-      cylinder(phones,.048,.045,.017,x*1.24,-.019,0,steel).rotation.z = Math.PI/2;
-    }
-
-    const chair = standard('#82736f', .91);
-    rounded(scene,.628,.132,.548,0,.475,5.82,chair,.04);
-    box(scene,.57,.065,.456,0,.467,5.825,fabric);
-    rounded(scene,.638,.495,.123,0,.728,6.001,chair,.036);
-    const back = artwork.patch([748,580,177,142], (path,w,h) => path.roundRect(2,2,w-4,h-4,20));
-    patchPlane(scene,.627,.492,0,.730,6.066,back,true);
-    patchPlane(scene,.583,.073,0,.465,6.101,artwork.patch([765,716,141,26], (path,w,h) => {
-      path.roundRect(1,1,w-2,h-2,7);
-    }),true);
-    cylinder(scene,.041,.04,.29,0,.26,5.82,steel);
-    for (let i=0; i<5; i++) {
-      const a = i*Math.PI*2/5;
-      const x = .322*Math.cos(a), z = 5.82+.322*Math.sin(a);
-      rod(scene,[0,.155,5.82],[x,.058,z],.022,steel);
-      const wheel = cylinder(scene,.032,.032,.035,x,.032,z,equipment);
-      wheel.rotation.z = Math.PI/2;
-    }
-    for (const x of [-.338,.338]) {
-      rod(scene,[x*.9,.456,5.94],[x,.68,5.94],.022,steel);
-      rounded(scene,.068,.052,.300,x,.683,5.82,chair,.016);
-    }
-
-    const gobo = artwork.patch([1440,367,148,243], (path,w,h) => path.roundRect(2,2,w-4,h-4,14));
-    rounded(scene,1.12,1.80,.118,5.1,1.020,2.40,standard('#6b5e56',.68),.036);
-    patchPlane(scene,1.107,1.791,5.1,1.020,2.469,gobo,true);
-    patchPlane(scene,1.044,1.724,5.1,1.020,2.337,artwork.sample('gobo'));
-    for (const x of [4.655,5.545]) {
-      rod(scene,[x,.113,2.21],[x,.113,2.60],.02,steel);
-      for (const z of [2.24,2.56]) {
-        rod(scene,[x,.127,z],[x,.054,z],.011,steel);
-        cylinder(scene,.042,.042,.026,x,.041,z,equipment).rotation.z = Math.PI/2;
-      }
-    }
-
-    const mic = new School3D.Group();
-    mic.position.set(3.40,0,3.60);
-    scene.add(mic);
-    for (const [dx,dz] of [[-.28,.16],[.28,.16],[.025,-.265]]) {
-      rod(mic,[0,.265,0],[dx,.034,dz],.015,steel);
-      cylinder(mic,.019,.020,.041,dx,.026,dz,equipment);
-    }
-    rod(mic,[0,.085,0],[0,1.345,0],.014,steel);
-    cylinder(mic,.028,.028,.072,0,1.29,0,equipment);
-    const grille = standard('#8e8274', .48, .32);
-    const silver = standard('#c8b9a6', .36, .46);
-    cylinder(mic,.035,.034,.171,0,1.495,0,silver);
-    rounded(mic,.067,.117,.060,0,1.585,0,grille,.019);
-    for (let i=0;i<9;i++) {
-      torus(mic,.033,.0018,0,1.551+i*.008,0,silver).rotation.x = Math.PI/2;
-    }
-    for (const y of [1.399,1.500]) torus(mic,.082,.0048,0,y,0,silver).rotation.x = Math.PI/2;
-    for (let i=0;i<6;i++) {
-      const a=i*Math.PI/3;
-      const b=a+.44;
-      rod(mic,[.082*Math.cos(a),1.399,.082*Math.sin(a)],[.082*Math.cos(b),1.500,.082*Math.sin(b)],.0038,steel);
-    }
-    torus(mic,.091,.006,.129,1.640,.068,equipment);
-    cylinder(mic,.087,.087,.006,.129,1.64,.068,standard('#3b3531',.98)).rotation.x = Math.PI/2;
-    tube(mic,[[0,1.30,.045],[.140,1.42,.10],[.140,1.54,.074]],.0045,steel);
-  }
-
-  function artWorkshop(scene, artwork) {
+    function artWorkshop(scene, artwork) {
     const wood = faces(artwork.sample('wood'), 1.11, .79);
     const woodFace = standard('#bf8b58', .58);
     const leg = standard('#6d706e', .43, .22);
@@ -756,15 +622,10 @@ const SchoolInterior = (() => {
   function addShadows(scene, music) {
     const shadow = groundShadow(scene);
     if (music) {
-      shadow(3.98,2.72,0,4.88,.010,.9);
-      shadow(1.16,1.06,0,5.87,.011,1);
-      shadow(3.10,1.37,-3.86,.84,.011,.82);
-      shadow(1.61,.91,5.10,2.43,.010,.85);
-      shadow(1.09,.90,3.40,3.61,.010,.76);
-      for (const x of [-1.35,1.35]) shadow(.58,1.15,x,4.86,.014,.83);
-      for (const {x,z} of REHEARSAL_SEATS) {
-        shadow(.88,.80,x,z,.008,.79);
-        shadow(.67,.61,x+STAND_OFFSET,z-STAND_DISTANCE,.008,.58);
+      shadow(3.1,1.37,-3.86,.84,.008,.75);
+      for (const {x,z,yaw} of REHEARSAL_SEATS){
+        shadow(.88,.80,x,z,.008,.65);
+        shadow(.62,.54,x-.72*Math.sin(yaw),z-.72*Math.cos(yaw),.008,.45);
       }
     } else {
       shadow(2.94,.99,-.19,.52,.006,.66);
@@ -784,7 +645,7 @@ const SchoolInterior = (() => {
 
   async function build(scene, room) {
     const music = room.kind === 'music';
-    const cards=music?[room.clues[1]]:room.clues;
+    const cards=music?[]:room.clues;
     const [artwork,clueArt]=await Promise.all([
       music?InteriorArtwork.load(room.kind):ArtRoomFinish.load(room),Promise.all(cards.map(clueBoardArt))
     ]);
@@ -800,8 +661,8 @@ const SchoolInterior = (() => {
     const setDoor = entrance(scene,room,artwork);
     if (music) {
       musicPiano(scene,artwork);
-      musicWorkstation(scene,artwork);
-      rehearsalFurniture(scene,artwork,imageMap(clueArt[0]));
+      rehearsalFurniture(scene,artwork);
+      OrchestraRoom.instruments(scene);
     } else {
       artWorkshop(scene,artwork);
       for(const [i,clue] of cards.entries()){
@@ -815,16 +676,17 @@ const SchoolInterior = (() => {
       rounded(scene, room.lock.width+.17, room.lock.height+.22, .033,
         x-.049, y, z-.029, standard('#f5ebd9', .84), .017);
     }
-    const lock = patchPlane(scene,room.lock.width,room.lock.height,...room.lock.center,imageMap(schoolLockArt(room,[])));
+    const lockMap=values=>music?dialArtwork(values?.digits??[0,0]):schoolLockArt(room,values);
+    const lock = patchPlane(scene,room.lock.width,room.lock.height,...room.lock.center,imageMap(lockMap(null)));
     const canvas = document.getElementById('roomView');
     Object.assign(canvas.dataset,{
       interior:'v7', artwork:'approved', width:WIDTH, depth:DEPTH, area:WIDTH*DEPTH,
-      wallFinish:music?'four-black-acoustic-walls':'four-wall-chaekgeori'
+      wallFinish:music?'orchestra-rehearsal':'four-wall-chaekgeori'
     });
     return {
       setDoor,
       setDigits(values) {
-        lock.material.map.image=schoolLockArt(room,values);
+        lock.material.map.image=lockMap(values);
         lock.material.map.needsUpdate=true;
       }
     };

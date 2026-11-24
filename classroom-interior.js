@@ -8,7 +8,7 @@ const ClassroomInterior=(()=>{
     moldingColor:'#bd5946',recessColor:'#943e31',opensOut:true};
   const groups=[{x:-.48,z:2.24},{x:-1.02,z:4.11},{x:-1.56,z:5.98}];
   const deskSurfaceY=.773;
-  const boardNote={id:'resetOrder',name:'칠판의 점검 기록',xyz:[.36,1.94,.110],
+  const boardNote={id:'resetOrder',name:'칠판',xyz:[.36,1.94,.110],lines:['출입 패드에서 각 가로줄과 세로줄에','켜진 불이 짝수 개여야 합니다.'],
     surface:{width:1.12,height:.65},approach:{x:.36,z:1.22}};
   const deskNote={id:'powerNote',name:'모둠 책상의 점검 쪽지',xyz:[-1.06,deskSurfaceY+.002,6.05],
     surface:{width:.42,height:.28,tilt:-Math.PI/2},approach:{x:-.81,z:7.22},inspectFromAnySide:true};
@@ -231,7 +231,7 @@ const ClassroomInterior=(()=>{
       g.fillStyle='#c6a483';g.fillRect(0,0,w,h);
       g.fillStyle='#fcf5ed';g.beginPath();g.roundRect(6,6,w-12,h-12,10);g.fill();
       g.fillStyle='#303039';g.font='700 56px Malgun Gothic, sans-serif';
-      g.textAlign='center';g.textBaseline='middle';g.fillText(SCHOOL_POINTS.classroom.label,w/2,h/2+1);
+      g.textAlign='center';g.textBaseline='middle';g.fillText(room.place,w/2,h/2+1);
     });
     rounded(scene,1.105,.283,.025,doorway.x,2.624,.018,standard('#bc9b7b',.74),.010);
     patchPlane(scene,1.07,.265,doorway.x,2.624,.032,plaque);

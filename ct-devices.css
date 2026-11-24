@@ -41,3 +41,12 @@ dialog[data-panel="ct-device"],dialog[data-panel="ct-clue"]{--panel-width:clamp(
 .ct-display th,.ct-display td{width:50%;padding:.5rem;border:1px solid #506c76}
 .ct-display th{color:#a7e0c7;font-size:.88rem}
 @media(max-width:420px),(max-height:500px){.ct-controls{gap:.5rem}.ct-led,.ct-mural{width:min(100%,12rem)}.ct-buttons button,.ct-readers button{min-height:2.3rem;padding:.35rem .5rem}}
+
+.ink-pair{display:flex;align-items:flex-start;gap:clamp(.65rem,3vw,1.5rem);justify-content:center}
+.ink-pair figure{flex:1;min-width:0;max-width:13rem;margin:0}
+.ink-pair figcaption{text-align:center;margin-bottom:.28rem;font-size:.86rem;font-weight:650}
+.ct-stamp-grid{display:grid;grid-template-columns:repeat(4,1fr);width:min(100%,13rem);margin:auto;border:1px solid #7190a0;background:#9aafba;gap:1px;padding:1px}
+.ct-stamp-grid>*{aspect-ratio:1.14;min-width:0;min-height:0;padding:0;border:0;border-radius:0;background:#fffaf1;color:#142e48;display:grid;place-items:center;font-size:clamp(.8rem,3vw,1.25rem)}
+.ct-stamp-grid>[data-ink=true]{background:#70a5cf}
+.ink-demo{display:grid;width:2rem;margin:auto}.ink-demo span{height:1.8rem;text-align:center;background:#70a5cf;border:1px solid white}
+.rail-legend{text-align:center;font-size:.85rem;color:#334c58}.reader-result{display:block;margin:.4rem 0;padding:1rem;background:#193746;color:#dcefe7;font-size:1.75rem;letter-spacing:.2em;text-align:center}

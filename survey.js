@@ -25,7 +25,10 @@ function showStudentSurvey() {
   const completed = timer?.stopped && roomRestored(progress, computer);
   const timedOut = timer && !timer.stopped && timer.deadline <= Date.now() && progress.surveyTimeoutRoom;
   const validLesson = !lesson || (SchoolRecords.storyKey && progress.lessonAttempt);
-  const eligible = plan && validLesson && (completed || timedOut);
+  const formerRooms = [{kind:'broadcast',place:'방송실',n:206},{kind:'print',place:'인쇄실',n:210},{kind:'council',place:'학생회실',n:211}];
+  const surveyRooms = plan ? RECOVERY_ROOMS : [...RECOVERY_ROOMS, ...formerRooms];
+  const stops = plan?.stops ?? progress.route?.stops;
+  const eligible = Array.isArray(stops) && validLesson && (completed || timedOut);
   const destination = schoolRoomToPlay(progress, plan);
   back.href = lesson && !SchoolRecords.storyKey ? 'join.html' : recoveryRoomLink(destination, true);
   if (!eligible) {
@@ -35,10 +38,10 @@ function showStudentSurvey() {
     return;
   }
 
-  back.textContent = '결과로 돌아가기';
-  const visited = ['classroom', ...plan.stops, 'computer']
-    .map(id => RECOVERY_ROOMS.find(room => room.kind === id))
-    .filter(room => roomRestored(progress, room) || room.kind === timedOut);
+  back.textContent = plan ? '결과로 돌아가기' : '게임 시작';
+  const visited = ['classroom', ...new Set(stops), 'computer']
+    .map(id => surveyRooms.find(room => room.kind === id))
+    .filter(room => room && (roomRestored(progress, room) || room.kind === timedOut));
   const saved = progress.survey;
   const selects = fields.map(key => form.elements.namedItem(key));
   function done(focus = false) {

@@ -1,5 +1,8 @@
 'use strict';
 
+const MUSIC_CLOCK = Object.freeze({hour:4,minuteMark:12});
+const MUSIC_SCORE = [[9,6],[12,3],[2,4],[7,11]].map(([a,b])=>({a,b,value:a*b}));
+
 const BALLS = ['A','B','C','D','E','F'];
 const BALL_COLORS = ['#b76744','#527e9d','#6d8c62','#a97a45','#86678f','#5c9b91'];
 const BALL_PICKUP = ['D','B','A','E'];
@@ -48,29 +51,29 @@ const BROADCAST_COMMANDS = {
   song:{label:'신청곡',display:'SONG',code:'길 길'}
 };
 const SCHOOL_PUZZLES = {
-  sports:{control:'pin',revision:1,title:'문 옆 번호판',keys:Array.from('1234567890'),answer:countBallMoves(BALLS,BALL_PICKUP),
+  sports:{control:'pin',revision:2,title:'문 옆 번호판',keys:Array.from('1234567890'),answer:countBallMoves(BALLS,BALL_PICKUP),
     instructions:'회수표대로 공을 하나 뺄 때마다, 남은 공 중 몇 개가 자리를 옮길까요? 네 번 센 수를 차례로 이어 쓰면 비밀번호예요.',
     hint:'공을 빼면 그 오른쪽에 있던 공들이 한 칸씩 왼쪽으로 움직여요. 다음 공을 빼기 전, 이번에 움직인 공이 몇 개인지 기억하세요.'},
-  library:{control:'shelf',revision:1,title:'곡선 서가',doorTitle:'도서실 탈출',
+  library:{control:'shelf',revision:2,title:'곡선 서가',doorTitle:'도서실 탈출',
     instructions:'대출하려는 책은 어디에 있는지 찾아보세요.',
     hint:'남은 책의 가운데를 펼쳐 보세요. 찾는 번호가 더 크면 오른쪽에, 더 작으면 왼쪽에 있어요.'},
   classroom:{control:'device',revision:4,title:'교실 출입 패드',
     instructions:'어느 불을 한 번 누르면 가로줄마다, 세로줄마다 켜진 불이 짝수 개가 될까요?',
     hint:'켜진 불이 홀수 개인 가로줄과 세로줄을 각각 찾고, 두 줄이 만나는 칸을 살펴보세요.'},
-  music:{control:'device',revision:4,title:'리듬 재생기',
-    instructions:'소리 카드 세 장과 반복 띠 두 개를 어떻게 놓으면 피아노 악보와 똑같이 들릴까요?',
-    hint:'짧게 되풀이되는 부분을 찾아보세요. 그보다 더 길게 되풀이되는 부분도 들리나요?'},
-  art:{control:'device',revision:4,title:'벽화 물감판',
-    instructions:'물감은 딱 세 방울이에요. 어느 세 칸에 한 방울씩 떨어뜨리면 흰 칸을 모두 칠할 수 있을까요?',
-    hint:'붙어 있는 흰 칸을 손가락으로 따라가 보세요. 이미 이어진 곳에는 한 방울이면 충분해요.'},
-  science:{control:'device',revision:4,title:'실험대의 구슬 레일',
-    instructions:'실험대에서 순서표대로 세 구슬을 굴릴 거예요. 마지막 파란 구슬을 받으려면 어느 컵을 골라야 할까요?',
-    hint:'구슬이 지나간 갈림판만 돌아갑니다. 두 번째 구슬이 아래 갈림판을 지나가는지 살펴보세요.'},
+  music:{control:'device',revision:5,title:'문 옆 다이얼',
+    instructions:'악보에 적힌 네 기록을 보면, 멈춘 시계의 두 바늘은 어떤 수를 나타낼까요?',
+    hint:'악보에 그린 두 바늘을 시계판에 겹쳐 보세요.'},
+  art:{control:'device',revision:5,title:'벽화 물감판',
+    instructions:'물감 일곱 방울로 견본과 똑같은 무늬를 만들려면 어느 칸에 떨어뜨려야 할까요?',
+    hint:'한 방울은 같은 세로줄만 칠해요. 가장자리에서는 두 칸만 칠해지고, 이미 칠한 칸에 겹칠 수도 있어요.'},
+  science:{control:'device',revision:5,title:'실험대의 구슬 레일',
+    instructions:'흰 구슬 두 개가 지나간 뒤, 마지막 파란 구슬은 어느 컵에 떨어질까요?',
+    hint:'첫째 구슬이 지난 두 갈림길은 방향이 바뀌어요. 둘째 구슬도 아래쪽 갈림길을 지날까요?'},
   broadcast:{control:'device',revision:4,title:'방송 믹서',
     instructions:'방송 순서가 불빛으로 도착했어요. 세 방송을 어떤 순서로 틀라는 뜻일까요?',
     hint:'짧은 빛으로 시작하면 한 번에 한 방송이에요. 긴 빛으로 시작하면 다음 빛까지 함께 읽으세요.'},
-  computer:{control:'device',revision:4,title:'출입증 판독기',
-    instructions:'한 판독기가 출입증을 거꾸로 읽어요. 어떤 시험 카드로 고장 난 쪽을 찾을 수 있을까요? 방향을 고친 뒤 새 출입증으로 확인해 보세요.',
+  computer:{control:'device',revision:5,title:'문 옆 카드함',
+    instructions:'같은 시험 카드를 A와 B에서 읽어 보세요. 어느 판독기가 거꾸로 읽나요? 그쪽에서 방향을 고친 뒤 새 출입증을 검사하세요.',
     hint:'앞뒤로 읽어도 똑같은 카드는 두 판독기를 구별할 수 없어요. 첫 기호와 끝 기호가 다른 카드를 골라 보세요.'},
   print:{control:'device',revision:1,title:'인쇄 작업표',
     instructions:'별 포스터와 달 포스터가 한 장씩 필요해요. 세 차례 안에 모두 인쇄하려면 두 기계에 언제 어떤 포스터를 맡겨야 할까요?',

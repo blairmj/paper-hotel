@@ -2,8 +2,8 @@
 
 const CT = (() => {
   const lights=['1100','0110','0111','1001'];
-  const wall=['..#..','.#..#','#..#.','..#..'];
-  const motif=['북','짝','북','짝','딩','북','짝','북','짝','딩'];
+  const artRows=['#.#.','###.','.##.','###.','####','#.##'];
+  const artWidth=artRows[0].length, inkLimit=7;
   const signal=['길','짧','짧','길','길'];
   const tickets=[
     {name:'윤서',class:'5-2',id:'A17',time:'14:10'},
@@ -12,16 +12,11 @@ const CT = (() => {
   const fields={name:'이름',class:'반',id:'접수번호',time:'입장 시각'};
   const cards=['★●★','●★●','★★●'];
   const posters=['별','달'];
-  const cups=['별','달','해'];
-  const blankCount=wall.join('').split('').filter(tile=>tile==='.').length;
+  const cups=['왼쪽','가운데','오른쪽'];
   const clues={
-    resetOrder:['칠판의 점검 기록','출입 패드에서 각 가로줄과 세로줄에 켜진 불이 짝수 개여야 합니다.'],
     powerNote:['모둠 책상의 점검 쪽지','출입 패드의 불 하나만 켜짐과 꺼짐이 뒤바뀌었습니다.'],
-    paper:['피아노의 리듬 악보','북 짝 북 짝 딩','북 짝 북 짝 딩'],
-    musicSample:['반복 띠 사용법','띠 안의 소리는 두 번 연주합니다.','띠 안에 다른 띠를 넣을 수 있습니다.'],
-    printSamples:['벽화 밑그림','검은 칸은 물감을 막는 벽입니다.'],
-    printRule:['물감 번짐 견본','물감은 상하좌우로 이어진 흰 칸에 번집니다.','모서리만 닿은 칸에는 번지지 않습니다.'],
-    practiceRail:['연습대의 갈림판','흰 구슬을 여러 번 굴려 어느 쪽으로 가는지 살펴보세요.'],
+    printSamples:['작업대의 완성 견본','파란 칸을 견본과 똑같이 칠하세요. 흰 칸은 그대로 두세요.'],
+    printRule:['물감 견본','한 칸에 물감을 떨어뜨리면 그 칸과 바로 위·아래 한 칸씩 함께 칠해집니다.'],
     railNote:['실험 순서','흰 구슬 → 흰 구슬 → 파란 구슬','구슬이 지나간 갈림판만 반대쪽으로 돌아갑니다.'],
     broadcastRules:['방송 암호표','짧은 빛 하나 · 급식 안내','긴 빛 + 짧은 빛 · 날씨','긴 빛 + 긴 빛 · 신청곡'],
     broadcastLog:['신호등 수신 기록','긴 빛 · 짧은 빛 · 짧은 빛 · 긴 빛 · 긴 빛'],
@@ -36,11 +31,11 @@ const CT = (() => {
   function fresh(kind,random=Math.random){
     switch(kind){
       case 'classroom':return {cell:null};
-      case 'music':return {program:[]};
-      case 'art':return {drops:[],applied:false};
-      case 'science':return {lower:random()<.5?'left':'right',practice:0,cup:''};
+      case 'music':return {digits:[0,0],overlay:false};
+      case 'art':return {drops:[]};
+      case 'science':return {lower:random()<.5?'left':'right',cup:''};
       case 'broadcast':return {channels:[]};
-      case 'computer':return {fault:random()<.5?'A':'B',test:null,repair:null};
+      case 'computer':return {fault:random()<.5?'A':'B',test:null,repair:null,seen:[]};
       case 'print':return {jobs:Array(6).fill('')};
       case 'council':return {columns:[]};
     }
@@ -51,34 +46,21 @@ const CT = (() => {
     bits[cell]=1-bits[cell];
     return lights.every((_,i)=>[bits.slice(i*4,i*4+4),bits.filter((v,k)=>k%4===i)].every(line=>line.reduce((a,b)=>a+b,0)%2===0));
   }
-  function music(program){
-    const stack=[[]];
-    for(const token of program){
-      if(token==='('){stack.push([]);continue}
-      if(token===')'){
-        if(stack.length===1||!stack.at(-1).length)return null;
-        const notes=stack.pop();stack.at(-1).push(...notes,...notes);
-      }else if(['북','짝','딩'].includes(token))stack.at(-1).push(token);
-      else return null;
-    }
-    return stack.length===1?stack[0]:null;
-  }
-  function colorRegion(start){
-    if(!Number.isInteger(start)||start<0||start>=20||wall[Math.floor(start/5)][start%5]!=='.')return [];
-    const cells=[start],seen=new Set(cells);
-    for(let i=0;i<cells.length;i++){
-      const row=Math.floor(cells[i]/5),col=cells[i]%5;
-      for(const [r,c] of [[row+1,col],[row-1,col],[row,col+1],[row,col-1]]){
-        const n=r*5+c;
-        if(wall[r]?.[c]==='.'&&!seen.has(n)){seen.add(n);cells.push(n)}
-      }
+  function paintCells(drops){
+    const cells=new Set();
+    for(const cell of drops){
+      for(const i of [cell-artWidth,cell,cell+artWidth])if(i>=0&&i<artWidth*artRows.length)cells.add(i);
     }
     return cells;
   }
-  function pigments(drops){return drops.map(colorRegion)}
+  function artSolved(drops){
+    if(drops.length!==inkLimit)return false;
+    const paint=paintCells(drops);
+    return [...artRows.join('')].every((v,i)=>paint.has(i)===(v==='#'));
+  }
   function marblePath(top,lower){
-    if(top==='right')return {cup:'해',nextTop:'left',nextLower:lower,lowerVisited:false};
-    return {cup:lower==='left'?'별':'달',nextTop:'right',nextLower:lower==='left'?'right':'left',lowerVisited:true};
+    if(top==='right')return {cup:cups[2],nextTop:'left',nextLower:lower,lowerVisited:false};
+    return {cup:cups[lower==='left'?0:1],nextTop:'right',nextLower:lower==='left'?'right':'left',lowerVisited:true};
   }
   function experiment(lower){
     let top='left';return [0,1,2].map(()=>{const step=marblePath(top,lower);top=step.nextTop;lower=step.nextLower;return step});
@@ -101,34 +83,32 @@ const CT = (() => {
   function validList(list,allowed,max){
     return Array.isArray(list)&&list.length<=max&&list.every(x=>allowed.includes(x));
   }
-  function validProgram(program){
-    if(!validList(program,['북','짝','딩','(',')'],7))return false;
-    return ['북','짝','딩','(',')'].every((v,i)=>program.filter(t=>t===v).length<=(i<3?1:2));
-  }
   function restore(kind,s,base){
     if(!s||typeof s!=='object')return base;
     switch(kind){
       case 'classroom': if(Number.isInteger(s.cell)&&s.cell>=0&&s.cell<16)base.cell=s.cell;break;
-      case 'music':if(validProgram(s.program))base.program=s.program.slice();break;
+      case 'music':
+        if(Array.isArray(s.digits)&&s.digits.length===2&&s.digits.every(n=>Number.isInteger(n)&&n>=0&&n<=9))base.digits=s.digits.slice();
+        base.overlay=s.overlay===true;break;
       case 'art':
-        if(Array.isArray(s.drops)&&s.drops.length<=3&&new Set(s.drops).size===s.drops.length&&s.drops.every(n=>colorRegion(n).length)){
-          base.drops=s.drops.slice();
-          base.applied=s.applied===true&&base.drops.length===3;
-        }
+        if(Array.isArray(s.drops)&&s.drops.length<=inkLimit&&new Set(s.drops).size===s.drops.length&&s.drops.every(n=>Number.isInteger(n)&&n>=0&&n<artRows.length*artWidth))base.drops=s.drops.slice();
         break;
       case 'science':
         if(['left','right'].includes(s.lower))base.lower=s.lower;
-        if(Number.isSafeInteger(s.practice)&&s.practice>=0)base.practice=s.practice;
         if(cups.includes(s.cup))base.cup=s.cup;break;
       case 'broadcast':if(validList(s.channels,Object.keys(BROADCAST_COMMANDS),3))base.channels=s.channels.slice();break;
       case 'computer':
         if(['A','B'].includes(s.fault))base.fault=s.fault;
-        if(cards.includes(s.test)){base.test=s.test;if(['A','B'].includes(s.repair))base.repair=s.repair}
+        if(cards.includes(s.test)){
+          base.test=s.test;
+          if(validList(s.seen,['A','B'],2))base.seen=[...new Set(s.seen)];
+          if(base.seen.length===2&&['A','B'].includes(s.repair))base.repair=s.repair;
+        }
         break;
       case 'print':if(validList(s.jobs,['',...posters],6)&&s.jobs.length===6)base.jobs=s.jobs.slice();break;
       case 'council':if(validList(s.columns,Object.keys(fields),2)&&new Set(s.columns).size===s.columns.length)base.columns=s.columns.slice();break;
     }
     return base;
   }
-  return {lights,wall,motif,signal,tickets,fields,cards,posters,cups,blankCount,clues,fresh,restore,parity,music,colorRegion,pigments,experiment,marblePath,readerOutput,schedule,validProgram};
+  return {lights,artRows,artWidth,inkLimit,paintCells,artSolved,signal,tickets,fields,cards,posters,cups,clues,fresh,restore,parity,experiment,marblePath,readerOutput,schedule};
 })();

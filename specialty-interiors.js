@@ -23,7 +23,7 @@ const SpecialtyInteriors = (() => {
     {x:-1.81,z:3.40,w:1.82,d:2.67},
     {x:1.75,z:2.77,w:1.81,d:2.62}
   ];
-  const labSeats = [[-.58,4.68],[.46,3.64],[.56,2.31]];
+  const labSeats = [[-.58,4.68],[-2.98,3.48]];
   const anchor = {x:-2.05,z:1.47,w:2.28,d:.80};
   const consoleDesk = {x:3.22,z:3.16,w:1.25,d:4.13};
   const deskReturn = {x:2.54,z:1.24,w:1.48,d:.79};
@@ -93,9 +93,8 @@ const SpecialtyInteriors = (() => {
         {id:'shelfGuide',name:'서가 안내문',lines:LIBRARY_NOTICES.shelfGuide,
           xyz:[signPosition.x,1.153,signPosition.z],surface:{width:1.02,height:.32},rotationY:quarterTurn-bayAngle,
           approach:{x:numberedFront.x,z:5.20},placement:'stand'},
-        {id:'loanSlip',name:'대출 데스크 모니터',lines:LIBRARY_NOTICES.loanSlip,
-          xyz:[counter.x-.14,1.43,counter.z-.17],surface:{width:.89,height:.45},rotationY:-1.10,
-          approach:{x:counter.x-1.48,z:counter.z+.55},placement:'monitor'}
+        {id:'loanSlip',name:'책 사이에 꽂힌 쪽지',lines:LIBRARY_NOTICES.loanSlip,
+          xyz:[-2.473,1.385,.515],surface:{width:.18,height:.24},approach:{x:-2.47,z:1.88},placement:'bookmark'}
       ],
       build:library
     },
@@ -107,13 +106,11 @@ const SpecialtyInteriors = (() => {
       statusLamp:{xyz:[4.45,1.64,3.22],angle:-quarterTurn},doorReveal:{x:2.12,z:1.17},
       start:[-.15,1.55,7.59],view:[-.075,1.26,1.38],viewAngle:58,
       obstacles:[
-        ...lab.map(table=>boundsOf(table)),
+        boundsOf(lab[0]),
         ...labSeats.map(([x,z])=>boundsOf({x,z,w:.50,d:.50},.075)),
         [-3.77,3.77,.22,.99]
       ],
       clues:[
-        {id:'practiceRail',name:'연습대의 갈림판',xyz:[lab[1].x,1.42,3.44],placement:'bench',
-          surface:{width:1.04,height:.79,depth:.13},approach:{x:lab[1].x,z:4.95}},
         {id:'railNote',name:'벽의 실험 순서표',xyz:[-.65,1.83,.055],placement:'wall',
           surface:{width:.98,height:.62},approach:{x:0,z:1.58}}
       ],
@@ -275,7 +272,8 @@ const SpecialtyInteriors = (() => {
         const count=Math.floor((bayWidth-.13)/.067);
         for(let i=0;i<count;i++){
           const mix=offset+i*11+row*7+bay*19;
-          if(mix%17===8)continue;
+          const bySlip=x===-2.86&&bay===1&&row===1&&(i===4||i===5);
+          if(mix%17===8&&!bySlip)continue;
           books.push({x:left+.085+i*.067,y:y+.027,z:.060+(mix%4)*.013,w:.041+(mix%8)*.003,
             h:(.248+(mix%18)*.011)*bookHeightScale,d:.237,angle:0,color:backgroundBindings[mix%backgroundBindings.length]});
         }
@@ -435,6 +433,10 @@ const SpecialtyInteriors = (() => {
     slab(scene,{x,z,w:w-.12,d:d-.12},.094,wood,.076,.16);
     slab(scene,counter,.94,wood,.105,.18);
     shadow(w+.46,d+.44,x,z,.004,.64);
+    const monitor=document.createElement('canvas');monitor.width=280;monitor.height=150;
+    const g=monitor.getContext('2d');g.fillStyle='#244d62';g.fillRect(0,0,280,150);
+    g.fillStyle='#91bcc4';g.fillRect(0,115,280,5);
+    addCard(scene,{xyz:[x-.14,1.43,z-.17],surface:{width:.89,height:.45},rotationY:-1.10,placement:'monitor'},monitor);
     return shelfDevice;
   }
 
@@ -469,7 +471,7 @@ const SpecialtyInteriors = (() => {
   }
 
   function microscope(parent,x,z,cream,dark,steel){
-    const unit=positionGroup(parent,x,.925,z,-.28);
+    const unit=positionGroup(parent,x,.881,z,-.28);
     rounded(unit,.32,.051,.28,0,.028,0,dark,.019);
     rounded(unit,.251,.045,.22,0,.071,0,cream,.016);
     tube(unit,[[-.10,.083,.035],[-.13,.212,.048],[-.095,.325,.032],[-.009,.389,.02]],.043,cream);
@@ -483,41 +485,20 @@ const SpecialtyInteriors = (() => {
   }
 
 
-  function marbleBoard(scene,x,z,practice){
-    const width=practice?1.04:1.27,height=practice?.76:.88;
+  function marbleBoard(scene,x,z){
     const unit=positionGroup(scene,x,.94,z);
-    const base=standard('#354d61',.56),plate=standard('#b7d6e8',.56),track=standard('#eef4ed',.40);
-    const brass=standard('#f3aa47',.38,.25);
-    rounded(unit,width,.06,.38,0,.03,-.065,base,.017);
-    rounded(unit,width,height,.054,0,.08+height/2,-.018,plate,.025);
-    const place=(u,v)=>[(u/300-.5)*(width-.04),.08+height*(1-v/(practice?160:181)),.032];
-    const branch=(a,b)=>rod(unit,place(...a),place(...b),.017,track);
-    const pivot=practice?[150,46]:[150,44],low=[100,83];
-    branch([150,10],pivot);
-    if(practice){branch(pivot,[60,123]);branch(pivot,[240,123])}
-    else{branch(pivot,low);branch(pivot,[241,142]);branch(low,[38,142]);branch(low,[137,142])}
-    function vane(at){
-      const [cx,cy]=place(...at),joint=positionGroup(unit,cx,cy,.058);
-      rounded(joint,.024,.103,.017,0,-.042,0,brass,.007);
-      cylinder(joint,.017,.017,.015,0,0,.018,base,18).rotation.x=quarterTurn;
-      return joint;
-    }
-    const a=vane(pivot),b=practice?null:vane(low);
-    const cups=[];
-    for(const [u,label] of (practice?[[60,'왼쪽'],[240,'오른쪽']]:[[38,'별'],[137,'달'],[241,'해']])){
-      const [cx,cy]=place(u,practice?124:143);
-      const cupMaterial=standard('#38596d',.52);
-      rounded(unit,.149,.076,.085,cx,cy-.037,.055,cupMaterial,.012);
-      cups.push({label,cupMaterial});
-      const mark=InteriorArtwork.canvasMap(140,55,(g,w,h)=>{
-        g.fillStyle='#24445c';g.fillRect(0,0,w,h);g.fillStyle='white';g.textAlign='center';g.font='bold 34px Malgun Gothic,sans-serif';g.fillText(label,w/2,40);
-      });
-      patchPlane(unit,.143,.060,cx,cy-.033,.103,mark);
-    }
-    return (top,lower,selected)=>{
-      a.rotation.z=top==='left'?-.77:.77;
-      if(b)b.rotation.z=lower==='left'?-.77:.77;
-      for(const {label,cupMaterial} of cups)cupMaterial.color.set(label===selected?'#e89336':'#38596d');
+    const base=standard('#294456',.56);
+    rounded(unit,1.31,.06,.38,0,.03,-.065,base,.017);
+    rounded(unit,1.31,.94,.054,0,.55,-.018,base,.025);
+    const texture=new School3D.Texture();texture.colorSpace=School3D.SRGBColorSpace;
+    const canvas=document.createElement('canvas');canvas.width=600;canvas.height=374;
+    texture.image=canvas;texture.needsUpdate=true;
+    patchPlane(unit,1.25,.88,0,.55,.018,texture);
+    let request=0;
+    return (lower,cup)=>{
+      const version=++request,img=new Image();
+      img.onload=()=>{if(request!==version)return;canvas.getContext('2d').drawImage(img,0,0,600,374);texture.needsUpdate=true};
+      img.src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(CTDeviceUI.railSvg('left',lower,null,cup));
     };
   }
 
@@ -612,24 +593,22 @@ const SpecialtyInteriors = (() => {
     const enamel=materialFrom(art,'ivory',.51),steel=standard('#d5d9dc',.24,.57);
     const stoolYellow=standard('#efbd36',.53),legs=standard('#e7e5de',.53),dark=standard('#273442',.65);
     const plinth=standard('#19468b',.71);
-    for(const table of lab){
-      labCabinet(scene,table,blue,top,steel,plinth);
-      shadow(table.w+.49,table.d+.46,table.x,table.z,.005,.66);
-    }
+    const table=lab[0];
+    labCabinet(scene,table,blue,top,steel,plinth);
+    shadow(table.w+.49,table.d+.46,table.x,table.z,.005,.66);
     for(const [x,z] of labSeats){
       stool(scene,x,z,stoolYellow,legs);
       shadow(.63,.63,x,z,.006,.57);
     }
-    const mainRail=marbleBoard(scene,lab[0].x,3.96,false);
-    const practiceRail=marbleBoard(scene,lab[1].x,3.42,true);
-    microscope(scene,2.11,lab[1].z+.18,enamel,dark,steel);
+    const mainRail=marbleBoard(scene,lab[0].x,3.96);
+    microscope(scene,2.11,.48,enamel,dark,steel);
     const measureGlass=new School3D.MeshPhysicalMaterial({
       color:'#c6e7f2',roughness:.13,clearcoat:.58,transparent:true,opacity:.29,depthWrite:false
     });
-    const measureZ=lab[1].z-.35;
-    cylinder(scene,.087,.087,.029,1.25,.938,measureZ,steel);
-    cylinder(scene,.046,.046,.435,1.25,1.163,measureZ,measureGlass,32);
-    for(let i=0;i<7;i++)box(scene,.025,.007,.006,1.222,1.021+i*.044,measureZ+.043,dark);
+    const measureZ=.48;
+    cylinder(scene,.087,.087,.029,1.25,.898,measureZ,steel);
+    cylinder(scene,.046,.046,.435,1.25,1.128,measureZ,measureGlass,32);
+    for(let i=0;i<7;i++)box(scene,.025,.007,.006,1.222,.986+i*.044,measureZ+.043,dark);
 
     const sinkZ=.48,counterDepth=.78,sinkWidth=1.16,sinkDepth=.48,counterWidth=7.14;
     const cabinetSpan=(counterWidth-sinkWidth)/2,cabinetOffset=(counterWidth+sinkWidth)/4;
@@ -657,7 +636,7 @@ const SpecialtyInteriors = (() => {
     const tiles=new School3D.Mesh(new School3D.PlaneGeometry(7.14,1.40),
       new School3D.MeshStandardMaterial({map:art.surface('tile',7.14,1.40),roughness:.48,envMapIntensity:.55}));
     tiles.position.set(0,1.570,.013);scene.add(tiles);
-    return {setDigits(state){mainRail('left',state?.lower??'left',state?.cup);practiceRail(state?.practice%2?'right':'left','left')}};
+    return {setDigits(state){mainRail(state?.lower??'left',state?.cup)}};
   }
 
   function studioFinish(art,name,levels,roughness){
@@ -1117,6 +1096,11 @@ const SpecialtyInteriors = (() => {
   function addCard(scene,clue,card){
     if(clue.placement==='instrument')return;
     const {width,height}=clue.surface,group=positionGroup(scene,...clue.xyz,clue.rotationY??0);
+    if(clue.placement==='bookmark'){
+      const note=box(group,.115,.22,.009,0,-.028,-.008,standard('#f6d881',.85));note.rotation.z=-.10;
+      box(group,.071,.012,.009,.005,.033,.001,standard('#528680'));
+      return;
+    }
     if(clue.placement==='paper'){
       patchPlane(group,width,height,0,0,0,imageMap(card)).rotation.x=clue.surface.tilt;
       return;

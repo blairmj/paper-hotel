@@ -50,10 +50,14 @@ test('picking accounts for each repeated computer station and a ray starting ins
 });
 
 test('every playable classroom starts the native renderer',()=>{
-  for(const name of ['index','music','art','library','science','broadcast','sports','print','council','computer']){
+  for(const name of ['index','music','art','sports','library','science','computer']){
     const html=fs.readFileSync(path.join(root,name+'.html'),'utf8');
     assert.doesNotMatch(html,/three\.min\.js/i);
     assert.match(html,/src="webgl\/renderer\.js/);
     assert.ok(html.indexOf('webgl/renderer.js')<html.indexOf('music-world.js'));
+  }
+  for(const name of ['broadcast','print','council']){
+    const html=fs.readFileSync(path.join(root,name+'.html'),'utf8');
+    assert.match(html,/location\.replace/);assert.doesNotMatch(html,/webgl\/renderer\.js/);
   }
 });

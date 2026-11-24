@@ -11,20 +11,7 @@
 .spot[data-object=ballLine]{touch-action:none}
 #spots [data-object=ballLine] span{display:none}
 .ball-task{margin:.3rem 0 .45rem;font-size:.9375rem;font-weight:650}
-.ball-row-label{margin:0 0 .45rem;color:#4b6264;font-size:.8125rem;font-weight:650}
-.ball-row{
-  display:grid;
-  gap:6px;
-  grid-template-columns:repeat(6,minmax(0,1fr));
-  justify-items:center;
-  align-items:center;
-  margin-top:3px;
-  padding:4px 5px;
-  border:1px solid #b5c4bc;
-  border-radius:4px;
-  background:#e7ede7;
-}
-.locker-ball,.ball-empty{width:min(100%,var(--control-height));aspect-ratio:1;border-radius:50%}
+.locker-ball{border-radius:50%}
 .locker-ball,.locker-ball:hover,.locker-ball:disabled{
   display:grid;
   place-items:center;
@@ -36,10 +23,8 @@
   font-weight:750;
 }
 button.locker-ball:hover:enabled{box-shadow:0 0 0 2px #346456}
-button.locker-ball:active:enabled{transform:translateY(1px)}
+button.locker-ball:active:enabled{filter:brightness(.92)}
 button.locker-ball:disabled{cursor:default}
-.ball-empty{border:1px dashed #a1b1a8;background:#f0f4ef}
-#ballBefore .locker-ball,#ballBefore .ball-empty{width:min(100%,2.125rem)}
 .ball-feedback{margin:.5rem 0 0;color:#9a4032;font-size:.875rem;font-weight:650}
 .ball-feedback:empty{display:none}
 #inspect[data-panel=sports-pin]{--panel-width:clamp(22rem,41vw,28rem)}
@@ -62,3 +47,13 @@ button.locker-ball:disabled{cursor:default}
 #pinKeys button:active:enabled{border-bottom-width:1px}
 #pinKeys button:disabled{opacity:.55;cursor:default}
 #pinKeys .pin-zero{grid-column:2}
+
+.ball-slots,.ball-lane{width:100%;max-width:33rem;margin-inline:auto}
+.ball-slots{display:grid;grid-template-columns:repeat(6,1fr);text-align:center;font-size:.8rem;font-weight:600;color:#52626a}
+.ball-lane{position:relative;height:clamp(3.5rem,12vw,4.5rem);margin-top:.2rem;border-bottom:4px solid #7c8988;background:repeating-linear-gradient(90deg,#ecf0eb 0 calc(16.6667% - 1px),#c7d2cb calc(16.6667% - 1px) 16.6667%);border-radius:4px}
+.ball-lane .locker-ball{position:absolute;top:50%;transform:translate(-50%,-50%);width:min(13%,3.25rem);min-height:0;line-height:1;aspect-ratio:1;font-size:clamp(1rem,4vw,1.5rem);transition:opacity .25s}
+.ball-lane.sliding .locker-ball{transition:left .8s ease-in-out}
+.ball-lane .locker-ball:disabled{opacity:1}.ball-lane .locker-ball.leaving{opacity:.22}
+#inspect[data-panel=ball-locker] .actions{display:flex;justify-content:flex-end;flex-wrap:wrap;gap:.4rem}
+#inspect[data-panel=ball-locker] .actions button{flex:0 1 auto;padding:.35rem .65rem}
+@media(prefers-reduced-motion:reduce){.ball-lane.sliding .locker-ball{transition:none}}

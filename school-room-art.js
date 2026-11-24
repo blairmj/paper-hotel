@@ -30,8 +30,8 @@ function schoolClueSvg(id){
   let art='';
   if(id==='ballLine'||id==='ballOrder')art=ballDiagram(id==='ballLine'?BALLS:BALL_PICKUP);
   else if(id==='printSamples'){
-    CT.wall.forEach((line,y)=>Array.from(line).forEach((cell,x)=>{
-      art+='<rect x="'+(139+x*65)+'" y="'+(43+y*65)+'" width="63" height="63" fill="'+(cell==='#'?'#344656':'#fffaf0')+'" stroke="#83949b"/>';
+    CT.artRows.forEach((line,y)=>[...line].forEach((cell,x)=>{
+      art+='<rect x="'+(200+x*50)+'" y="'+(23+y*50)+'" width="48" height="48" fill="'+(cell==='#'?'#316b99':'#fffaf0')+'" stroke="#8295a1"/>';
     }));
   }else if(id==='broadcastLog'){
     CT.signal.forEach((v,i)=>{const x=48+i*104,w=v==='길'?72:25;
@@ -82,7 +82,7 @@ async function clueBoardArt(clue){
   return canvas;
 }
 
-function schoolLockArt(room,values){
+function schoolLockArt(room,values,reader){
   const canvas=document.createElement('canvas');canvas.width=420;canvas.height=236;
   const g=canvas.getContext('2d');
   const frame=g.createLinearGradient(0,0,420,236);
@@ -95,30 +95,18 @@ function schoolLockArt(room,values){
   g.fillStyle='#213944';g.fillRect(38,39,344,158);
   g.textAlign='center';g.textBaseline='middle';
   if(room.kind==='art'){
-    const drops=values?.drops??[];
-    const regions=values?.applied?CT.pigments(drops):[];
-    const inks=['#e99539','#6398cf','#70ad85'];
-    CT.wall.forEach((line,row)=>Array.from(line).forEach((c,col)=>{
-      const index=row*5+col,x=91+col*48,y=46+row*36;
-      const color=regions.findIndex(list=>list.includes(index));
-      g.fillStyle=c==='#'?'#314555':inks[color]??'#f9f3e3';
-      g.fillRect(x,y,45,33);
-      const mark=drops.indexOf(index);
-      if(mark>=0){
-        g.beginPath();g.arc(x+22,y+16,12,0,Math.PI*2);g.fillStyle=inks[mark];g.fill();
-        g.strokeStyle='#354552';g.lineWidth=2;g.stroke();
-        g.fillStyle='#142832';g.font='bold 15px sans-serif';g.fillText(String(mark+1),x+22,y+17);
-      }
+    const drops=values?.drops??[],paint=CT.paintCells(drops);
+    CT.artRows.forEach((line,row)=>[...line].forEach((_,col)=>{
+      const i=row*CT.artWidth+col,x=142+col*35,y=42+row*24;
+      g.fillStyle=paint.has(i)?'#568fc2':'#f8f2e3';g.fillRect(x,y,33,22);
+      if(drops.includes(i)){g.fillStyle='#163854';g.beginPath();g.arc(x+16,y+11,5,0,Math.PI*2);g.fill()}
     }));
   }else if(room.kind==='computer'){
-    for(const [i,id] of ['A','B'].entries()){
-      g.fillStyle='#accacb';g.fillRect(53+i*166,57,145,117);
-      g.fillStyle='#204956';g.font='bold 45px monospace';g.fillText(id,125+i*166,96);
-      if(values?.test){
-        g.font='bold 20px sans-serif';g.fillText(CT.readerOutput(values.test,id,values.fault,values.repair),125+i*166,132);
-      }
-      g.fillStyle='#496670';g.fillRect(80+i*166,150,90,7);
-    }
+    g.fillStyle=reader==='B'?'#eed19a':'#b7dcdf';g.fillRect(46,48,326,137);
+    g.fillStyle='#213946';g.font='bold 43px sans-serif';
+    g.fillText(reader?reader+' 판독기':'시험 카드함',210,88);
+    g.font='bold 28px sans-serif';
+    g.fillText(reader?(values?.seen?.includes(reader)?CT.readerOutput(values.test,reader,values.fault,values.repair):'카드 투입구'):(values?.test??'▲ ● ★'),210,143);
   }else if(room.kind==='print'){
     g.fillStyle='#b4d4c3';g.font='bold 22px Malgun Gothic,sans-serif';
     g.fillText('차례',100,63);g.fillText('스캔',210,63);g.fillText('인쇄',313,63);

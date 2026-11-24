@@ -89,6 +89,9 @@ const SportsComputerInteriors = (() => {
     const lock={center:[doorway.x-doorway.width/2-.52,1.28,.073],width:sports ? .36 : .53,height:sports ? .49 : .53};
     const targets=[{id:'lock',name:SCHOOL_PUZZLES[kind].title,xyz:lock.center,surface:lock,
       approach:{x:lock.center[0],z:.99}},...clues];
+    if(!sports)for(const [id,x] of [['A',-4.55],['B',1.35]]){
+      targets.push({id:'reader'+id,name:id+' 판독기',xyz:[x,1.48,.098],surface:{width:.72,height:.46},approach:{x,z:.99}});
+    }
     const startX = sports ? -1.54 : 0;
     return {
       ...RECOVERY_ROOMS.find(item => item.kind === kind),
@@ -626,15 +629,18 @@ const SportsComputerInteriors = (() => {
       };
     }
     await computers(scene,room,shadow);
-    box(scene,room.lock.width+.025,room.lock.height+.021,.052,room.lock.center[0],room.lock.center[1],.043,standard('#434c55',.47));
-    const plate = patchPlane(scene,room.lock.width,room.lock.height,...room.lock.center,imageMap(schoolLockArt(room,[])));
-    return {
-      setDoor:swingDoor,
-      setDigits(values) {
-        plate.material.map.image = schoolLockArt(room,values);
-        plate.material.map.needsUpdate = true;
-      }
-    };
+    const devices=room.targets.filter(t=>['lock','readerA','readerB'].includes(t.id)).map(t=>{
+      const reader=t.id==='lock'?null:t.id.slice(-1);
+      const [x,y,z]=t.xyz,{width:w,height:h}=t.surface;
+      rounded(scene,w+.052,h+.064,.074,x,y,z-.045,standard(reader==='B'?'#94703e':'#46656d',.56),.016);
+      const texture=imageMap(schoolLockArt(room,null,reader));
+      patchPlane(scene,w,h,x,y,z,texture);
+      if(reader)box(scene,w*.61,.037,.026,x,y-h*.32,z+.012,standard('#263943'));
+      return {texture,reader};
+    });
+    return {setDoor:swingDoor,setDigits(state){
+      for(const {texture,reader} of devices){texture.image=schoolLockArt(room,state,reader);texture.needsUpdate=true}
+    }};
   }
 
   return Object.freeze({definition,build});

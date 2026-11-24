@@ -147,3 +147,11 @@ dialog p.floorplan-notice{
 }
 .broadcast-steps label[data-result=passed]{border-color:#298778;background:#e4f6ee}
 .broadcast-steps label[data-result=failed]{border-color:#d84d43;background:#fff0ec}
+
+.school-route-plan{list-style:none;margin:.85rem 0 1rem;padding:.65rem;display:grid;grid-template:repeat(3,1fr)/repeat(3,minmax(0,1fr));gap:.34rem .6rem;background:#ebeee7;border:1px solid #b7c2bc;border-radius:.4rem}
+.school-route-plan li{display:flex;flex-direction:column;justify-content:center;min-width:0;gap:.1rem;padding:.38rem .5rem;background:#fbfaf2;border:1px solid #bdc4b7;border-bottom:3px solid #aab5aa;border-radius:.15rem;font-size:clamp(.78rem,2.5vw,1rem)}
+.school-route-plan li small{font-weight:600;color:#52655c;font-size:.72rem}
+.school-route-plan li:nth-child(4){grid-area:2/3}.school-route-plan li:nth-child(5){grid-area:3/3}.school-route-plan li:nth-child(6){grid-area:3/2}.school-route-plan li:nth-child(7){grid-area:3/1;background:#f7dfc7}
+.school-route-plan li[aria-current]{border-color:#2a675d;background:#cde6dd}
+#inspect[data-panel=intro] #panelBody{display:block;overflow:auto}
+#inspect[data-panel=intro] .lesson-access{margin-top:.7rem}
